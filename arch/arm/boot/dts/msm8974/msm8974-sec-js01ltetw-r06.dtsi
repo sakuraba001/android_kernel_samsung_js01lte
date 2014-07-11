@@ -1,0 +1,29 @@
+
+/include/ "msm8974-sec-js01ltejpn-r06.dtsi"
+
+&soc {
+	/* BLSP#10 */
+	i2c@f9966000 {
+		status = "okay";
+		bcm2079x-i2c@77 {
+			compatible = "bcm2079x-i2c";
+			reg = <0x77>;
+			interrupt-parent = <&msmgpio>;
+			interrupts = <28 0>;
+			bcm2079x-i2c,irq-gpio = <&msmgpio 28 0x00>;
+			bcm2079x-i2c,en-gpio = <&pm8941_gpios 13 0x1>;
+			bcm2079x-i2c,wake-gpio = <&msmgpio 63 0x00>;
+			bcm2079x-i2c,ap-rev = <5>;
+		};
+		pn547@2B {
+			compatible = "pn547";
+			reg = <0x2B>;
+			interrupt-parent = <&msmgpio>;
+			interrupts = <59 0>;
+			pn547,irq-gpio = <&msmgpio 59 0x00>;
+			pn547,ven-gpio = <&pm8941_gpios 13 0x1>;
+			pn547,firm-gpio = <&msmgpio 63 0x00>;
+		};
+	};
+};
+
