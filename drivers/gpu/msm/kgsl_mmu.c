@@ -20,6 +20,7 @@
 #include <linux/iommu.h>
 #include <mach/iommu.h>
 #include <mach/socinfo.h>
+#include <linux/types.h>
 
 #include "kgsl.h"
 #include "kgsl_mmu.h"
@@ -139,12 +140,12 @@ kgsl_get_pagetable(unsigned long name)
 static struct kgsl_pagetable *
 _get_pt_from_kobj(struct kobject *kobj)
 {
-	unsigned long ptname;
+	unsigned int ptname;
 
 	if (!kobj)
 		return NULL;
 
-	if (sscanf(kobj->name, "%ld", &ptname) != 1)
+	if (kstrtou32(kobj->name, 0, &ptname))
 		return NULL;
 
 	return kgsl_get_pagetable(ptname);
@@ -395,6 +396,8 @@ int kgsl_mmu_init(struct kgsl_device *device)
 	if (KGSL_MMU_TYPE_NONE == kgsl_mmu_type) {
 		dev_info(device->dev, "|%s| MMU type set for device is "
 				"NOMMU\n", __func__);
+		status = dma_set_coherent_mask(device->dev->parent,
+					DMA_BIT_MASK(sizeof(dma_addr_t)*8));
 		goto done;
 	} else if (KGSL_MMU_TYPE_GPU == kgsl_mmu_type)
 		mmu->mmu_ops = &gpummu_ops;
@@ -734,6 +737,10 @@ kgsl_mmu_map(struct kgsl_pagetable *pagetable,
 	if (!kgsl_memdesc_is_global(memdesc) &&
 		(KGSL_MEMDESC_MAPPED & memdesc->priv))
 		return -EINVAL;
+
+	if (kgsl_mmu_get_mmutype() == KGSL_MMU_TYPE_NONE)
+		return 0;
+
 	/* Add space for the guard page when allocating the mmu VA. */
 	size = memdesc->size;
 	if (kgsl_memdesc_has_guard_page(memdesc))

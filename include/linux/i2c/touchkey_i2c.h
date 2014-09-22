@@ -187,14 +187,9 @@ enum {
 #define TKEY_SEMCO_CYPRESS_FW_NAME	"semco_cypress_tkey"
 #define TKEY_SEMCO02_CYPRESS_FW_NAME	"semco02_cypress_tkey"
 #define TKEY_DTECH_CYPRESS_FW_NAME	"dtech_cypress_tkey"
-#ifdef CONFIG_MACH_JS01LTEDCM
-#define TKEY_CYPRESS_FW_NAME        "hltejs01_cypress_tkey"
-#define TKEY_CORERIVER_FW_NAME      "hltejs01_coreriver_tkey"
-#else
+
 #define TKEY_CORERIVER_FW_NAME		"hlte_coreriver_tkey"
 #define TKEY_CYPRESS_FW_NAME		"hlte_cypress_tkey"
-#endif
-
 enum {
 	FW_BUILT_IN = 0,
 	FW_IN_SDCARD,

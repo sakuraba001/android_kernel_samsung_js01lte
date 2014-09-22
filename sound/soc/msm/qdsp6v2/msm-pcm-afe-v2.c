@@ -30,13 +30,12 @@
 #include <sound/control.h>
 #include <sound/q6adm-v2.h>
 #include <asm/dma.h>
-#include <linux/memory_alloc.h>
 #include "msm-pcm-afe-v2.h"
 
 #define MIN_PLAYBACK_PERIOD_SIZE (128 * 2)
 #define MAX_PLAYBACK_PERIOD_SIZE (128 * 2 * 2 * 6)
-#define MIN_PLAYBACK_NUM_PERIODS (64)
-#define MAX_PLAYBACK_NUM_PERIODS (768)
+#define MIN_PLAYBACK_NUM_PERIODS (32)
+#define MAX_PLAYBACK_NUM_PERIODS (384)
 
 #define MIN_CAPTURE_PERIOD_SIZE (128 * 2 * 4)
 #define MAX_CAPTURE_PERIOD_SIZE (128 * 2 * 2 * 6 * 4)

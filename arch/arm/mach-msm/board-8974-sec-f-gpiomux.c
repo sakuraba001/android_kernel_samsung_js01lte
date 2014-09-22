@@ -866,6 +866,18 @@ static struct msm_gpiomux_config msm_blsp_configs[] __initdata = {
 		},
 	},
 #endif
+	{
+		.gpio      = 87,		/* BLSP12 QUP I2C_DAT */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_i2c_config,
+		},
+	},
+	{
+		.gpio      = 88,		/* BLSP12 QUP I2C_CLK */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_i2c_config,
+		},
+	},
 };
 
 static struct msm_gpiomux_config msm8974_slimbus_config[] __initdata = {
@@ -937,7 +949,7 @@ static struct msm_gpiomux_config sd_card_det __initdata = {
 	},
 };
 
-#ifdef CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI
+#ifdef CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI_H
 static struct gpiomux_setting touch_init_state = {
 	.func = GPIOMUX_FUNC_3,
 	.drv = GPIOMUX_DRV_2MA,
@@ -1984,7 +1996,7 @@ void __init msm_8974_init_gpiomux(void)
 		msm_gpiomux_install(apq8074_dragonboard_ts_config,
 			ARRAY_SIZE(apq8074_dragonboard_ts_config));
 
-#ifdef CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI
+#ifdef CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI_H
 	printk(KERN_INFO "%s:[TSP] touch config.\n",__func__);
 	msm_gpiomux_install(msm8974_touch_config,
 			ARRAY_SIZE(msm8974_touch_config));

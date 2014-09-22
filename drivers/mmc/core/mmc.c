@@ -1264,9 +1264,9 @@ int mmc_set_clock_bus_speed(struct mmc_card *card, unsigned long freq)
 		mmc_set_timing(card->host, MMC_TIMING_LEGACY);
 		mmc_set_clock(card->host, MMC_HIGH_26_MAX_DTR);
 
-		err = mmc_select_hs(card, &card->cached_ext_csd);
+		err = mmc_select_hs(card, card->cached_ext_csd);
 	} else {
-		err = mmc_select_hs400(card, &card->cached_ext_csd);
+		err = mmc_select_hs400(card, card->cached_ext_csd);
 	}
 
 	return err;
@@ -1514,7 +1514,7 @@ static int mmc_init_card(struct mmc_host *host, u32 ocr,
 		err = mmc_get_ext_csd(card, &ext_csd);
 		if (err)
 			goto free_card;
-		memcpy(&card->cached_ext_csd, ext_csd, sizeof(card->ext_csd));
+		card->cached_ext_csd = ext_csd;
 		err = mmc_read_ext_csd(card, ext_csd);
 		if (err)
 			goto free_card;
@@ -1631,7 +1631,8 @@ static int mmc_init_card(struct mmc_host *host, u32 ocr,
 	 * the existence of cache and it can be turned on.
 	 */
 	if ((host->caps2 & MMC_CAP2_CACHE_CTRL) &&
-			(card->ext_csd.cache_size > 0)) {
+	    (card->ext_csd.cache_size > 0) && card->ext_csd.hpi_en &&
+	    ((card->quirks & MMC_QUIRK_CACHE_DISABLE) == 0)) {
 		err = mmc_switch(card, EXT_CSD_CMD_SET_NORMAL,
 				EXT_CSD_CACHE_CTRL, 1,
 				card->ext_csd.generic_cmd6_time);
@@ -1650,6 +1651,11 @@ static int mmc_init_card(struct mmc_host *host, u32 ocr,
 		} else {
 			card->ext_csd.cache_ctrl = 1;
 		}
+	}
+	if (card->quirks & MMC_QUIRK_CACHE_DISABLE) {
+		pr_warn("%s: This is Hynix card, cache disabled!\n",
+				mmc_hostname(card->host));
+		card->ext_csd.cache_ctrl = 0;
 	}
 
 	if ((host->caps2 & MMC_CAP2_PACKED_WR &&
@@ -1722,15 +1728,12 @@ static int mmc_init_card(struct mmc_host *host, u32 ocr,
 	if (!oldcard)
 		host->card = card;
 
-	mmc_free_ext_csd(ext_csd);
 	return 0;
 
 free_card:
 	if (!oldcard)
 		mmc_remove_card(card);
 err:
-	mmc_free_ext_csd(ext_csd);
-
 	return err;
 }
 

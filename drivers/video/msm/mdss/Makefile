@@ -2,22 +2,23 @@ ifeq ($(TARGET_BUILD_VARIANT),user)
 EXTRA_CFLAGS += -DDLOG_USER_VARIANT
 endif
 obj-$(CONFIG_SAMSUNG_DEBUG_DISPLAY) += dlog.o
-mdss-mdp3-objs = mdp3.o mdp3_dma.o mdp3_ctrl.o
+mdss-mdp3-objs = mdp3.o mdp3_dma.o mdp3_ctrl.o dsi_status_v2.o
 mdss-mdp3-objs += mdp3_ppp.o mdp3_ppp_hwio.o mdp3_ppp_data.o
-obj-$(CONFIG_FB_MSM_MDSS) += mdss-mdp3.o
+obj-$(CONFIG_FB_MSM_MDSS_MDP3) += mdss-mdp3.o
 
-mdss-mdp-objs := mdss_mdp.o mdss_mdp_ctl.o mdss_mdp_pipe.o mdss_mdp_util.o
+mdss-mdp-objs := mdss_mdp.o mdss_mdp_ctl.o mdss_mdp_pipe.o mdss_mdp_util.o dsi_status_6g.o
 mdss-mdp-objs += mdss_mdp_pp.o
 mdss-mdp-objs += mdss_mdp_intf_video.o
 mdss-mdp-objs += mdss_mdp_intf_cmd.o
 mdss-mdp-objs += mdss_mdp_intf_writeback.o
 mdss-mdp-objs += mdss_mdp_rotator.o
 mdss-mdp-objs += mdss_mdp_overlay.o
+mdss-mdp-objs += mdss_mdp_splash_logo.o
 mdss-mdp-objs += mdss_mdp_wb.o
 obj-$(CONFIG_FB_MSM_MDSS) += mdss-mdp.o
 
 ifeq ($(CONFIG_FB_MSM_MDSS),y)
-obj-$(CONFIG_DEBUG_FS) += mdss_debug.o
+obj-$(CONFIG_DEBUG_FS) += mdss_debug.o mdss_debug_xlog.o
 endif
 
 ifeq ($(CONFIG_FB_MSM_MDSS_DSI_DBG),y)
@@ -30,6 +31,8 @@ ifeq ($(CONFIG_FB_MSM_MIPI_CMD_WVGA_ILI9806B_PT_PANEL),y)
 dsi-v2-objs = dsi_v2.o dsi_host_v2.o dsi_io_v2.o
 obj-$(CONFIG_FB_MSM_MDSS) += dsi-v2.o
 endif
+
+obj-$(CONFIG_FB_MSM_MDSS_MDP3) += dsi-v2.o
 
 mdss-dsi-objs := mdss_dsi.o mdss_dsi_host.o mdss_dsi_cmd.o
 

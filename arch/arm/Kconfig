@@ -36,6 +36,7 @@ config ARM
 	select CPU_PM if (SUSPEND || CPU_IDLE)
 	select GENERIC_PCI_IOMAP
 	select HAVE_BPF_JIT if NET
+	select GENERIC_SMP_IDLE_THREAD
 	help
 	  The ARM series is a line of low-power-consumption RISC chip designs
 	  licensed by ARM Ltd and targeted at embedded applications and
@@ -1858,14 +1859,6 @@ choice
 	default NO_VM_RECLAIM
 	help
 	  Select the method of reclaiming virtual memory
-
-config DONT_MAP_HOLE_AFTER_MEMBANK0
-	bool "Map around the largest hole"
-	help
-	  Do not map the memory belonging to the largest hole
-	  into the virtual space. This results in more lowmem.
-	  If multiple holes are present, only the largest hole
-	  in the first 256MB of memory is not mapped.
 
 config ENABLE_VMALLOC_SAVING
 	bool "Reclaim memory for each subsystem"

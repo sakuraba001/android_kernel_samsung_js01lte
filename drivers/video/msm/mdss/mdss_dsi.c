@@ -856,33 +856,58 @@ static int mdss_dsi_dfps_config(struct mdss_panel_data *pdata, int new_fps)
 
 	if (new_fps !=
 		ctrl_pdata->panel_data.panel_info.mipi.frame_rate) {
-		rc = mdss_dsi_clk_div_config
-			(&ctrl_pdata->panel_data.panel_info, new_fps);
-		if (rc) {
-			pr_err("%s: unable to initialize the clk dividers\n",
-							__func__);
-			return rc;
-		}
-		ctrl_pdata->pclk_rate =
-			ctrl_pdata->panel_data.panel_info.mipi.dsi_pclk_rate;
-		ctrl_pdata->byte_clk_rate =
-			ctrl_pdata->panel_data.panel_info.clk_rate / 8;
-
 		if (pdata->panel_info.dfps_update
-				== DFPS_IMMEDIATE_CLK_UPDATE_MODE) {
-			dsi_ctrl = MIPI_INP((ctrl_pdata->ctrl_base) +
-					    0x0004);
-			ctrl_pdata->panel_data.panel_info.mipi.frame_rate =
-									new_fps;
-			dsi_ctrl &= ~0x2;
-			MIPI_OUTP((ctrl_pdata->ctrl_base) + 0x0004,
-							dsi_ctrl);
-			mdss_dsi_controller_cfg(true, pdata);
-			mdss_dsi_clk_ctrl(ctrl_pdata, 0);
-			mdss_dsi_clk_ctrl(ctrl_pdata, 1);
-			dsi_ctrl |= 0x2;
-			MIPI_OUTP((ctrl_pdata->ctrl_base) + 0x0004,
-							dsi_ctrl);
+			== DFPS_IMMEDIATE_PORCH_UPDATE_MODE) {
+			u32 hsync_period, vsync_period;
+			u32 new_dsi_v_total, current_dsi_v_total;
+			vsync_period =
+				mdss_panel_get_vtotal(&pdata->panel_info);
+			hsync_period =
+				mdss_panel_get_htotal(&pdata->panel_info);
+			current_dsi_v_total =
+				MIPI_INP((ctrl_pdata->ctrl_base) + 0x2C);
+			new_dsi_v_total =
+				((vsync_period - 1) << 16) | (hsync_period - 1);
+			MIPI_OUTP((ctrl_pdata->ctrl_base) + 0x2C,
+				(current_dsi_v_total | 0x8000000));
+			if (new_dsi_v_total & 0x8000000) {
+				MIPI_OUTP((ctrl_pdata->ctrl_base) + 0x2C,
+					new_dsi_v_total);
+			} else {
+				MIPI_OUTP((ctrl_pdata->ctrl_base) + 0x2C,
+					(new_dsi_v_total | 0x8000000));
+				MIPI_OUTP((ctrl_pdata->ctrl_base) + 0x2C,
+					(new_dsi_v_total & 0x7ffffff));
+			}
+			pdata->panel_info.mipi.frame_rate = new_fps;
+		} else {
+			rc = mdss_dsi_clk_div_config
+				(&ctrl_pdata->panel_data.panel_info, new_fps);
+			if (rc) {
+				pr_err("%s: unable to initialize the clk dividers\n",
+								__func__);
+				return rc;
+			}
+			ctrl_pdata->pclk_rate =
+				pdata->panel_info.mipi.dsi_pclk_rate;
+			ctrl_pdata->byte_clk_rate =
+				pdata->panel_info.clk_rate / 8;
+
+			if (pdata->panel_info.dfps_update
+					== DFPS_IMMEDIATE_CLK_UPDATE_MODE) {
+				dsi_ctrl = MIPI_INP((ctrl_pdata->ctrl_base) +
+						    0x0004);
+				pdata->panel_info.mipi.frame_rate = new_fps;
+				dsi_ctrl &= ~0x2;
+				MIPI_OUTP((ctrl_pdata->ctrl_base) + 0x0004,
+								dsi_ctrl);
+				mdss_dsi_controller_cfg(true, pdata);
+				mdss_dsi_clk_ctrl(ctrl_pdata, 0);
+				mdss_dsi_clk_ctrl(ctrl_pdata, 1);
+				dsi_ctrl |= 0x2;
+				MIPI_OUTP((ctrl_pdata->ctrl_base) + 0x0004,
+								dsi_ctrl);
+			}
 		}
 	} else {
 		pr_debug("%s: Panel is already at this FPS\n", __func__);
@@ -928,6 +953,15 @@ static int mdss_dsi_ctl_partial_update(struct mdss_panel_data *pdata)
 	return rc;
 }
 
+int mdss_dsi_register_recovery_handler(struct mdss_dsi_ctrl_pdata *ctrl,
+	struct mdss_panel_recovery *recovery)
+{
+	mutex_lock(&ctrl->mutex);
+	ctrl->recovery = recovery;
+	mutex_unlock(&ctrl->mutex);
+	return 0;
+}
+
 static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 				  int event, void *arg)
 {
@@ -941,6 +975,8 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
 	pr_debug("%s+:event=%d\n", __func__, event);
+
+	MDSS_XLOG(event, arg, ctrl_pdata->ndx, 0x3333);
 
 	switch (event) {
 	case MDSS_EVENT_UNBLANK:
@@ -1010,7 +1046,6 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 #endif
 		break;
 	case MDSS_EVENT_DSI_CMDLIST_KOFF:
-		ctrl_pdata->recovery = (struct mdss_panel_recovery *)arg;
 		mdss_dsi_cmdlist_commit(ctrl_pdata, 1);
 		break;
 	case MDSS_EVENT_PANEL_UPDATE_FPS:
@@ -1043,6 +1078,10 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 	case MDSS_EVENT_ENABLE_PARTIAL_UPDATE:
 		rc = mdss_dsi_ctl_partial_update(pdata);
 		break;
+	case MDSS_EVENT_REGISTER_RECOVERY_HANDLER:
+		rc = mdss_dsi_register_recovery_handler(ctrl_pdata,
+			(struct mdss_panel_recovery *)arg);
+		break;
 	default:
 		if(ctrl_pdata->event_handler)
 			rc = ctrl_pdata->event_handler(event);
@@ -1052,6 +1091,21 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 	}
 	pr_debug("%s-:event=%d, rc=%d\n", __func__, event, rc);
 	return rc;
+}
+
+static struct device_node *mdss_dsi_pref_prim_panel(
+		struct platform_device *pdev)
+{
+	struct device_node *dsi_pan_node = NULL;
+
+	pr_debug("%s:%d: Select primary panel from dt\n",
+					__func__, __LINE__);
+	dsi_pan_node = of_parse_phandle(pdev->dev.of_node,
+					"qcom,dsi-pref-prim-pan", 0);
+	if (!dsi_pan_node)
+		pr_err("%s:can't find panel phandle\n", __func__);
+
+	return dsi_pan_node;
 }
 
 /**
@@ -1090,16 +1144,7 @@ static struct device_node *mdss_dsi_find_panel_of_node(
 				"qcom,dsi-pref-prim-pan-dual", 0);
 		} else
 #endif
-		{
-			dsi_pan_node = of_parse_phandle(
-				pdev->dev.of_node,
-				"qcom,dsi-pref-prim-pan", 0);
-		}
-		if (!dsi_pan_node) {
-			pr_err("%s:can't find panel phandle\n",
-			       __func__);
-			return NULL;
-		}
+		dsi_pan_node = mdss_dsi_pref_prim_panel(pdev);
 	} else {
 		if (panel_cfg[0] == '0') {
 			pr_info("%s:%d: DSI ctrl 1\n", __func__, __LINE__);
@@ -1132,11 +1177,12 @@ static struct device_node *mdss_dsi_find_panel_of_node(
 		dsi_pan_node = of_find_node_by_name(mdss_node,
 						    panel_name);
 		if (!dsi_pan_node) {
-			pr_err("%s: invalid pan node\n",
+			pr_err("%s: invalid pan node, selecting prim panel\n",
 			       __func__);
-			return NULL;
+			dsi_pan_node = mdss_dsi_pref_prim_panel(pdev);
 		}
 	}
+
 	return dsi_pan_node;
 }
 
@@ -1161,6 +1207,11 @@ static int __devinit mdss_dsi_ctrl_probe(struct platform_device *pdev)
 	if (!pdev->dev.of_node) {
 		pr_err("DSI driver only supports device tree probe\n");
 		return -ENOTSUPP;
+	}
+
+	if (get_lcd_attached() == 0) {
+		pr_err("%s : lcd is not attached..\n",__func__);
+		return -ENODEV;
 	}
 
 	ctrl_pdata = platform_get_drvdata(pdev);
@@ -1529,6 +1580,12 @@ int dsi_panel_device_register(struct device_node *pan_node,
 				pinfo->dfps_update =
 						DFPS_IMMEDIATE_CLK_UPDATE_MODE;
 				pr_debug("%s: dfps mode: Immediate clk\n",
+								__func__);
+			} else if (!strcmp(data,
+					    "dfps_immediate_porch_mode")) {
+				pinfo->dfps_update =
+					DFPS_IMMEDIATE_PORCH_UPDATE_MODE;
+				pr_debug("%s: dfps mode: Immediate porch\n",
 								__func__);
 			} else {
 				pr_debug("%s: dfps to default mode\n",

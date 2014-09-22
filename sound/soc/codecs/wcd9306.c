@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -509,8 +509,8 @@ static int tapan_put_anc_func(struct snd_kcontrol *kcontrol,
 		snd_soc_dapm_enable_pin(dapm, "EAR PA");
 		snd_soc_dapm_enable_pin(dapm, "EAR");
 	}
-	snd_soc_dapm_sync(dapm);
 	mutex_unlock(&dapm->codec->mutex);
+	snd_soc_dapm_sync(dapm);
 	return 0;
 }
 
@@ -518,31 +518,41 @@ static int tapan_pa_gain_get(struct snd_kcontrol *kcontrol,
 				struct snd_ctl_elem_value *ucontrol)
 {
 	u8 ear_pa_gain;
+	int rc = 0;
 	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
 
 	ear_pa_gain = snd_soc_read(codec, TAPAN_A_RX_EAR_GAIN);
-
 	ear_pa_gain = ear_pa_gain >> 5;
 
-	if (ear_pa_gain == 0x00) {
-		ucontrol->value.integer.value[0] = 0;
-	} else if (ear_pa_gain == 0x04) {
-		ucontrol->value.integer.value[0] = 1;
-	} else  {
+	switch (ear_pa_gain) {
+	case 0:
+	case 1:
+	case 2:
+	case 3:
+	case 4:
+	case 5:
+		ucontrol->value.integer.value[0] = ear_pa_gain;
+		break;
+	case 7:
+		ucontrol->value.integer.value[0] = (ear_pa_gain - 1);
+		break;
+	default:
+		rc = -EINVAL;
 		pr_err("%s: ERROR: Unsupported Ear Gain = 0x%x\n",
-				__func__, ear_pa_gain);
-		return -EINVAL;
+		       __func__, ear_pa_gain);
+		break;
 	}
 
 	dev_dbg(codec->dev, "%s: ear_pa_gain = 0x%x\n", __func__, ear_pa_gain);
 
-	return 0;
+	return rc;
 }
 
 static int tapan_pa_gain_put(struct snd_kcontrol *kcontrol,
 				struct snd_ctl_elem_value *ucontrol)
 {
 	u8 ear_pa_gain;
+	int rc = 0;
 	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
 
 	dev_dbg(codec->dev, "%s: ucontrol->value.integer.value[0]  = %ld\n",
@@ -550,17 +560,24 @@ static int tapan_pa_gain_put(struct snd_kcontrol *kcontrol,
 
 	switch (ucontrol->value.integer.value[0]) {
 	case 0:
-		ear_pa_gain = 0x00;
-		break;
 	case 1:
-		ear_pa_gain = 0x80;
+	case 2:
+	case 3:
+	case 4:
+	case 5:
+		ear_pa_gain = ucontrol->value.integer.value[0];
+		break;
+	case 6:
+		ear_pa_gain = 0x07;
 		break;
 	default:
-		return -EINVAL;
+		rc = -EINVAL;
+		break;
 	}
-
-	snd_soc_update_bits(codec, TAPAN_A_RX_EAR_GAIN, 0xE0, ear_pa_gain);
-	return 0;
+	if (!rc)
+		snd_soc_update_bits(codec, TAPAN_A_RX_EAR_GAIN,
+				    0xE0, ear_pa_gain << 5);
+	return rc;
 }
 
 static int tapan_get_iir_enable_audio_mixer(
@@ -1021,9 +1038,13 @@ static int tapan_config_compander(struct snd_soc_dapm_widget *w,
 	return 0;
 }
 
-static const char * const tapan_ear_pa_gain_text[] = {"POS_6_DB", "POS_2_DB"};
+static const char * const tapan_ear_pa_gain_text[] = {"POS_6_DB", "POS_4P5_DB",
+						      "POS_3_DB", "POS_1P5_DB",
+						      "POS_0_DB", "NEG_2P5_DB",
+						      "NEG_12_DB"};
 static const struct soc_enum tapan_ear_pa_gain_enum[] = {
-		SOC_ENUM_SINGLE_EXT(2, tapan_ear_pa_gain_text),
+		SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(tapan_ear_pa_gain_text),
+				    tapan_ear_pa_gain_text),
 };
 
 static const char *const tapan_anc_func_text[] = {"OFF", "ON"};
@@ -1084,7 +1105,7 @@ static const struct snd_kcontrol_new tapan_common_snd_controls[] = {
 	SOC_SINGLE_TLV("LINEOUT2 Volume", TAPAN_A_RX_LINE_2_GAIN, 0, 14, 1,
 		line_gain),
 
-	SOC_SINGLE_TLV("SPK DRV Volume", TAPAN_A_SPKR_DRV_GAIN, 3, 7, 1,
+	SOC_SINGLE_TLV("SPK DRV Volume", TAPAN_A_SPKR_DRV_GAIN, 3, 8, 1,
 		line_gain),
 
 	SOC_SINGLE_TLV("ADC1 Volume", TAPAN_A_TX_1_EN, 2, 19, 0, analog_gain),
@@ -1307,6 +1328,9 @@ static const struct soc_enum rx4_mix1_inp1_chain_enum =
 static const struct soc_enum rx4_mix1_inp2_chain_enum =
 	SOC_ENUM_SINGLE(TAPAN_A_CDC_CONN_RX4_B1_CTL, 4, 13, rx_3_4_mix1_text);
 
+static const struct soc_enum rx4_mix1_inp3_chain_enum =
+	SOC_ENUM_SINGLE(TAPAN_A_CDC_CONN_RX4_B2_CTL, 0, 13, rx_3_4_mix1_text);
+
 static const struct soc_enum rx1_mix2_inp1_chain_enum =
 	SOC_ENUM_SINGLE(TAPAN_A_CDC_CONN_RX1_B3_CTL, 0, 5, rx_mix2_text);
 
@@ -1401,6 +1425,9 @@ static const struct snd_kcontrol_new rx4_mix1_inp1_mux =
 
 static const struct snd_kcontrol_new rx4_mix1_inp2_mux =
 	SOC_DAPM_ENUM("RX4 MIX1 INP2 Mux", rx4_mix1_inp2_chain_enum);
+
+static const struct snd_kcontrol_new rx4_mix1_inp3_mux =
+	SOC_DAPM_ENUM("RX4 MIX1 INP3 Mux", rx4_mix1_inp3_chain_enum);
 
 static const struct snd_kcontrol_new rx1_mix2_inp1_mux =
 	SOC_DAPM_ENUM("RX1 MIX2 INP1 Mux", rx1_mix2_inp1_chain_enum);
@@ -1841,9 +1868,10 @@ static int tapan_codec_enable_adc(struct snd_soc_dapm_widget *w,
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
-		if (w->reg == TAPAN_A_TX_3_EN)
+		if (w->reg == TAPAN_A_TX_3_EN ||
+		    w->reg == TAPAN_A_TX_1_EN)
 			wcd9xxx_resmgr_notifier_call(&tapan->resmgr,
-						WCD9XXX_EVENT_PRE_TX_3_ON);
+						WCD9XXX_EVENT_PRE_TX_1_3_ON);
 		snd_soc_update_bits(codec, adc_reg, 1 << init_bit_shift,
 				1 << init_bit_shift);
 		break;
@@ -1853,9 +1881,10 @@ static int tapan_codec_enable_adc(struct snd_soc_dapm_widget *w,
 
 		break;
 	case SND_SOC_DAPM_POST_PMD:
-		if (w->reg == TAPAN_A_TX_3_EN)
+		if (w->reg == TAPAN_A_TX_3_EN ||
+		    w->reg == TAPAN_A_TX_1_EN)
 			wcd9xxx_resmgr_notifier_call(&tapan->resmgr,
-						WCD9XXX_EVENT_POST_TX_3_OFF);
+						WCD9XXX_EVENT_POST_TX_1_3_OFF);
 		break;
 	}
 	return 0;
@@ -2246,16 +2275,23 @@ static int tapan_codec_enable_micbias(struct snd_soc_dapm_widget *w,
 
 #ifndef CONFIG_ARCH_MSM8226
 /* called under codec_resource_lock acquisition */
-static int tapan_enable_mbhc_micbias(struct snd_soc_codec *codec, bool enable)
+static int tapan_enable_mbhc_micbias(struct snd_soc_codec *codec, bool enable,
+				     enum wcd9xxx_micbias_num micb_num)
 {
 	int rc;
+	const char *micbias;
+
+	if (micb_num == MBHC_MICBIAS2)
+		micbias = DAPM_MICBIAS2_EXTERNAL_STANDALONE;
+	else
+		return -EINVAL;
 
 	if (enable)
 		rc = snd_soc_dapm_force_enable_pin(&codec->dapm,
-					     DAPM_MICBIAS2_EXTERNAL_STANDALONE);
+						   micbias);
 	else
 		rc = snd_soc_dapm_disable_pin(&codec->dapm,
-					     DAPM_MICBIAS2_EXTERNAL_STANDALONE);
+					      micbias);
 	if (!rc)
 		snd_soc_dapm_sync(&codec->dapm);
 	pr_debug("%s: leave ret %d\n", __func__, rc);
@@ -4041,6 +4077,7 @@ static int tapan_codec_enable_slimrx(struct snd_soc_dapm_widget *w,
 
 	switch (event) {
 	case SND_SOC_DAPM_POST_PMU:
+		dai->bus_down_in_recovery = false;
 		(void) tapan_codec_enable_slim_chmask(dai, true);
 		ret = wcd9xxx_cfg_slim_sch_rx(core, &dai->wcd9xxx_ch_list,
 					      dai->rate, dai->bit_width,
@@ -4049,7 +4086,8 @@ static int tapan_codec_enable_slimrx(struct snd_soc_dapm_widget *w,
 	case SND_SOC_DAPM_POST_PMD:
 		ret = wcd9xxx_close_slim_sch_rx(core, &dai->wcd9xxx_ch_list,
 						dai->grph);
-		ret = tapan_codec_enable_slim_chmask(dai, false);
+		if (!dai->bus_down_in_recovery)
+			ret = tapan_codec_enable_slim_chmask(dai, false);
 		if (ret < 0) {
 			ret = wcd9xxx_disconnect_port(core,
 						      &dai->wcd9xxx_ch_list,
@@ -4064,6 +4102,7 @@ static int tapan_codec_enable_slimrx(struct snd_soc_dapm_widget *w,
 			pm_runtime_put(core->dev->parent);
 			dev_dbg(codec->dev, "%s: unvote requested", __func__);
 		}
+		dai->bus_down_in_recovery = false;
 		break;
 	}
 	return ret;
@@ -4095,6 +4134,7 @@ static int tapan_codec_enable_slimtx(struct snd_soc_dapm_widget *w,
 	dai = &tapan_p->dai[w->shift];
 	switch (event) {
 	case SND_SOC_DAPM_POST_PMU:
+		dai->bus_down_in_recovery = false;
 		(void) tapan_codec_enable_slim_chmask(dai, true);
 		ret = wcd9xxx_cfg_slim_sch_tx(core, &dai->wcd9xxx_ch_list,
 					      dai->rate, dai->bit_width,
@@ -4103,7 +4143,8 @@ static int tapan_codec_enable_slimtx(struct snd_soc_dapm_widget *w,
 	case SND_SOC_DAPM_POST_PMD:
 		ret = wcd9xxx_close_slim_sch_tx(core, &dai->wcd9xxx_ch_list,
 						dai->grph);
-		ret = tapan_codec_enable_slim_chmask(dai, false);
+		if (!dai->bus_down_in_recovery)
+			ret = tapan_codec_enable_slim_chmask(dai, false);
 		if (ret < 0) {
 			ret = wcd9xxx_disconnect_port(core,
 						      &dai->wcd9xxx_ch_list,
@@ -4118,6 +4159,7 @@ static int tapan_codec_enable_slimtx(struct snd_soc_dapm_widget *w,
 			pm_runtime_put(core->dev->parent);
 			dev_dbg(codec->dev, "%s: unvote requested", __func__);
 		}
+		dai->bus_down_in_recovery = false;
 		break;
 	}
 	return ret;
@@ -4290,7 +4332,7 @@ static const struct snd_soc_dapm_widget tapan_9306_dapm_widgets[] = {
 	SND_SOC_DAPM_MUX("RX4 MIX1 INP2", SND_SOC_NOPM, 0, 0,
 		&rx4_mix1_inp2_mux),
 	SND_SOC_DAPM_MUX("RX4 MIX1 INP3", SND_SOC_NOPM, 0, 0,
-		&rx4_mix1_inp2_mux),
+		&rx4_mix1_inp3_mux),
 
 	/* RX4 MIX2 mux inputs */
 	SND_SOC_DAPM_MUX("RX4 MIX2 INP1", SND_SOC_NOPM, 0, 0,
@@ -5590,6 +5632,7 @@ static int tapan_post_reset_cb(struct wcd9xxx *wcd9xxx)
 	int rco_clk_rate;
 	struct snd_soc_codec *codec;
 	struct tapan_priv *tapan;
+	int count;
 
 	codec = (struct snd_soc_codec *)(wcd9xxx->ssr_priv);
 	tapan = snd_soc_codec_get_drvdata(codec);
@@ -5651,6 +5694,9 @@ static int tapan_post_reset_cb(struct wcd9xxx *wcd9xxx)
 
 	tapan->machine_codec_event_cb(codec, WCD9XXX_CODEC_EVENT_CODEC_UP);
 
+	for (count = 0; count < NUM_CODEC_DAIS; count++)
+		tapan->dai[count].bus_down_in_recovery = true;
+
 	mutex_unlock(&codec->mutex);
 	return ret;
 }
@@ -5674,7 +5720,17 @@ static struct regulator *tapan_codec_find_regulator(
 	const char *name)
 {
 	int i;
-	struct wcd9xxx *core = dev_get_drvdata(codec->dev->parent);
+	struct wcd9xxx *core = NULL;
+
+	if (codec == NULL) {
+		dev_err(codec->dev, "%s: codec not initialized\n", __func__);
+		return NULL;
+	}
+	core = dev_get_drvdata(codec->dev->parent);
+	if (core == NULL) {
+		dev_err(codec->dev, "%s: core not initialized\n", __func__);
+		return NULL;
+	}
 
 	for (i = 0; i < core->num_of_supplies; i++) {
 		if (core->supplies[i].supply &&
@@ -5949,8 +6005,8 @@ static int tapan_codec_probe(struct snd_soc_codec *codec)
 		snd_soc_dapm_disable_pin(dapm, "ANC EAR PA");
 		snd_soc_dapm_disable_pin(dapm, "ANC EAR");
 	}
-	snd_soc_dapm_sync(dapm);
 	mutex_unlock(&dapm->codec->mutex);
+	snd_soc_dapm_sync(dapm);
 
 	codec->ignore_pmdown_time = 1;
 

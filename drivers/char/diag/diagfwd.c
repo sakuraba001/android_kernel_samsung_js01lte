@@ -825,10 +825,9 @@ int diag_device_write(void *buf, int data_type, struct diag_request *write_ptr)
 					driver->buf_tbl[i].length =
 								 driver->used;
 #ifdef DIAG_DEBUG
-					pr_debug("diag: ENQUEUE buf ptr"
-						   " and length is %x , %d\n",
-						   (unsigned int)(driver->buf_
-				tbl[i].buf), driver->buf_tbl[i].length);
+					pr_debug("diag: ENQUEUE buf ptr and length is %p , %d\n",
+						 driver->buf_tbl[i].buf,
+						 driver->buf_tbl[i].length);
 #endif
 					break;
 				}
@@ -860,9 +859,9 @@ int diag_device_write(void *buf, int data_type, struct diag_request *write_ptr)
 			if (foundIndex == -1)
 				err = -1;
 			else
-				pr_debug("diag: ENQUEUE HSIC buf ptr and length is %x , %d, ch %d\n",
-					(unsigned int)buf,
-					 diag_bridge[index].write_len, index);
+				pr_debug("diag: ENQUEUE HSIC buf ptr and length is %p , %d, ch %d\n",
+					 buf, diag_bridge[index].write_len,
+					 index);
 		}
 #endif
 		for (i = 0; i < driver->num_clients; i++)
@@ -2480,7 +2479,7 @@ void diagfwd_init(void)
 	driver->buf_tbl_size = (buf_tbl_size < driver->poolsize_hdlc) ?
 				driver->poolsize_hdlc : buf_tbl_size;
 	driver->supports_separate_cmdrsp = device_supports_separate_cmdrsp();
-	driver->supports_apps_hdlc_encoding = 0;
+	driver->supports_apps_hdlc_encoding = 1;
 	mutex_init(&driver->diag_hdlc_mutex);
 	mutex_init(&driver->diag_cntl_mutex);
 
@@ -2520,6 +2519,12 @@ void diagfwd_init(void)
 	    && (driver->hdlc_buf = kzalloc(HDLC_MAX, GFP_KERNEL)) == NULL)
 		goto err;
 	kmemleak_not_leak(driver->hdlc_buf);
+	if (driver->user_space_data_buf == NULL)
+		driver->user_space_data_buf = kzalloc(USER_SPACE_DATA,
+							GFP_KERNEL);
+	if (driver->user_space_data_buf == NULL)
+		goto err;
+	kmemleak_not_leak(driver->user_space_data_buf);
 	if (driver->client_map == NULL &&
 	    (driver->client_map = kzalloc
 	     ((driver->num_clients) * sizeof(struct diag_client_map),
@@ -2607,6 +2612,7 @@ err:
 	kfree(driver->pkt_buf);
 	kfree(driver->usb_read_ptr);
 	kfree(driver->apps_rsp_buf);
+	kfree(driver->user_space_data_buf);
 	if (driver->diag_wq)
 		destroy_workqueue(driver->diag_wq);
 }
@@ -2646,5 +2652,6 @@ void diagfwd_exit(void)
 	kfree(driver->pkt_buf);
 	kfree(driver->usb_read_ptr);
 	kfree(driver->apps_rsp_buf);
+	kfree(driver->user_space_data_buf);
 	destroy_workqueue(driver->diag_wq);
 }

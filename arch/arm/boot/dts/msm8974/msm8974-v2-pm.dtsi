@@ -126,7 +126,7 @@
 		qcom,L2-spm-is-apcs-master;
 	};
 
-	qcom,lpm-levels {
+	lpm_levels: qcom,lpm-levels {
 		compatible = "qcom,lpm-levels";
 		qcom,default-l2-state = "l2_cache_retention";
 		#address-cells = <1>;
@@ -172,12 +172,13 @@
 
 			qcom,system-mode@0 {
 				qcom,l2 = "l2_cache_gdhs";
-				qcom,latency-us = <20000>;
+				qcom,latency-us = <500>;
 				qcom,ss-power = <163>;
-				qcom,energy-overhead = <1577736>;
-				qcom,time-overhead = <5067>;
-				qcom,min-cpu-mode= "pc";
+				qcom,energy-overhead = <577736>;
+				qcom,time-overhead = <1000>;
+				qcom,min-cpu-mode= "standalone_pc";
 				qcom,sync-cpus;
+
 			};
 
 			qcom,system-mode@1 {
@@ -188,6 +189,7 @@
 				qcom,time-overhead = <6605>;
 				qcom,min-cpu-mode = "pc";
 				qcom,sync-cpus;
+				qcom,send-rpm-sleep-set;
 			};
 		};
 	};
@@ -212,6 +214,7 @@
 			<50 172>, /* usb1_hs_async_wakeup_irq */
 			<53 104>, /* mdss_irq */
 			<62 222>, /* ee0_krait_hlos_spmi_periph_irq */
+			<0xff 33>,  /* APCC_qgicL2PerfMonIrptReq */
 			<0xff 34>,  /* APCC_qgicL2ErrorIrptReq */
 			<0xff 35>,  /* WDT_barkInt */
 			<0xff 40>,  /* qtimer_phy_irq */
@@ -235,8 +238,6 @@
 			<0xff 109>,  /* ocmem_dm_nonsec_irq */
 			<0xff 126>,  /* bam_irq[0] */
 			<0xff 155>,  /* sdcc_irq[0] */
-			<0xff 157>,  /* sdcc_irq[1] */
-			<0xff 159>,  /* sdcc_irq[2] */
 			<0xff 163>,  /* usb30_ee1_irq */
 			<0xff 170>,  /* sdcc_pwr_cmd_irq */
 			<0xff 173>, /* o_wcss_apss_smd_hi */
@@ -268,9 +269,6 @@
 			<0xff 207>, /* rpm_ipc(27) */
 			<0xff 211>, /* usb_dwc3_otg */
 			<0xff 240>, /* summary_irq_kpss */
-			<0xff 252>, /* sps */
-			<0xff 253>, /* sdcc_pwr_cmd_irq */
-			<0xff 256>, /* sdcc_pwr_cmd_irq */
 			<0xff 268>, /* bam_irq[1] */
 			<0xff 270>, /* bam_irq[0] */
 			<0xff 271>; /* bam_irq[0] */
@@ -327,6 +325,7 @@
 		qcom,pc-mode = "tz_l2_int";
 		qcom,use-sync-timer;
 		qcom,cpus-as-clocks;
+		qcom,lpm-levels = <&lpm_levels>;
 
 		qcom,pm-snoc-client {
 			compatible = "qcom,pm-snoc-client";

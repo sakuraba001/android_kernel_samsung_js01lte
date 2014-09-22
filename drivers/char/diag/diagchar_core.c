@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2008-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -51,6 +51,7 @@ MODULE_DESCRIPTION("Diag Char Driver");
 MODULE_LICENSE("GPL v2");
 MODULE_VERSION("1.0");
 
+#define MIN_SIZ_ALLOW 4
 #define INIT	1
 #define EXIT	-1
 struct diagchar_dev *driver;
@@ -346,6 +347,9 @@ int diag_find_polling_reg(int i)
 		else if (subsys_id == 0x32 && cmd_code_hi >= 0x03  &&
 			 cmd_code_lo <= 0x03)
 			return 1;
+		else if (subsys_id == 0x57 && cmd_code_hi >= 0x0E &&
+			 cmd_code_lo <= 0x0E)
+			return 1;
 	}
 	return 0;
 }
@@ -480,8 +484,8 @@ int diag_copy_remote(char __user *buf, size_t count, int *pret, int *pnum_data)
 
 		for (i = 0; i < diag_hsic[index].poolsize_hsic_write; i++) {
 			if (hsic_buf_tbl[i].length > 0) {
-				pr_debug("diag: HSIC copy to user, i: %d, buf: %x, len: %d\n",
-					i, (unsigned int)hsic_buf_tbl[i].buf,
+				pr_debug("diag: HSIC copy to user, i: %d, buf: %p, len: %d\n",
+					i, hsic_buf_tbl[i].buf,
 					hsic_buf_tbl[i].length);
 				num_data++;
 
@@ -883,6 +887,8 @@ long diagchar_ioctl(struct file *filp,
 	struct diag_log_event_stats le_stats;
 	struct diagpkt_delay_params delay_params;
 	struct real_time_vote_t rt_vote;
+	struct list_head *start, *req_temp;
+	struct dci_pkt_req_entry_t *req_entry = NULL;
 
 	switch (iocmd) {
 	case DIAG_IOCTL_COMMAND_REG:
@@ -942,6 +948,8 @@ long diagchar_ioctl(struct file *filp,
 		for (i = 0; i < MAX_DCI_CLIENTS; i++) {
 			if (driver->dci_client_tbl[i].client == NULL) {
 				driver->dci_client_tbl[i].client = current;
+				driver->dci_client_tbl[i].client_id =
+							driver->dci_client_id;
 				driver->dci_client_tbl[i].list =
 							 dci_params->list;
 				driver->dci_client_tbl[i].signal_type =
@@ -981,7 +989,7 @@ long diagchar_ioctl(struct file *filp,
 			clear_client_dci_cumulative_log_mask(i);
 			/* send updated log mask to peripherals */
 			result =
-			diag_send_dci_log_mask(driver->smd_cntl[MODEM_DATA].ch);
+			diag_send_dci_log_mask(&driver->smd_cntl[MODEM_DATA]);
 			if (result != DIAG_DCI_NO_ERROR) {
 				mutex_unlock(&driver->dci_mutex);
 				return result;
@@ -991,17 +999,23 @@ long diagchar_ioctl(struct file *filp,
 			/* send updated event mask to peripherals */
 			result =
 			diag_send_dci_event_mask(
-				driver->smd_cntl[MODEM_DATA].ch);
+				&driver->smd_cntl[MODEM_DATA]);
 			if (result != DIAG_DCI_NO_ERROR) {
 				mutex_unlock(&driver->dci_mutex);
 				return result;
 			}
 			result = i;
 			/* Delete this process from DCI table */
-			for (i = 0; i < dci_max_reg; i++)
-				if (driver->req_tracking_tbl[i].pid ==
-					 current->tgid)
-					driver->req_tracking_tbl[i].pid = 0;
+			list_for_each_safe(start, req_temp,
+							&driver->dci_req_list) {
+				req_entry = list_entry(start,
+						struct dci_pkt_req_entry_t,
+						track);
+				if (req_entry->pid == current->tgid) {
+					list_del(&req_entry->track);
+					kfree(req_entry);
+				}
+			}
 			driver->dci_client_tbl[result].client = NULL;
 			kfree(driver->dci_client_tbl[result].dci_data);
 			driver->dci_client_tbl[result].dci_data = NULL;
@@ -1036,7 +1050,7 @@ long diagchar_ioctl(struct file *filp,
 				 sizeof(struct diag_dci_health_stats)))
 			return -EFAULT;
 		mutex_lock(&dci_health_mutex);
-		i = diag_dci_find_client_index(current->tgid);
+		i = diag_dci_find_client_index_health(stats.client_id);
 		if (i != DCI_CLIENT_INDEX_INVALID) {
 			dci_params = &(driver->dci_client_tbl[i]);
 			stats.dropped_logs = dci_params->dropped_logs;
@@ -1118,7 +1132,7 @@ long diagchar_ioctl(struct file *filp,
 	case DIAG_IOCTL_VOTE_REAL_TIME:
 		if (copy_from_user(&rt_vote, (void *)ioarg, sizeof(struct
 							real_time_vote_t)))
-			result = -EFAULT;
+			return -EFAULT;
 		driver->real_time_update_busy++;
 		if (rt_vote.proc == DIAG_PROC_DCI) {
 			diag_dci_set_real_time(current->tgid,
@@ -1215,10 +1229,9 @@ static int diagchar_read(struct file *file, char __user *buf, size_t count,
 		for (i = 0; i < driver->buf_tbl_size; i++) {
 			if (driver->buf_tbl[i].length > 0) {
 #ifdef DIAG_DEBUG
-				pr_debug("diag: WRITING the buf address "
-				       "and length is %x , %d\n", (unsigned int)
-					(driver->buf_tbl[i].buf),
-					driver->buf_tbl[i].length);
+				pr_debug("diag: WRITING the buf address and length is %p , %d\n",
+					 driver->buf_tbl[i].buf,
+					 driver->buf_tbl[i].length);
 #endif
 				num_data++;
 				/* Copy the length of data being passed */
@@ -1239,10 +1252,9 @@ static int diagchar_read(struct file *file, char __user *buf, size_t count,
 				ret += driver->buf_tbl[i].length;
 drop:
 #ifdef DIAG_DEBUG
-				pr_debug("diag: DEQUEUE buf address and"
-				       " length is %x,%d\n", (unsigned int)
-				       (driver->buf_tbl[i].buf), driver->
-				       buf_tbl[i].length);
+				pr_debug("diag: DEQUEUE buf address and length is %p, %d\n",
+					 driver->buf_tbl[i].buf,
+					 driver->buf_tbl[i].length);
 #endif
 				diagmem_free(driver, (unsigned char *)
 				(driver->buf_tbl[i].buf), POOL_TYPE_HDLC);
@@ -1473,6 +1485,10 @@ static int diagchar_write(struct file *file, const char __user *buf,
 	index = 0;
 	/* Get the packet type F3/log/event/Pkt response */
 	err = copy_from_user((&pkt_type), buf, 4);
+	if (err) {
+		pr_alert("diag: copy failed for pkt_type\n");
+		return -EAGAIN;
+	}
 	/* First 4 bytes indicate the type of payload - ignore these */
 	if (count < 4) {
 		pr_err("diag: Client sending short data\n");
@@ -1514,8 +1530,9 @@ static int diagchar_write(struct file *file, const char __user *buf,
 		return err;
 	}
 	if (pkt_type == CALLBACK_DATA_TYPE) {
-		if (payload_size > driver->itemsize) {
-			pr_err("diag: Dropping packet, packet payload size crosses 4KB limit. Current payload size %d\n",
+		if (payload_size > driver->itemsize ||
+				payload_size <= MIN_SIZ_ALLOW) {
+			pr_err("diag: Dropping packet, invalid packet size. Current payload size %d\n",
 				payload_size);
 			driver->dropped_count++;
 			return -EBADMSG;
@@ -1638,24 +1655,22 @@ static int diagchar_write(struct file *file, const char __user *buf,
 		goto fail_free_hdlc;
 	}
 	if (pkt_type == USER_SPACE_DATA_TYPE) {
-		user_space_data = diagmem_alloc(driver, payload_size,
-								POOL_TYPE_USER);
-		if (!user_space_data) {
-			driver->dropped_count++;
-			return -ENOMEM;
-		}
-		err = copy_from_user(user_space_data, buf + 4,
+		err = copy_from_user(driver->user_space_data_buf, buf + 4,
 							 payload_size);
 		if (err) {
 			pr_err("diag: copy failed for user space data\n");
-			diagmem_free(driver, user_space_data, POOL_TYPE_USER);
-			user_space_data = NULL;
 			return -EIO;
 		}
 		/* Check for proc_type */
-		remote_proc = diag_get_remote(*(int *)user_space_data);
+		remote_proc =
+			diag_get_remote(*(int *)driver->user_space_data_buf);
 
 		if (remote_proc) {
+			if (payload_size <= MIN_SIZ_ALLOW) {
+				pr_err("diag: Integer underflow in %s, payload size: %d",
+							__func__, payload_size);
+				return -EBADMSG;
+			}
 			token_offset = 4;
 			payload_size -= 4;
 			buf += 4;
@@ -1663,12 +1678,9 @@ static int diagchar_write(struct file *file, const char __user *buf,
 
 		/* Check masks for On-Device logging */
 		if (driver->mask_check) {
-			if (!mask_request_validate(user_space_data +
+			if (!mask_request_validate(driver->user_space_data_buf +
 							 token_offset)) {
 				pr_alert("diag: mask request Invalid\n");
-				diagmem_free(driver, user_space_data,
-							POOL_TYPE_USER);
-				user_space_data = NULL;
 				return -EFAULT;
 			}
 		}
@@ -1676,7 +1688,7 @@ static int diagchar_write(struct file *file, const char __user *buf,
 #ifdef DIAG_DEBUG
 		pr_debug("diag: user space data %d\n", payload_size);
 		for (i = 0; i < payload_size; i++)
-			pr_debug("\t %x", *((user_space_data
+			pr_debug("\t %x", *((driver->user_space_data_buf
 						+ token_offset)+i));
 #endif
 #ifdef CONFIG_DIAG_SDIO_PIPE
@@ -1687,7 +1699,7 @@ static int diagchar_write(struct file *file, const char __user *buf,
 					 payload_size));
 			if (driver->sdio_ch && (payload_size > 0)) {
 				sdio_write(driver->sdio_ch, (void *)
-				   (user_space_data + token_offset),
+				   (driver->user_space_data_buf + token_offset),
 				   payload_size);
 			}
 		}
@@ -1718,8 +1730,8 @@ static int diagchar_write(struct file *file, const char __user *buf,
 				diag_hsic[index].in_busy_hsic_read_on_device =
 									0;
 				err = diag_bridge_write(index,
-						user_space_data + token_offset,
-						payload_size);
+						driver->user_space_data_buf +
+						token_offset, payload_size);
 				if (err) {
 					pr_err("diag: err sending mask to MDM: %d\n",
 					       err);
@@ -1740,14 +1752,12 @@ static int diagchar_write(struct file *file, const char __user *buf,
 						&& driver->lcid) {
 			if (payload_size > 0) {
 				err = msm_smux_write(driver->lcid, NULL,
-					user_space_data + token_offset,
+					driver->user_space_data_buf +
+						token_offset,
 					payload_size);
 				if (err) {
 					pr_err("diag:send mask to MDM err %d",
 							err);
-					diagmem_free(driver, user_space_data,
-								POOL_TYPE_USER);
-					user_space_data = NULL;
 					return err;
 				}
 			}
@@ -1756,9 +1766,8 @@ static int diagchar_write(struct file *file, const char __user *buf,
 		/* send masks to 8k now */
 		if (!remote_proc)
 			diag_process_hdlc((void *)
-				(user_space_data + token_offset), payload_size);
-		diagmem_free(driver, user_space_data, POOL_TYPE_USER);
-		user_space_data = NULL;
+				(driver->user_space_data_buf + token_offset),
+					payload_size);
 		return 0;
 	}
 

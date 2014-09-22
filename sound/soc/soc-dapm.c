@@ -1562,7 +1562,7 @@ static int dapm_power_widgets(struct snd_soc_dapm_context *dapm, int event)
 	struct snd_soc_dapm_context *d;
 	LIST_HEAD(up_list);
 	LIST_HEAD(down_list);
-	LIST_HEAD(async_domain);
+	ASYNC_DOMAIN_EXCLUSIVE(async_domain);
 	enum snd_soc_bias_level bias;
 
 	trace_snd_soc_dapm_start(card);
@@ -1904,10 +1904,10 @@ static int soc_dapm_mux_update_power(struct snd_soc_dapm_widget *widget,
 	}
 
 	if (found) {
-	  		dapm_mark_dirty(widget, "mux change");
-			dapm_power_widgets(widget->dapm,
-					   SND_SOC_DAPM_STREAM_NOP);
-		}
+		dapm_mark_dirty(widget, "mux change");
+		dapm_power_widgets(widget->dapm,
+			   SND_SOC_DAPM_STREAM_NOP);
+	}
 
 	return found;
 }
@@ -1953,7 +1953,7 @@ static int soc_dapm_mixer_update_power(struct snd_soc_dapm_widget *widget,
 	if (found) {
 		dapm_mark_dirty(widget, "mixer update");
 		dapm_power_widgets(widget->dapm, SND_SOC_DAPM_STREAM_NOP);
-	  }
+	}
 
 	return found;
 }
@@ -2308,6 +2308,7 @@ int snd_soc_dapm_add_routes(struct snd_soc_dapm_context *dapm,
 		if (ret < 0) {
 			dev_err(dapm->dev, "Failed to add route %s->%s\n",
 				route->source, route->sink);
+			mutex_unlock(&dapm->card->dapm_mutex);
 			return ret;
 		}
 		route++;
@@ -3017,6 +3018,7 @@ int snd_soc_dapm_new_controls(struct snd_soc_dapm_context *dapm,
 			dev_err(dapm->dev,
 				"ASoC: Failed to create DAPM control %s: %d\n",
 				widget->name, ret);
+			mutex_unlock(&dapm->card->dapm_mutex);
 			return ret;
 		}
 		widget++;
@@ -3136,7 +3138,6 @@ int snd_soc_dapm_stream_event(struct snd_soc_pcm_runtime *rtd,
 
 	if (stream == NULL)
 		return 0;
-
 	mutex_lock_nested(&card->dapm_mutex, SND_SOC_DAPM_CLASS_PCM);
 	soc_dapm_stream_event(&codec->dapm, stream, event);
 	mutex_unlock(&card->dapm_mutex);

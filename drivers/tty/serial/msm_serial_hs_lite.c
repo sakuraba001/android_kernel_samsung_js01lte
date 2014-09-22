@@ -66,15 +66,7 @@ enum uart_core_type {
 	BLSP_HSUART,
 };
 
-#if defined(CONFIG_MACH_HLTEDCM)|| defined(CONFIG_MACH_HLTEKDI)
-#define CONFIG_DUMP_UART_PACKET_DISABLE 1
-#endif
-
-#if defined(CONFIG_DUMP_UART_PACKET_DISABLE)
-#define DUMP_UART_PACKET 0
-#else
 #define DUMP_UART_PACKET 1
-#endif
 #define FULL_DUMP_UART_PACKET 0
 
 #if DUMP_UART_PACKET
@@ -539,6 +531,10 @@ static void msm_hsl_start_tx(struct uart_port *port)
 {
 	struct msm_hsl_port *msm_hsl_port = UART_TO_MSM(port);
 
+	if (port->suspended) {
+		pr_err("%s: System is in Suspend state\n", __func__);
+		return;
+	}
 	msm_hsl_port->imr |= UARTDM_ISR_TXLEV_BMSK;
 	msm_hsl_write(port, msm_hsl_port->imr,
 		regmap[msm_hsl_port->ver_id][UARTDM_IMR]);

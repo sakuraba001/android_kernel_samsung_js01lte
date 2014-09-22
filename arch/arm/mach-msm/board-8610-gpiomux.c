@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -559,12 +559,25 @@ static struct gpiomux_setting cam_settings[] = {
 	},
 };
 
+static struct gpiomux_setting accel_interrupt_config = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_6MA,
+	.pull = GPIOMUX_PULL_DOWN,
+};
+
 static struct msm_gpiomux_config msm_non_qrd_configs[] __initdata = {
 	{
 		.gpio = 8, /* CAM1_STANDBY_N */
 		.settings = {
 			[GPIOMUX_ACTIVE]    = &cam_settings[3],
 			[GPIOMUX_SUSPENDED] = &gpio_suspend_config[1],
+		},
+	},
+	{
+		.gpio = 81,	/*ACCEL_INT1 */
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &accel_interrupt_config,
+			[GPIOMUX_SUSPENDED] = &accel_interrupt_config,
 		},
 	},
 };
@@ -735,6 +748,13 @@ static struct gpiomux_setting interrupt_gpio_suspend_pulldown = {
 
 static struct msm_gpiomux_config msm_interrupt_configs[] __initdata = {
 	{
+		.gpio = 75,	/* NFC_CLK_REQ_IRQ*/
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &interrupt_gpio_active,
+			[GPIOMUX_SUSPENDED] = &interrupt_gpio_suspend_pullup,
+		},
+	},
+	{
 		.gpio = 77,	/* NFC_IRQ */
 		.settings = {
 			[GPIOMUX_ACTIVE]    = &interrupt_gpio_active,
@@ -760,6 +780,28 @@ static struct msm_gpiomux_config msm_interrupt_configs[] __initdata = {
 		.settings = {
 			[GPIOMUX_ACTIVE]    = &interrupt_gpio_active,
 			[GPIOMUX_SUSPENDED] = &interrupt_gpio_suspend_pulldown,
+		},
+	},
+};
+
+static struct gpiomux_setting gpio_cdc_dmic_cfg = {
+	.func = GPIOMUX_FUNC_1,
+	.drv = GPIOMUX_DRV_4MA,
+	.pull = GPIOMUX_PULL_NONE,
+};
+
+
+static struct msm_gpiomux_config msm_cdc_dmic_configs[] __initdata = {
+	{
+		.gpio = 100,	/* DMIC CLK */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_cdc_dmic_cfg,
+		},
+	},
+	{
+		.gpio = 101,	/* DMIC DATA */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_cdc_dmic_cfg,
 		},
 	},
 };
@@ -805,4 +847,8 @@ void __init msm8610_init_gpiomux(void)
 #if defined(CONFIG_SAMSUNG_JACK)
 	msm_gpiomux_install(msm_secjack_gpio_configs, ARRAY_SIZE(msm_secjack_gpio_configs));
 #endif
+
+	if (of_board_is_cdp())
+		msm_gpiomux_install(msm_cdc_dmic_configs,
+			ARRAY_SIZE(msm_cdc_dmic_configs));
 }

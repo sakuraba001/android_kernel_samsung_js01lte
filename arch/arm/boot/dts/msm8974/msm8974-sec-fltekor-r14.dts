@@ -12,7 +12,7 @@
 
 /dts-v1/;
 
-/include/ "msm8974-v2.0-1-sec.dtsi"
+/include/ "msm8974-v2.2-sec.dtsi"
 /include/ "msm8974-sec-flte-r14.dtsi"
 
 / {

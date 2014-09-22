@@ -15,6 +15,7 @@
 #include <linux/errno.h>
 #include <linux/platform_device.h>
 #include <linux/io.h>
+#include <linux/i2c/i2c-qup.h>
 #include <linux/gpio.h>
 #include <linux/irq.h>
 #include <linux/irqdomain.h>
@@ -24,6 +25,9 @@
 #include <linux/of_fdt.h>
 #include <linux/of_irq.h>
 #include <linux/memory.h>
+#include <linux/regulator/cpr-regulator.h>
+#include <linux/regulator/fan53555.h>
+#include <linux/regulator/onsemi-ncp6335d.h>
 #include <linux/regulator/qpnp-regulator.h>
 #include <linux/msm_tsens.h>
 #include <linux/export.h>
@@ -32,12 +36,10 @@
 #include <asm/mach/arch.h>
 #include <asm/mach/time.h>
 #include <mach/board.h>
+#include <mach/msm_bus.h>
 #include <mach/gpiomux.h>
 #include <mach/msm_iomap.h>
 #include <mach/restart.h>
-#ifdef CONFIG_ION_MSM
-#include <mach/ion.h>
-#endif
 #ifdef CONFIG_SEC_DEBUG
 #include <mach/sec_debug.h>
 #endif
@@ -59,20 +61,11 @@
 #include "spm.h"
 #include "pm.h"
 #include "modem_notifier.h"
+#include "spm-regulator.h"
 
 #ifdef CONFIG_PROC_AVC
 #include <linux/proc_avc.h>
 #endif
-static struct memtype_reserve msm8226_reserve_table[] __initdata = {
-	[MEMTYPE_SMI] = {
-	},
-	[MEMTYPE_EBI0] = {
-		.flags	=	MEMTYPE_FLAGS_1M_ALIGN,
-	},
-	[MEMTYPE_EBI1] = {
-		.flags	=	MEMTYPE_FLAGS_1M_ALIGN,
-	},
-};
 
 #ifdef CONFIG_ANDROID_PERSISTENT_RAM
 /* CONFIG_SEC_DEBUG reserving memory for persistent RAM*/
@@ -91,10 +84,6 @@ static struct persistent_ram per_ram __initdata = {
        .size = SZ_1M
 };
 #endif
-static int msm8226_paddr_to_memtype(unsigned int paddr)
-{
-	return MEMTYPE_EBI1;
-}
 
 static struct of_dev_auxdata msm8226_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("qcom,msm-sdcc", 0xF9824000, \
@@ -114,22 +103,14 @@ static struct of_dev_auxdata msm8226_auxdata_lookup[] __initdata = {
 	{}
 };
 
-static struct reserve_info msm8226_reserve_info __initdata = {
-	.memtype_reserve_table = msm8226_reserve_table,
-	.paddr_to_memtype = msm8226_paddr_to_memtype,
-};
-
 static void __init msm8226_early_memory(void)
 {
-	reserve_info = &msm8226_reserve_info;
-	of_scan_flat_dt(dt_scan_for_memory_hole, msm8226_reserve_table);
+	of_scan_flat_dt(dt_scan_for_memory_hole, NULL);
 }
 
 static void __init msm8226_reserve(void)
 {
-	reserve_info = &msm8226_reserve_info;
-	of_scan_flat_dt(dt_scan_for_memory_reserve, msm8226_reserve_table);
-	msm_reserve();
+	of_scan_flat_dt(dt_scan_for_memory_reserve, NULL);
 #ifdef CONFIG_ANDROID_PERSISTENT_RAM
 	persistent_ram_early_init(&per_ram);
 #endif
@@ -151,10 +132,16 @@ void __init msm8226_add_drivers(void)
 	msm_pm_sleep_status_init();
 	rpm_regulator_smd_driver_init();
 	qpnp_regulator_init();
+	spm_regulator_init();
 	if (of_board_is_rumi())
 		msm_clock_init(&msm8226_rumi_clock_init_data);
 	else
 		msm_clock_init(&msm8226_clock_init_data);
+	msm_bus_fabric_init_driver();
+	qup_i2c_init_driver();
+	ncp6335d_regulator_init();
+	fan53555_regulator_init();
+	cpr_regulator_init();
 	tsens_tm_init_driver();
 	msm_thermal_device_init();
 }

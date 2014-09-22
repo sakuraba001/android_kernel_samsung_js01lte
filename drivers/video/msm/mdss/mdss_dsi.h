@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -329,6 +329,13 @@ struct mdss_dsi_ctrl_pdata {
 };
 
 extern unsigned int gv_manufacture_id;
+
+struct dsi_status_data {
+	struct notifier_block fb_notifier;
+	struct delayed_work check_status;
+	struct msm_fb_data_type *mfd;
+};
+
 int dsi_panel_device_register(struct device_node *pan_node,
 				struct mdss_dsi_ctrl_pdata *ctrl_pdata);
 
@@ -370,7 +377,8 @@ void mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable);
 void mdss_dsi_phy_enable(struct mdss_dsi_ctrl_pdata *ctrl, int on);
 void mdss_dsi_phy_init(struct mdss_panel_data *pdata);
 void mdss_dsi_phy_sw_reset(unsigned char *ctrl_base);
-void mdss_dsi_cmd_test_pattern(struct mdss_panel_data *pdata);
+void mdss_dsi_cmd_test_pattern(struct mdss_dsi_ctrl_pdata *ctrl);
+void mdss_dsi_video_test_pattern(struct mdss_dsi_ctrl_pdata *ctrl);
 void mdss_dsi_panel_pwm_cfg(struct mdss_dsi_ctrl_pdata *ctrl);
 
 int mdss_dsi_cmds_single_tx(struct mdss_dsi_ctrl_pdata *ctrl,
@@ -392,5 +400,8 @@ void mdss_dsi_dump_power_clk(struct mdss_panel_data *pdata, int flag);
 /*for mondrian*/
 void pwm_backlight_enable(void);
 void pwm_backlight_disable(void);
+
+int mdss_dsi_register_recovery_handler(struct mdss_dsi_ctrl_pdata *ctrl,
+		struct mdss_panel_recovery *recovery);
 
 #endif /* MDSS_DSI_H */

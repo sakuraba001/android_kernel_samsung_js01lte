@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -190,6 +190,7 @@ enum qpnp_adc_calib_type {
  * %CHAN_PATH_SCALING2: ratio of {1, 4}
  * %CHAN_PATH_SCALING3: ratio of {1, 6}
  * %CHAN_PATH_SCALING4: ratio of {1, 20}
+ * %CHAN_PATH_SCALING5: ratio of {1, 8}
  * %CHAN_PATH_NONE: Do not use this pre-scaling ratio type.
  *
  * The pre-scaling is applied for signals to be within the voltage range
@@ -201,6 +202,7 @@ enum qpnp_adc_channel_scaling_param {
 	PATH_SCALING2,
 	PATH_SCALING3,
 	PATH_SCALING4,
+	PATH_SCALING5,
 	PATH_SCALING_NONE,
 };
 
@@ -220,6 +222,8 @@ enum qpnp_adc_channel_scaling_param {
  *			btm parameters.
  * %SCALE_QRD_SKUAA_BATT_THERM: Conversion to temperature(decidegC) based on
  *          btm parametersi for SKUAA.
+ * %SCALE_QRD_SKUG_BATT_THERM: Conversion to temperature(decidegC) based on
+ * btm parametersi for SKUG.
  * %SCALE_NONE: Do not use this scaling type.
  */
 enum qpnp_adc_scale_fn_type {
@@ -231,6 +235,7 @@ enum qpnp_adc_scale_fn_type {
 	SCALE_THERM_150K_PULLUP,
 	SCALE_QRD_BATT_THERM,
 	SCALE_QRD_SKUAA_BATT_THERM,
+	SCALE_QRD_SKUG_BATT_THERM = 9,
 	SCALE_NONE,
 };
 
@@ -890,7 +895,8 @@ static const struct qpnp_vadc_scaling_ratio qpnp_vadc_amux_scaling_ratio[] = {
 	{1, 3},
 	{1, 4},
 	{1, 6},
-	{1, 20}
+	{1, 20},
+	{1, 8}
 };
 
 /**
@@ -1130,6 +1136,23 @@ int32_t qpnp_adc_scale_qrd_batt_therm(struct qpnp_vadc_chip *dev,
  * @chan_rslt:	physical result to be stored.
  */
 int32_t qpnp_adc_scale_qrd_skuaa_batt_therm(struct qpnp_vadc_chip *dev,
+			int32_t adc_code,
+			const struct qpnp_adc_properties *adc_prop,
+			const struct qpnp_vadc_chan_properties *chan_prop,
+			struct qpnp_vadc_result *chan_rslt);
+/**
+ * qpnp_adc_scale_qrd_skug_batt_therm() - Scales the pre-calibrated digital output
+ *		of an ADC to the ADC reference and compensates for the
+ *		gain and offset. Returns the temperature in decidegC.
+ * @dev:	Structure device for qpnp vadc
+ * @adc_code:	pre-calibrated digital ouput of the ADC.
+ * @adc_prop:	adc properties of the pm8xxx adc such as bit resolution,
+ *		reference voltage.
+ * @chan_prop:	individual channel properties to compensate the i/p scaling,
+ *		slope and offset.
+ * @chan_rslt:	physical result to be stored.
+ */
+int32_t qpnp_adc_scale_qrd_skug_batt_therm(struct qpnp_vadc_chip *dev,
 			int32_t adc_code,
 			const struct qpnp_adc_properties *adc_prop,
 			const struct qpnp_vadc_chan_properties *chan_prop,
@@ -1383,6 +1406,12 @@ static inline int32_t qpnp_adc_scale_qrd_batt_therm(
 			struct qpnp_vadc_result *chan_rslt)
 { return -ENXIO; }
 static inline int32_t qpnp_adc_scale_qrd_skuaa_batt_therm(
+			struct qpnp_vadc_chip *vadc, int32_t adc_code,
+			const struct qpnp_adc_properties *adc_prop,
+			const struct qpnp_vadc_chan_properties *chan_prop,
+			struct qpnp_vadc_result *chan_rslt)
+{ return -ENXIO; }
+static inline int32_t qpnp_adc_scale_qrd_skug_batt_therm(
 			struct qpnp_vadc_chip *vadc, int32_t adc_code,
 			const struct qpnp_adc_properties *adc_prop,
 			const struct qpnp_vadc_chan_properties *chan_prop,

@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2008-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -166,6 +166,7 @@ enum mdss_intf_events {
 	MDSS_EVENT_DSI_CMDLIST_KOFF,
 	MDSS_EVENT_MDNIE_DEFAULT_UPDATE,
 	MDSS_EVENT_ENABLE_PARTIAL_UPDATE,
+	MDSS_EVENT_REGISTER_RECOVERY_HANDLER,
 };
 
 struct lcd_panel_info {
@@ -248,9 +249,14 @@ struct mipi_panel_info {
 	u32  init_delay;
 };
 
+struct edp_panel_info {
+	char frame_rate;	/* fps */
+};
+
 enum dynamic_fps_update {
 	DFPS_SUSPEND_RESUME_MODE,
 	DFPS_IMMEDIATE_CLK_UPDATE_MODE,
+	DFPS_IMMEDIATE_PORCH_UPDATE_MODE,
 };
 
 enum lvds_mode {
@@ -295,6 +301,7 @@ struct mdss_panel_info {
 	u32 type;
 	u32 wait_cycle;
 	u32 pdest;
+	u32 brightness_max;
 	u32 bl_max;
 	u32 bl_min;
 	u32 fb_num;
@@ -333,6 +340,7 @@ struct mdss_panel_info {
 	struct fbc_panel_info fbc;
 	struct mipi_panel_info mipi;
 	struct lvds_panel_info lvds;
+	struct edp_panel_info edp;
 	u8 (*alpm_event) (u8 flag);
 };
 
@@ -388,6 +396,9 @@ static inline u32 mdss_panel_get_framerate(struct mdss_panel_info *panel_info)
 	case MIPI_VIDEO_PANEL:
 	case MIPI_CMD_PANEL:
 		frame_rate = panel_info->mipi.frame_rate;
+		break;
+	case EDP_PANEL:
+		frame_rate = panel_info->edp.frame_rate;
 		break;
 	case WRITEBACK_PANEL:
 		frame_rate = DEFAULT_FRAME_RATE;

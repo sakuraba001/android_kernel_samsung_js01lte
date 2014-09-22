@@ -361,7 +361,6 @@ static struct gpiomux_setting gpio_i2c_config = {
 	.pull = GPIOMUX_PULL_NONE,
 };
 
-#if !defined(CONFIG_PCM_ROUTE_VOICE_STUB)
 static struct gpiomux_setting lcd_en_act_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_8MA,
@@ -398,7 +397,6 @@ static struct gpiomux_setting atmel_int_sus_cfg = {
 	.drv = GPIOMUX_DRV_2MA,
 	.pull = GPIOMUX_PULL_DOWN,
 };
-#endif
 
 static struct gpiomux_setting taiko_reset = {
 	.func = GPIOMUX_FUNC_GPIO,
@@ -442,7 +440,6 @@ static struct msm_gpiomux_config hap_lvl_shft_config[] __initdata = {
 #endif
 };
 
-#if !defined(CONFIG_PCM_ROUTE_VOICE_STUB)
 static struct msm_gpiomux_config msm_touch_configs[] __initdata = {
 	{
 		.gpio      = 60,		/* TOUCH RESET */
@@ -458,9 +455,8 @@ static struct msm_gpiomux_config msm_touch_configs[] __initdata = {
 			[GPIOMUX_SUSPENDED] = &atmel_int_sus_cfg,
 		},
 	},
-};
-#endif
 
+};
 #if !defined(CONFIG_TDMB)
 static struct gpiomux_setting hsic_sus_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
@@ -664,8 +660,6 @@ static struct msm_gpiomux_config msm_rumi_blsp_configs[] __initdata = {
 	},
 };
 #endif
-
-#if !defined(CONFIG_PCM_ROUTE_VOICE_STUB)
 static struct msm_gpiomux_config msm_lcd_configs[] __initdata = {
 	{
 		.gpio = 58,
@@ -675,7 +669,6 @@ static struct msm_gpiomux_config msm_lcd_configs[] __initdata = {
 		},
 	},
 };
-#endif
 
 static struct msm_gpiomux_config msm_epm_configs[] __initdata = {
 #if !defined(CONFIG_SENSORS_SSP)
@@ -1351,63 +1344,6 @@ static struct msm_gpiomux_config msm8974_sec_auxpcm_configs[] __initdata = {
 	},
 #endif
 };
-
-#if defined(CONFIG_PCM_ROUTE_VOICE_STUB)
-static struct gpiomux_setting sec_auxpcm_act_cfg = {
-	.func = GPIOMUX_FUNC_1,
-	.drv = GPIOMUX_DRV_8MA,
-	.pull = GPIOMUX_PULL_NONE,
-};
-
-static struct gpiomux_setting sec_auxpcm_sus_cfg = {
-	.func = GPIOMUX_FUNC_1,
-	.drv = GPIOMUX_DRV_2MA,
-	.pull = GPIOMUX_PULL_DOWN,
-};
-
-static struct gpiomux_setting sec_auxpcm_act_pu_cfg = {  // should be set PU because of SC6500 setting.
-	.func = GPIOMUX_FUNC_1,
-	.drv = GPIOMUX_DRV_8MA,
-	.pull = GPIOMUX_PULL_UP,
-};
-
-static struct gpiomux_setting sec_auxpcm_sus_pu_cfg = {
-	.func = GPIOMUX_FUNC_1,
-	.drv = GPIOMUX_DRV_2MA,
-	.pull = GPIOMUX_PULL_UP,
-};
-
-static struct msm_gpiomux_config msm8974_sec_quat_auxpcm_configs[] __initdata = {
-	{
-		.gpio = 58,
-		.settings = {
-			[GPIOMUX_SUSPENDED] = &sec_auxpcm_sus_cfg,
-			[GPIOMUX_ACTIVE] = &sec_auxpcm_act_cfg,
-		},
-	},
-	{
-		.gpio = 59,
-		.settings = {
-			[GPIOMUX_SUSPENDED] = &sec_auxpcm_sus_pu_cfg,
-			[GPIOMUX_ACTIVE] = &sec_auxpcm_act_pu_cfg,
-		},
-	},
-	{
-		.gpio = 60,
-		.settings = {
-			[GPIOMUX_SUSPENDED] = &sec_auxpcm_sus_cfg,
-			[GPIOMUX_ACTIVE] = &sec_auxpcm_act_cfg,
-		},
-	},
-	{
-		.gpio = 61,
-		.settings = {
-			[GPIOMUX_SUSPENDED] = &sec_auxpcm_sus_cfg,
-			[GPIOMUX_ACTIVE] = &sec_auxpcm_act_cfg,
-		},
-	},
-};
-#endif
 
 #if defined(CONFIG_WCNSS_CORE)
 static struct msm_gpiomux_config wcnss_5wire_interface[] = {
@@ -2268,10 +2204,8 @@ void __init msm_8974_init_gpiomux(void)
 	if (system_rev >= 4)
 		msm_gpiomux_install(es705_config, ARRAY_SIZE(es705_config));
 	
-#if !defined(CONFIG_PCM_ROUTE_VOICE_STUB)
 	msm_gpiomux_install(msm_touch_configs, ARRAY_SIZE(msm_touch_configs));
-#endif
-	msm_gpiomux_install(hap_lvl_shft_config,
+		msm_gpiomux_install(hap_lvl_shft_config,
 				ARRAY_SIZE(hap_lvl_shft_config));
 
 	if (of_board_is_dragonboard() && machine_is_apq8074())
@@ -2342,15 +2276,8 @@ void __init msm_8974_init_gpiomux(void)
 		msm_gpiomux_install(msm_epm_configs,
 				ARRAY_SIZE(msm_epm_configs));
 
-#if defined(CONFIG_PCM_ROUTE_VOICE_STUB)
-	msm_gpiomux_install(msm8974_sec_quat_auxpcm_configs,
-			ARRAY_SIZE(msm8974_sec_quat_auxpcm_configs));
-#endif
-
-#if !defined(CONFIG_PCM_ROUTE_VOICE_STUB)
 	msm_gpiomux_install_nowrite(msm_lcd_configs,
 			ARRAY_SIZE(msm_lcd_configs));
-#endif
 
 #if !defined(CONFIG_BT_BCM4354)
 	if (of_board_is_rumi())

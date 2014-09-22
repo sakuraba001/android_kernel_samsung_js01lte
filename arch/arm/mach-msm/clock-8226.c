@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -694,6 +694,7 @@ static struct clk_freq_tbl ftbl_gcc_blsp1_uart1_6_apps_clk[] = {
 	F_GCC(  56000000,      gpll0,   1,    7,   75),
 	F_GCC(  58982400,      gpll0,   1, 1536, 15625),
 	F_GCC(  60000000,      gpll0,  10,    0,    0),
+	F_GCC(  63160000,      gpll0, 9.5,    0,    0),
 	F_END
 };
 
@@ -1278,6 +1279,7 @@ static struct local_vote_clk gcc_ce1_clk = {
 	.en_mask = BIT(5),
 	.base = &virt_bases[GCC_BASE],
 	.c = {
+		.parent = &ce1_clk_src.c,
 		.dbg_name = "gcc_ce1_clk",
 		.ops = &clk_ops_vote,
 		CLK_INIT(gcc_ce1_clk.c),
@@ -1553,6 +1555,8 @@ static struct branch_clk gcc_usb_hsic_system_clk = {
 	},
 };
 
+static DEFINE_CLK_MEASURE(wcnss_m_clk);
+
 #ifdef CONFIG_DEBUG_FS
 struct measure_mux_entry {
 	struct clk *c;
@@ -1608,6 +1612,7 @@ static struct measure_mux_entry measure_mux_GCC[] = {
 	{ &pnoc_clk.c, GCC_BASE, 0x010},
 	{ &snoc_clk.c, GCC_BASE, 0x000},
 	{ &cnoc_clk.c, GCC_BASE, 0x008},
+	{ &wcnss_m_clk, GCC_BASE, 0x0198},
 	/*
 	 * measure the gcc_bimc_kpss_axi_clk instead to account for the DDR
 	 * rate being gcc_bimc_clk/2.
@@ -2844,6 +2849,8 @@ static struct pll_freq_tbl apcs_pll_freq[] = {
 	F_APCS_PLL(1401600000, 73, 0x0, 0x1, 0x0, 0x0, 0x0),
 	F_APCS_PLL(1497600000, 78, 0x0, 0x1, 0x0, 0x0, 0x0),
 	F_APCS_PLL(1593600000, 83, 0x0, 0x1, 0x0, 0x0, 0x0),
+	F_APCS_PLL(1689600000, 88, 0x0, 0x1, 0x0, 0x0, 0x0),
+	F_APCS_PLL(1785600000, 93, 0x0, 0x1, 0x0, 0x0, 0x0),
 	PLL_F_END
 };
 
@@ -3134,6 +3141,10 @@ static struct clk_lookup msm_clocks_8226[] = {
 	CLK_LOOKUP("apc2_m_clk", apc2_m_clk, ""),
 	CLK_LOOKUP("apc3_m_clk", apc3_m_clk, ""),
 	CLK_LOOKUP("l2_m_clk", l2_m_clk, ""),
+
+	/* Measure clocks for WCNSS */
+	CLK_LOOKUP("measure",   measure_clk.c, "fb000000.qcom,wcnss-wlan"),
+	CLK_LOOKUP("wcnss_debug", wcnss_m_clk, "fb000000.qcom,wcnss-wlan"),
 
 	/* LPM Resources */
 	CLK_LOOKUP("xo",          cxo_lpm_clk.c, "fc4281d0.qcom,mpm"),
@@ -3451,6 +3462,7 @@ static struct clk_lookup msm_clocks_8226[] = {
 #else
 	CLK_LOOKUP("cam_clk", camss_mclk0_clk.c, "2.qcom,camera"),
 #endif	
+
 	/* eeprom clocks */
 	CLK_LOOKUP("cam_src_clk", mclk0_clk_src.c, "6c.qcom,eeprom"),
 	CLK_LOOKUP("cam_clk", camss_mclk0_clk.c, "6c.qcom,eeprom"),

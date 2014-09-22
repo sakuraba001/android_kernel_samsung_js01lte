@@ -44,6 +44,8 @@
 #define FORMAT_MULTI_CHANNEL_LINEAR_PCM 0x0012
 #define FORMAT_AC3          0x0013
 #define FORMAT_EAC3         0x0014
+#define FORMAT_MP2          0x0015
+#define FORMAT_FLAC         0x0016
 
 #define ENCDEC_SBCBITRATE   0x0001
 #define ENCDEC_IMMEDIATE_DECODE 0x0002
@@ -67,9 +69,12 @@
 /* Enable Sample_Rate/Channel_Mode notification event from Decoder */
 #define SR_CM_NOTIFY_ENABLE	0x0004
 
+#define TUN_WRITE_IO_MODE 0x0008 /* tunnel read write mode */
+#define TUN_READ_IO_MODE  0x0004 /* tunnel read write mode */
 #define SYNC_IO_MODE	0x0001
 #define ASYNC_IO_MODE	0x0002
 #define COMPRESSED_IO	0x0040
+#define COMPRESSED_STREAM_IO	0x0080
 #define NT_MODE        0x0400
 
 #define NO_TIMESTAMP    0xFF00
@@ -173,10 +178,11 @@ struct audio_client {
 	struct audio_port_data port[2];
 	wait_queue_head_t      cmd_wait;
 	wait_queue_head_t      time_wait;
-	bool                   perf_mode;
+	int                    perf_mode;
 	int					   stream_id;
 	/* audio cache operations fptr*/
 	int (*fptr_cache_ops)(struct audio_buffer *abuff, int cache_op);
+	atomic_t               unmap_cb_success;
 };
 
 void q6asm_audio_client_free(struct audio_client *ac);
@@ -217,6 +223,9 @@ int q6asm_stream_open_write_v2(struct audio_client *ac, uint32_t format,
 int q6asm_open_read_write(struct audio_client *ac,
 			uint32_t rd_format,
 			uint32_t wr_format);
+
+int q6asm_open_loopback_v2(struct audio_client *ac,
+			   uint16_t bits_per_sample);
 
 int q6asm_write(struct audio_client *ac, uint32_t len, uint32_t msw_ts,
 				uint32_t lsw_ts, uint32_t flags);
@@ -324,6 +333,10 @@ int q6asm_media_format_block_pcm_format_support(struct audio_client *ac,
 			uint32_t rate, uint32_t channels,
 			uint16_t bits_per_sample);
 
+int q6asm_media_format_block_pcm_format_support_v2(struct audio_client *ac,
+				uint32_t rate, uint32_t channels,
+				uint16_t bits_per_sample, int stream_id);
+
 int q6asm_media_format_block_multi_ch_pcm(struct audio_client *ac,
 			uint32_t rate, uint32_t channels,
 			bool use_default_chmap, char *channel_map);
@@ -351,6 +364,9 @@ int q6asm_media_format_block_wmapro(struct audio_client *ac,
 
 int q6asm_media_format_block_amrwbplus(struct audio_client *ac,
 			struct asm_amrwbplus_cfg *cfg);
+
+int q6asm_stream_media_format_block_flac(struct audio_client *ac,
+			struct asm_flac_cfg *cfg, int stream_id);
 
 int q6asm_ds1_set_endp_params(struct audio_client *ac,
 				int param_id, int param_value);
@@ -399,5 +415,13 @@ int q6asm_set_dha(struct audio_client *ac,int *param);
 int q6asm_set_lrsm(struct audio_client *ac,int *param);
 int q6asm_set_sa_ep(struct audio_client *ac,int *param);
 int q6asm_get_sa_ep(struct audio_client *ac);
+
+/* Send the stream meta data to remove initial and trailing silence */
+int q6asm_stream_send_meta_data(struct audio_client *ac, uint32_t stream_id,
+		uint32_t initial_samples, uint32_t trailing_samples);
+
+/* Send the stream meta data to remove initial and trailing silence */
+int q6asm_stream_send_meta_data(struct audio_client *ac, uint32_t stream_id,
+		uint32_t initial_samples, uint32_t trailing_samples);
 
 #endif /* __Q6_ASM_H__ */

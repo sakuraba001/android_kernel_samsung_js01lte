@@ -121,6 +121,20 @@ static int vibrator_work;
 
 struct vibrator_platform_data vibrator_drvdata;
 
+/*
+ * msm8974_sec tspdrv vibration strength control
+ * (/sys/class/timed_output/vibrator/pwm_value)
+ *
+ * sysfs pwm_value
+ *    range   : 0 - 100 (100 = old hardcoded value)
+ *
+ * Author : Park Ju Hyung <qkrwngud825@gmail.com>
+ * Modified by : Jean-Pierre Rasquin <yank555.lu@gmail.com>
+ */
+
+#define BASE_STRENGTH 126
+static unsigned int pwm_val = 100;
+
 static int set_vibetonz(int timeout)
 {
 	int8_t strength;
@@ -134,7 +148,7 @@ static int set_vibetonz(int timeout)
 	} else {
 		DbgOut((KERN_INFO "tspdrv: ENABLE\n"));
 		if (vibrator_drvdata.vib_model == HAPTIC_PWM) {
-			strength = 126;
+			strength = (int8_t) (BASE_STRENGTH * pwm_val / 100);
 			/* 90% duty cycle */
 			ImmVibeSPI_ForceOut_SetSamples(0, 8, 1, &strength);
 		} else { /* HAPTIC_MOTOR */
@@ -146,6 +160,34 @@ static int set_vibetonz(int timeout)
 	vibrator_value = timeout;
 	return 0;
 }
+
+static ssize_t pwm_value_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%u\n", pwm_val);
+}
+
+ssize_t pwm_value_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+	unsigned int new_pwm_val;
+
+	if (!sscanf(buf, "%u", &new_pwm_val))
+		return -EINVAL;
+
+	if (new_pwm_val < 0 || new_pwm_val > 100) {
+		pr_info("[VIB] %s: new pwm_val %d is out of [0, 100] range\n", __func__, pwm_val);
+		return -EINVAL;
+	} else {
+		pr_info("[VIB] %s: pwm_val=%d\n", __func__, pwm_val);
+	}
+
+	if (new_pwm_val != pwm_val)
+		pwm_val = new_pwm_val;
+
+	return count;
+}
+
+static DEVICE_ATTR(pwm_value, S_IRUGO | S_IWUSR,
+		pwm_value_show, pwm_value_store);
 
 static void _set_vibetonz_work(struct work_struct *unused)
 {
@@ -187,9 +229,6 @@ static void enable_vibetonz_from_user(struct timed_output_dev *dev, int value)
 	hrtimer_cancel(&timer);
 
 	/* set_vibetonz(value); */
-#ifdef CONFIG_TACTILE_ASSIST
-	g_bOutputDataBufferEmpty = 0;
-#endif
 	vibrator_work = value;
 	schedule_work(&vibetonz_work);
 
@@ -219,9 +258,17 @@ static void vibetonz_start(void)
 
 	ret = timed_output_dev_register(&timed_output_vt);
 
-	if (ret)
+	if (ret) {
 		DbgOut((KERN_ERR
 		"tspdrv: timed_output_dev_register is fail\n"));
+		return;
+	}
+
+	ret = device_create_file(timed_output_vt.dev, &dev_attr_pwm_value);
+
+	if (ret)
+		DbgOut((KERN_ERR
+		"tspdrv: create sysfs fail: pwm_value\n"));
 }
 
 /* File IO */
@@ -673,23 +720,12 @@ static ssize_t write(struct file *file, const char *buf, size_t count,
 		DbgOut((KERN_ERR "tspdrv: unauthorized write.\n"));
 		return 0;
 	}
-#ifdef CONFIG_TACTILE_ASSIST
-	/* Check buffer size */
-	if ((count < SPI_HEADER_SIZE) || (count > SPI_BUFFER_SIZE)) {
-		DbgOut((KERN_ERR "tspdrv: invalid write buffer size.\n"));
-		return 0;
-	}
-	if (count == SPI_HEADER_SIZE)
-		g_bOutputDataBufferEmpty = 1;
-	else
-		g_bOutputDataBufferEmpty = 0;
 
-#else
+	/* Check buffer size */
 	if ((count <= SPI_HEADER_SIZE) || (count > SPI_BUFFER_SIZE)) {
 		DbgOut((KERN_ERR "tspdrv: invalid write buffer size.\n"));
 		return 0;
 	}
-#endif
 
 	/* Copy immediately the input buffer */
 	if (0 != copy_from_user(g_cwrite_buffer, buf, count)) {
@@ -704,11 +740,7 @@ static ssize_t write(struct file *file, const char *buf, size_t count,
 		samples_buffer *pinput_buffer =
 			(samples_buffer *)(&g_cwrite_buffer[i]);
 
-#ifdef CONFIG_TACTILE_ASSIST
-		if ((i + SPI_HEADER_SIZE) > count) {
-#else
 		if ((i + SPI_HEADER_SIZE) >= count) {
-#endif
 			/*
 			** Index is about to go beyond the buffer size.
 			** (Should never happen).
@@ -804,7 +836,7 @@ static long ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 #ifdef QA_TEST
 	int i;
 #endif
-	printk(KERN_DEBUG "tspdrv: %s %d\n", __func__, cmd);
+
 	/* DbgOut(KERN_INFO "tspdrv: ioctl cmd[0x%x].\n", cmd); */
 	switch (cmd) {
 	case TSPDRV_STOP_KERNEL_TIMER:
@@ -835,9 +867,7 @@ static long ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		break;
 
 	case TSPDRV_MAGIC_NUMBER:
-#ifdef CONFIG_TACTILE_ASSIST
 	case TSPDRV_SET_MAGIC_NUMBER:
-#endif
 		filp->private_data = (void *)TSPDRV_MAGIC_NUMBER;
 		break;
 
@@ -857,15 +887,8 @@ static long ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		** If a stop was requested, ignore the request as the amp
 		** will be disabled by the timer proc when it's ready
 		*/
-#ifdef CONFIG_TACTILE_ASSIST
-		g_bstoprequested = true;
-		/* Last data processing to disable amp and stop timer */
-		VibeOSKernelProcessData(NULL);
-		g_bisplaying = false;
-#else
 		if (!g_bstoprequested)
 			ImmVibeSPI_ForceOut_AmpDisable(arg);
-#endif
 		wake_unlock(&vib_wake_lock);
 		break;
 
