@@ -78,13 +78,17 @@ $(info printing $(DTS_NAMES))
 $(info printing $(DTS_FILES))
 
 ifeq "$(H_PROJECT)" "y"
-	ifeq "$(LOCALE_KOR)" "y"
-		DTS_FILES = $(wildcard $(TOP)/kernel/arch/arm/boot/dts/msm8974/$(DTS_NAME)-sec-hltekor*.dts)
+	ifeq "$(LOCALE_JPN)" "y"
+		DTS_FILES = $(wildcard $(TOP)/kernel/arch/arm/boot/dts/msm8974/$(DTS_NAME)-sec-hltejpn*.dts)
 	else
-		ifeq "$(LOCALE_JPN)" "y"
-			DTS_FILES = $(wildcard $(TOP)/kernel/arch/arm/boot/dts/msm8974/$(DTS_NAME)-sec-hltejpn*.dts)
+		ifeq "$(LOCALE_KOR)" "y"
+			DTS_FILES = $(wildcard $(TOP)/kernel/arch/arm/boot/dts/msm8974/$(DTS_NAME)-sec-hltekor*.dts)
 		else
-			DTS_FILES = $(wildcard $(TOP)/kernel/arch/arm/boot/dts/msm8974/$(DTS_NAME)-sec-hlte-*.dts)
+			ifeq "$(LOCALE_CHN_DUOS)" "y"
+				DTS_FILES = $(wildcard $(TOP)/kernel/arch/arm/boot/dts/msm8974/$(DTS_NAME)-sec-h3gchnduos*.dts)
+			else
+				DTS_FILES = $(wildcard $(TOP)/kernel/arch/arm/boot/dts/msm8974/$(DTS_NAME)-sec-hlte-*.dts)
+			endif
 		endif
 	endif
 endif
