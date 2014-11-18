@@ -193,6 +193,8 @@ enum {
 #else
 #define TKEY_CORERIVER_FW_NAME		"hlte_coreriver_tkey"
 #define TKEY_CYPRESS_FW_NAME		"hlte_cypress_tkey"
+#endif
+
 enum {
 	FW_BUILT_IN = 0,
 	FW_IN_SDCARD,
