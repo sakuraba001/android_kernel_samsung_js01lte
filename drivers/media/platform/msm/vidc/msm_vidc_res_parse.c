@@ -186,6 +186,13 @@ static int msm_vidc_load_reg_table(struct msm_vidc_platform_resources *res)
 	int i;
 	int rc = 0;
 
+	if (!of_find_property(pdev->dev.of_node, "qcom,reg-presets", NULL)) {
+		/* qcom,reg-presets is an optional property.  It likely won't be
+		 * present if we don't have any register settings to program */
+		dprintk(VIDC_DBG, "qcom,reg-presets not found\n");
+		return 0;
+	}
+
 	reg_set = &res->reg_set;
 	reg_set->count = get_u32_array_num_elements(pdev, "qcom,reg-presets");
 	if (reg_set->count == 0) {
@@ -221,6 +228,13 @@ static int msm_vidc_load_freq_table(struct msm_vidc_platform_resources *res)
 	int rc = 0;
 	int num_elements = 0;
 	struct platform_device *pdev = res->pdev;
+
+	if (!of_find_property(pdev->dev.of_node, "qcom,load-freq-tbl", NULL)) {
+		/* qcom,load-freq-tbl is an optional property.  It likely won't
+		 * be present on cores that we can't clock scale on. */
+		dprintk(VIDC_DBG, "qcom,load-freq-tbl not found\n");
+		return 0;
+	}
 
 	num_elements = get_u32_array_num_elements(pdev, "qcom,load-freq-tbl");
 	if (num_elements == 0) {
@@ -289,7 +303,7 @@ static int msm_vidc_load_bus_vector(struct platform_device *pdev,
 		bus_pdata->usecase[i].vectors = kzalloc(
 			sizeof(*bus_pdata->usecase[i].vectors) * num_ports,
 			GFP_KERNEL);
-		if (!bus_pdata->usecase) {
+		if (!bus_pdata->usecase[i].vectors) {
 			dprintk(VIDC_ERR,
 				"%s Failed to alloc bus_pdata usecase\n",
 				__func__);
@@ -348,7 +362,7 @@ static int msm_vidc_load_bus_vectors(struct msm_vidc_platform_resources *res)
 		goto err_mem_alloc;
 	}
 	for (i = 0; i < num_bus_pdata; i++) {
-		if (!res->has_ocmem &&
+		if (!res->ocmem_size &&
 			(!strcmp(bus_pdata_config_vector[i].name,
 				"qcom,enc-ocmem-ab-ib")
 			|| !strcmp(bus_pdata_config_vector[i].name,
@@ -513,6 +527,15 @@ static int msm_vidc_load_buffer_usage_table(
 	struct platform_device *pdev = res->pdev;
 	struct buffer_usage_set *buffer_usage_set = &res->buffer_usage_set;
 
+	if (!of_find_property(pdev->dev.of_node,
+				"qcom,buffer-type-tz-usage-table", NULL)) {
+		/* qcom,buffer-type-tz-usage-table is an optional property.  It
+		 * likely won't be present if the core doesn't support content
+		 * protection */
+		dprintk(VIDC_DBG, "buffer-type-tz-usage-table not found\n");
+		return 0;
+	}
+
 	buffer_usage_set->count = get_u32_array_num_elements(
 				    pdev, "qcom,buffer-type-tz-usage-table");
 	if (buffer_usage_set->count == 0) {
@@ -567,8 +590,8 @@ int read_platform_resources_from_dt(
 	kres = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
 	res->irq = kres ? kres->start : -1;
 
-	res->has_ocmem = of_property_read_bool(pdev->dev.of_node,
-						"qcom,has-ocmem");
+	of_property_read_u32(pdev->dev.of_node,
+			"qcom,ocmem-size", &res->ocmem_size);
 
 	rc = msm_vidc_load_freq_table(res);
 	if (rc) {
