@@ -7,8 +7,8 @@
 #include <linux/videodev2.h>
 
 enum core_id {
-	MSM_VIDC_CORE_0 = 0,
-	MSM_VIDC_CORE_1,      /* for Q6 core */
+	MSM_VIDC_CORE_VENUS = 0,
+	MSM_VIDC_CORE_Q6,
 	MSM_VIDC_CORES_MAX,
 };
 
@@ -95,6 +95,7 @@ int msm_vidc_smem_get_domain_partition(void *instance,
 		u32 flags, enum hal_buffer buffer_type,
 		int *domain_num, int *partition_num);
 void *msm_vidc_smem_get_client(void *instance);
+int msm_vidc_instance_open(void);
 #endif
 
 struct msm_vidc_extradata_header {
