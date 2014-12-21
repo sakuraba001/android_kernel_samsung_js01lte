@@ -46,8 +46,6 @@
 
 #define MAX_EEPROM_NAME 32
 
-#define MAX_EEPROM_NAME 32
-
 #define MAX_NUMBER_OF_STEPS 47
 
 //************************************* Native functionalities for YUV sensor added by jai.prakash
