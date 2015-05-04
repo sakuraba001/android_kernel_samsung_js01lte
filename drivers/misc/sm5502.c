@@ -1136,4 +1136,3 @@ module_exit(sm5502_exit);
 MODULE_AUTHOR("Jeongrae Kim <Jryu.kim@samsung.com>");
 MODULE_DESCRIPTION("SM5502 Micro USB Switch driver");
 MODULE_LICENSE("GPL");
-

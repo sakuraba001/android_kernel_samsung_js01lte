@@ -1271,4 +1271,3 @@ module_exit(max98504_exit);
 MODULE_DESCRIPTION("ALSA SoC MAX98504 driver");
 MODULE_AUTHOR("Ryan Lee");
 MODULE_LICENSE("GPL");
-

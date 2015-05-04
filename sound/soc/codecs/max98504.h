@@ -582,4 +582,3 @@ struct max98504_priv {
 };
 
 #endif
-
