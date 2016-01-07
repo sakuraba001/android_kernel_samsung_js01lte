@@ -29,15 +29,13 @@
 #include <linux/kthread.h>
 #include <linux/workqueue.h>
 #include <linux/module.h>
+
 #include <linux/platform_data/modem.h>
-#include <linux/sec_param.h>
-#include <linux/of_gpio.h>
-#include <mach/gpiomux.h>
 //#include <linux/platform_data/modem_v2.h>
 #include "modem_prj.h"
 #include "modem_link_device_spi.h"
 #include "modem_utils.h"
-
+#include <linux/sec_param.h>
 
 #define USE_SPI_HALF_DUPLEX
 
@@ -131,7 +129,6 @@ static irqreturn_t spi_cp_dump_irq_handler(int irq, void *p_ld)
 		pr_debug("[SPI] [%s](%d) spi_wakelock locked . spild->spi_state[%d]\n",
 			__func__, __LINE__, (int)spild->spi_state);
 	}
-
 exit:
 	return result;
 }
@@ -351,15 +348,12 @@ static int spi_register_isr
 		goto err;
 	}
 
-
-	if (irq == gpio_to_irq(p_spild->gpio_cp_dump_int)){
-		ret = enable_irq_wake(irq);
-		if (ret) {
-			pr_err("[LNK/E] <%s> enable_irq_wake fail (%d)\n",
-				__func__, ret);
-			free_irq(irq, ld);
-			goto err;
-		}
+	ret = enable_irq_wake(irq);
+	if (ret) {
+		pr_err("[LNK/E] <%s> enable_irq_wake fail (%d)\n",
+			__func__, ret);
+		free_irq(irq, ld);
+		goto err;
 	}
 
 	pr_debug("[LNK] <%s> IRQ#%d handler is registered.\n", __func__, irq);
@@ -539,7 +533,7 @@ static void spi_tx_work(void)
 	spild->spi_state = SPI_STATE_TX_WAIT;
 	spild->spi_timer_tx_state = SPI_STATE_TIME_START;
 
-	gpio_direction_output(spild->gpio_ipc_mrdy, SPI_GPIOLEVEL_HIGH);
+	gpio_set_value(spild->gpio_ipc_mrdy, SPI_GPIOLEVEL_HIGH);
 
 	/* Start TX timer */
 	spild->spi_tx_timer.expires = jiffies +
@@ -555,7 +549,7 @@ static void spi_tx_work(void)
 
 			spild->spi_timer_tx_state = SPI_STATE_TIME_START;
 
-			gpio_direction_output(spild->gpio_ipc_mrdy,
+			gpio_set_value(spild->gpio_ipc_mrdy,
 				SPI_GPIOLEVEL_LOW);
 
 			/* change state SPI_STATE_TX_WAIT */
@@ -575,8 +569,8 @@ static void spi_tx_work(void)
 		spi_packet_buf = spild->buff;
 		spi_sync_buf = spild->sync_buff;
 
-		gpio_direction_output(spild->gpio_ipc_sub_mrdy, SPI_GPIOLEVEL_HIGH);
-		gpio_direction_output(spild->gpio_ipc_mrdy, SPI_GPIOLEVEL_LOW);
+		gpio_set_value(spild->gpio_ipc_sub_mrdy, SPI_GPIOLEVEL_HIGH);
+		gpio_set_value(spild->gpio_ipc_mrdy, SPI_GPIOLEVEL_LOW);
 
 		/* change state SPI_MAIN_STATE_TX_SENDING */
 		spild->spi_state = SPI_STATE_TX_SENDING;
@@ -605,7 +599,7 @@ static void spi_tx_work(void)
 
 		spild->spi_state = SPI_STATE_TX_TERMINATE;
 
-		gpio_direction_output(spild->gpio_ipc_sub_mrdy, SPI_GPIOLEVEL_LOW);
+		gpio_set_value(spild->gpio_ipc_sub_mrdy, SPI_GPIOLEVEL_LOW);
 
 #ifdef CONFIG_LINK_DEVICE_SPI_DEBUG
 		pr_info("[SPI] spi_tx_work : success - spi_state=[%d]\n",
@@ -755,7 +749,7 @@ static void spi_rx_work(void)
 	spild->spi_state = SPI_STATE_RX_WAIT;
 	spild->spi_timer_rx_state = SPI_STATE_TIME_START;
 
-#if 1	//temp set gpio ourput enable
+#if 0	//temp set gpio ourput enable
 		//modem may set this pin as input mode . fix it later.
 	gpio_direction_output(spild->gpio_ipc_sub_mrdy, SPI_GPIOLEVEL_HIGH);
 #else
@@ -775,7 +769,7 @@ static void spi_rx_work(void)
 
 			spild->spi_timer_rx_state = SPI_STATE_TIME_START;
 
-			gpio_direction_output(spild->gpio_ipc_sub_mrdy,
+			gpio_set_value(spild->gpio_ipc_sub_mrdy,
 				SPI_GPIOLEVEL_LOW);
 
 			/* change state SPI_MAIN_STATE_RX_WAIT */
@@ -853,7 +847,7 @@ static void spi_rx_work(void)
 
 	spild->spi_state = SPI_STATE_RX_TERMINATE;
 
-	gpio_direction_output(spild->gpio_ipc_sub_mrdy, SPI_GPIOLEVEL_LOW);
+	gpio_set_value(spild->gpio_ipc_sub_mrdy, SPI_GPIOLEVEL_LOW);
 
 	/* change state SPI_MAIN_STATE_RX_WAIT to SPI_STATE_IDLE */
 	spild->spi_state = SPI_STATE_IDLE;
@@ -1674,96 +1668,6 @@ void spi_work(struct work_struct *work)
 	}
 }
 
-
-static void get_mif_spi_dt_data(struct device *dev)
-{
-	/* Initialize SPI pin value */
-	p_spild->gpio_ipc_mrdy = of_get_named_gpio(dev->of_node, "mif_spi,gpio_ipc_mrdy", 0);
-	if (gpio_is_valid(p_spild->gpio_ipc_mrdy)) {
-		int ret;
-		ret = gpio_request(p_spild->gpio_ipc_mrdy, "ipc_mrdy");
-		if (ret)
-			mif_err("Unable to request ipc_mrdy [%d]\n", p_spild->gpio_ipc_mrdy);
-		else	{
-			gpio_tlmm_config(GPIO_CFG(p_spild->gpio_ipc_mrdy, GPIOMUX_FUNC_GPIO,
-				GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
-				GPIO_CFG_ENABLE);
-			gpio_direction_output(p_spild->gpio_ipc_mrdy, 0);
-		}
-	}
-	else {
-		mif_err("Failed to get is valid ipc_mrdy\n");
-	}
-
-	p_spild->gpio_ipc_srdy = of_get_named_gpio(dev->of_node, "mif_spi,gpio_ipc_srdy", 0);
-	if (gpio_is_valid(p_spild->gpio_ipc_srdy)) {
-		int ret;
-		ret = gpio_request(p_spild->gpio_ipc_srdy, "ipc_srdy");
-		if (ret)
-			mif_err("Unable to request ipc_srdy [%d]\n", p_spild->gpio_ipc_srdy);
-		else	{
-			gpio_tlmm_config(GPIO_CFG(p_spild->gpio_ipc_srdy, GPIOMUX_FUNC_GPIO,
-				GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
-		}
-	}
-	else {
-		mif_err("Failed to get is valid ipc_srdy\n");
-	}
-
-	p_spild->gpio_ipc_sub_mrdy = of_get_named_gpio(dev->of_node, "mif_spi,gpio_ipc_sub_mrdy", 0);
-	if (gpio_is_valid(p_spild->gpio_ipc_sub_mrdy)) {
-		int ret;
-		ret = gpio_request(p_spild->gpio_ipc_sub_mrdy, "ipc_sub_mrdy");
-		if (ret)
-			mif_err("Unable to request ipc_sub_mrdy [%d]\n", p_spild->gpio_ipc_sub_mrdy);
-		else	{
-			gpio_tlmm_config(GPIO_CFG(p_spild->gpio_ipc_sub_mrdy, GPIOMUX_FUNC_GPIO,
-				GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),GPIO_CFG_ENABLE);
-			gpio_direction_output(p_spild->gpio_ipc_sub_mrdy, 0);
-		}
-	}
-	else {
-		mif_err("Failed to get is valid ipc_sub_mrdy\n");
-	}
-
-	p_spild->gpio_ipc_sub_srdy = of_get_named_gpio(dev->of_node, "mif_spi,gpio_ipc_sub_srdy", 0);
-	if (gpio_is_valid(p_spild->gpio_ipc_sub_srdy)) {
-		int ret;
-		ret = gpio_request(p_spild->gpio_ipc_sub_srdy, "ipc_sub_srdy");
-		if (ret)
-			mif_err("Unable to request ipc_sub_srdy [%d]\n", p_spild->gpio_ipc_sub_srdy);
-		else	{
-			gpio_tlmm_config(GPIO_CFG(p_spild->gpio_ipc_sub_srdy, GPIOMUX_FUNC_GPIO,
-				GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),GPIO_CFG_ENABLE);
-		}
-	}
-	else {
-		mif_err("Failed to get is valid ipc_sub_srdy\n");
-	}
-
-	p_spild->gpio_cp_dump_int = of_get_named_gpio(dev->of_node, "mif_spi,gpio_cp_dump_int", 0);
-	if (gpio_is_valid(p_spild->gpio_cp_dump_int)) {
-		int ret;
-		ret = gpio_request(p_spild->gpio_cp_dump_int, "cp_dump_int");
-		if (ret)
-			mif_err("Unable to request cp_dump_int [%d]\n", p_spild->gpio_cp_dump_int);
-		else	{
-			gpio_tlmm_config(GPIO_CFG(p_spild->gpio_cp_dump_int, GPIOMUX_FUNC_GPIO,
-				GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
-		}
-	}
-	else {
-		mif_err("Failed to get is valid cp_dump_int\n");
-	}
-
-	p_spild->gpio_modem_bin_srdy = p_spild->gpio_ipc_srdy;
-
-	mif_info("gpio_mrdy:%d, gpio_srdy:%d, gpio_submrdy:%d, gpio_subsrdy:%d, gpio_cpdump_int:%d\n",
-		p_spild->gpio_ipc_mrdy, p_spild->gpio_ipc_srdy, 
-		p_spild->gpio_ipc_sub_mrdy, p_spild->gpio_ipc_sub_srdy,
-		p_spild->gpio_cp_dump_int);
-}
-
 static int __devinit if_spi_platform_probe(struct platform_device *pdev)
 {
 	int ret;
@@ -1779,6 +1683,18 @@ static int __devinit if_spi_platform_probe(struct platform_device *pdev)
 		ret = -EINVAL;
 		goto err;
 	}
+
+	/* Initialize SPI pin value */
+	p_spild->gpio_ipc_mrdy = pdata->gpio_ipc_mrdy;
+	p_spild->gpio_ipc_srdy = pdata->gpio_ipc_srdy;
+	p_spild->gpio_ipc_sub_mrdy = pdata->gpio_ipc_sub_mrdy;
+	p_spild->gpio_ipc_sub_srdy = pdata->gpio_ipc_sub_srdy;
+	p_spild->gpio_cp_dump_int = pdata->gpio_cp_dump_int;
+	p_spild->gpio_modem_bin_srdy = pdata->gpio_ipc_srdy;
+
+	pr_info("(%d) gpio_mrdy : %d, gpio_srdy : %d(%d)\n",
+		__LINE__, p_spild->gpio_ipc_mrdy, p_spild->gpio_modem_bin_srdy,
+		gpio_get_value(p_spild->gpio_ipc_srdy));
 
 	od = kzalloc(sizeof(struct spi_v_buff), GFP_KERNEL);
 	if (!od) {
@@ -1869,15 +1785,17 @@ static int if_spi_probe(struct spi_device *spi)
 #if 0
 	p_spi->mode = SPI_MODE_1;
 	p_spi->bits_per_word = 32;
+
 	ret = spi_setup(p_spi);
 	if (ret != 0) {
 		pr_err("[%s] spi_setup ERROR : %d\n", __func__, ret);
 
 		return ret;
 	}
-#endif
 
-	get_mif_spi_dt_data(&spi->dev);
+	pr_info("[%s] spi probe Done.\n", __func__);
+
+#endif
 
 	pr_info("[%s]\n", __func__);
 	return ret;

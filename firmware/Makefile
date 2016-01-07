@@ -141,54 +141,65 @@ fw-shipped-$(CONFIG_USB_VICAM) += vicam/firmware.fw
 fw-shipped-$(CONFIG_VIDEO_CPIA2) += cpia2/stv0672_vp4.bin
 fw-shipped-$(CONFIG_YAM) += yam/1200.bin yam/9600.bin
 
-# for IR LED FPGA
-fw-shipped-$(CONFIG_SEC_FPGA_ICE40XX) += ice40xx/i2c_top_bitmap_1.fw
-fw-shipped-$(CONFIG_SEC_FPGA_ICE40XX) += ice40xx/i2c_top_bitmap_2.fw
+fw-shipped-$(CONFIG_TOUCHSCREEN_MMS152) += tsp_melfas/BOOT.fw
+fw-shipped-$(CONFIG_TOUCHSCREEN_MMS152) += tsp_melfas/CORE.fw
+fw-shipped-$(CONFIG_TOUCHSCREEN_MMS152) += tsp_melfas/CONF.fw
+fw-shipped-$(CONFIG_TOUCHSCREEN_MMS152) += tsp_melfas/melfas.fw
+fw-shipped-$(CONFIG_TOUCHSCREEN_MMS152) += tsp_melfas/mms_boot.fw
+fw-shipped-$(CONFIG_INPUT_WACOM) += epen/W9001_B911.bin
+fw-shipped-$(CONFIG_INPUT_WACOM) += epen/W9007A_0200.bin
+fw-shipped-$(CONFIG_INPUT_WACOM) += epen/W9007_0200.bin
+fw-shipped-$(CONFIG_INPUT_WACOM) += epen/W9010_0076.bin
+fw-shipped-$(CONFIG_INPUT_WACOM) += epen/W9010_0174.bin
+fw-shipped-$(CONFIG_INPUT_WACOM) += epen/W9010_0208.bin
+fw-shipped-$(CONFIG_INPUT_WACOM) += epen/W9007A_013C.bin
 
-# for TouchScreen
-fw-shipped-$(CONFIG_TOUCHSCREEN_MMS252) += tsp_melfas/lt/melfas_ij.fw
-fw-shipped-$(CONFIG_TOUCHSCREEN_MMS252) += tsp_melfas/lt/mms252_el.fw
+fw-shipped-$(CONFIG_KEYBOARD_CYPRESS_TOUCHKEY) += tkey/hlte_cypress_tkey.fw
+fw-shipped-$(CONFIG_KEYBOARD_CYPRESS_TOUCHKEY) += tkey/hltejs01_cypress_tkey.fw
+fw-shipped-$(CONFIG_KEYBOARD_CYPRESS_TOUCHKEY) += tkey/hlte_coreriver_tkey.fw
 
-fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI_G)	+= tsp_synaptics/synaptics_s5050_k.fw
-fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI_G)	+= tsp_synaptics/synaptics_s5100_k_wqhd.fw
-fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI_G)	+= tsp_synaptics/synaptics_s5100_k_fhd.fw
-fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI_G)    += tsp_synaptics/synaptics_s5100_k_a2_fhd.fw
-fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI)      += tsp_synaptics/synaptics_s5050_h.fw
-fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI)      += tsp_synaptics/synaptics_s5000.fw
-fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI)	+= tsp_synaptics/synaptics_s5707.fw
-fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI)	+= tsp_synaptics/synaptics_s5708.fw
-fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI_S5000) += tsp_synaptics/synaptics_b0_5_1.fw
-fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI_S5000) += tsp_synaptics/synaptics_b0_5_1_fac.fw
-fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI_S5000) += tsp_synaptics/synaptics_js_b0_5_1.fw
-fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI_S5000) += tsp_synaptics/synaptics_js_b0_5_1_fac.fw
-fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI)      += tsp_synaptics/synaptics_s5050_f.fw
+fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI) += tsp_synaptics/synaptics_a1.fw
+fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI) += tsp_synaptics/synaptics_b0_3_4.fw
+fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI) += tsp_synaptics/synaptics_b0_4_0.fw
+fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI) += tsp_synaptics/synaptics_b0_4_3.fw
+fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI) += tsp_synaptics/synaptics_b0_4_3_new.fw
+fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI) += tsp_synaptics/synaptics_b0_5_1.fw
+fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI) += tsp_synaptics/synaptics_b0_5_1_fac.fw
+fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI) += tsp_synaptics/synaptics_js_b0_5_1.fw
+fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI) += tsp_synaptics/synaptics_js_b0_5_1_fac.fw
+fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI) += tsp_synaptics/synaptics_b0_nep_14.fw
+fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI) += tsp_synaptics/synaptics_b0_nep_1F.fw
+
+ifdef CONFIG_MACH_JACTIVESKT
+fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI) += tsp_synaptics/jactive/synaptics_b0_hsync.fw
+fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI) += tsp_synaptics/jactive/synaptics_b0_hsync_fac.fw
+fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI) += tsp_synaptics/jactive/synaptics_b0_hsync04.fw
+fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI) += tsp_synaptics/jactive/synaptics_b0_hsync04_fac.fw
+fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI) += tsp_synaptics/jactive/synaptics_b0_non_hsync.fw
+fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI) += tsp_synaptics/jactive/synaptics_b0_non_hsync_fac.fw
+fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI) += tsp_synaptics/synaptics_d0.fw
+endif
+
+fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI_H) += tsp_synaptics/synaptics.fw
+fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI_H) += tsp_synaptics/synaptics_f.fw
+fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI_H) += tsp_synaptics/synaptics_f_HSYNC.fw
+fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI_H) += tsp_synaptics/synaptics_s5000.fw
+fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI_H) += tsp_synaptics/synaptics_nonTR.fw
+fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI_H) += tsp_synaptics/synaptics_j.fw
 
 fw-shipped-$(CONFIG_TOUCHSCREEN_ATMEL_MXT1664S) += tsp_atmel/mXT1664S_v.fw
 fw-shipped-$(CONFIG_TOUCHSCREEN_ATMEL_MXT1664S) += tsp_atmel/mXT1664S_n.fw
-fw-shipped-$(CONFIG_TOUCHSCREEN_ATMEL_MXT1188S) += tsp_atmel/mXT1188S.fw
-
-fw-shipped-$(CONFIG_KEYBOARD_CYPRESS_TOUCHKEY_H) += tkey/hlte_cypress_tkey.fw
-fw-shipped-$(CONFIG_KEYBOARD_CYPRESS_TOUCHKEY_H) += tkey/hltejs01_cypress_tkey.fw
-fw-shipped-$(CONFIG_KEYBOARD_CYPRESS_TOUCHKEY) += tkey/semco_cypress_tkey.fw
-fw-shipped-$(CONFIG_KEYBOARD_CYPRESS_TOUCHKEY) += tkey/semco02_cypress_tkey.fw
-fw-shipped-$(CONFIG_KEYBOARD_CYPRESS_TOUCHKEY) += tkey/dtech_cypress_tkey.fw
-
-fw-shipped-$(CONFIG_INPUT_WACOM) += epen/W9007A_020A.bin
-fw-shipped-$(CONFIG_INPUT_WACOM) += epen/W9007_0200.bin
-fw-shipped-$(CONFIG_INPUT_WACOM) += epen/W9007A_0260.bin
-fw-shipped-$(CONFIG_INPUT_WACOM) += epen/W9010_0174.bin
-fw-shipped-$(CONFIG_INPUT_WACOM) += epen/W9010_0208.bin
-
 
 fw-shipped-all := $(fw-shipped-y) $(fw-shipped-m) $(fw-shipped-)
 
 #for sensorhub
-fw-shipped-$(CONFIG_SENSORS_SSP_ATMEL) += ssp.fw ssp_rev03.fw
+fw-shipped-$(CONFIG_SENSORS_SSP_ATMEL) += ssp.fw ssp_rev03.fw ssp_fortius.fw
 ifndef CONFIG_SENSORS_SSP_BOUNCE_FIRMWARE
 fw-shipped-$(CONFIG_SENSORS_SSP_STM) += ssp_stm.fw ssp_stm_rvs.fw ssp_stm_88921.fw ssp_stm_w2014.fw
-fw-shipped-$(CONFIG_SENSORS_SSP_STM_32F) += ssp_stm32f.fw
 endif
 fw-shipped-$(CONFIG_SENSORS_SSP_BOUNCE_FIRMWARE) += ssp_stm_bf.fw
+fw-shipped-$(CONFIG_SENSORS_SSP_STM_MONTBLANC) += ssp_stm.fw ssp_stm_rvs.fw ssp_stm_88921.fw ssp_stm_w2014.fw ssp_stm_w2014_88921.fw
+fw-shipped-$(CONFIG_SENSORS_SSP_STM_MONTBLANC_00) += ssp_stm.fw ssp_stm_rvs.fw ssp_stm_88921.fw ssp_stm_w2014_00.fw
 fw-shipped-$(CONFIG_SENSORS_SSP) += ssp_crashed.fw
 
 # Directories which we _might_ need to create, so we have a rule for them.

@@ -137,7 +137,8 @@ static bool fc8050_power_on(void)
 		return true;
 	} else {
 		tdmb_control_gpio(true);
-		if (dmb_drv_init(tdmb_get_if_handle()) == TDMB_FAIL) {
+
+		if (dmb_drv_init() == TDMB_FAIL) {
 			tdmb_control_gpio(false);
 			return false;
 		} else {

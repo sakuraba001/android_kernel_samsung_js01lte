@@ -261,12 +261,6 @@ config HID_KENSINGTON
 	---help---
 	Support for Kensington Slimblade Trackball.
 
-config HID_KK_UPGRADE
-	bool "KK Upgrade"
-	depends on USB_HID
-	---help---
-	Feature for KK Upgrade models.
-
 config HID_LCPOWER
 	tristate "LC-Power"
 	depends on USB_HID
@@ -590,13 +584,6 @@ config SMARTJOYPLUS_FF
 	Say Y here if you have a SmartJoy PLUS PS2/USB adapter and want to
 	enable force feedback support for it.
 
-config HID_SYNAPTICS_BT
-	tristate "HID Synaptics"
-	depends on HID
-	default n
-	---help---
-	For a Bluetooth HID touchpad
-
 config HID_TIVO
 	tristate "TiVo Slide Bluetooth remote control support"
 	depends on (USB_HID || BT_HIDP)
@@ -677,13 +664,6 @@ config HID_ZYDACRON
 	depends on USB_HID
 	---help---
 	Support for Zydacron remote control.
-
-config HID_OVR
-	tristate "OVR device support"
-	depends on USB_HID
-	---help---
-	Support for OVR devices.
-	Say Y here if you have a OVR device.
 
 endmenu
 

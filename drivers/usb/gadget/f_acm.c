@@ -227,7 +227,7 @@ static int acm_port_disconnect(struct f_acm *acm)
 /* notification endpoint uses smallish and infrequent fixed-size messages */
 
 #define GS_LOG2_NOTIFY_INTERVAL		5	/* 1 << 5 == 32 msec */
-#define GS_NOTIFY_MAXPACKET		10	/* notification + 2 bytes */
+#define GS_NOTIFY_MAXPACKET		16
 
 /* interface and class descriptors: */
 
@@ -677,7 +677,6 @@ static int acm_cdc_notify(struct f_acm *acm, u8 type, u16 value,
 	struct usb_ep			*ep = acm->notify;
 	struct usb_request		*req;
 	struct usb_cdc_notification	*notify;
-	const unsigned			len = sizeof(*notify) + length;
 	void				*buf;
 	int				status;
 	unsigned char noti_buf[GS_NOTIFY_MAXPACKET];
@@ -688,7 +687,7 @@ static int acm_cdc_notify(struct f_acm *acm, u8 type, u16 value,
 	acm->notify_req = NULL;
 	acm->pending = false;
 
-	req->length = len;
+	req->length = GS_NOTIFY_MAXPACKET;
 	notify = req->buf;
 	buf = notify + 1;
 
@@ -809,7 +808,6 @@ static int acm_send_modem_ctrl_bits(struct gserial *port, int ctrl_bits)
 	struct f_acm *acm = port_to_acm(port);
 
 	acm->serial_state = ctrl_bits;
-
 	return acm_notify_serial_state(acm);
 }
 #endif

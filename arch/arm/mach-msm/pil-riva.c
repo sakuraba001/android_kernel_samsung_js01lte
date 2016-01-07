@@ -25,7 +25,6 @@
 #include <mach/subsystem_restart.h>
 #include <mach/ramdump.h>
 #include <mach/msm_smem.h>
-#include <mach/msm_bus_board.h>
 
 #include "peripheral-loader.h"
 #include "scm-pas.h"
@@ -534,8 +533,6 @@ static int __devinit pil_riva_probe(struct platform_device *pdev)
 		ret = PTR_ERR(drv->subsys);
 		goto err_subsys;
 	}
-
-	scm_pas_init(MSM_BUS_MASTER_SPS);
 
 	ret = devm_request_irq(&pdev->dev, drv->irq, riva_wdog_bite_irq_hdlr,
 			IRQF_TRIGGER_RISING, "riva_wdog", drv);

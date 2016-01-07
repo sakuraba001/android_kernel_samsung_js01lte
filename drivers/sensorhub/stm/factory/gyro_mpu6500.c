@@ -21,6 +21,8 @@
 
 #define VENDOR		"INVENSENSE"
 #define CHIP_ID		"MPU6500"
+#define VENDOR_K330	"STM"
+#define CHIP_ID_K330	"K330"
 
 #define CALIBRATION_FILE_PATH	"/efs/gyro_cal_data"
 #define VERBOSE_OUT 1
@@ -38,13 +40,21 @@
 static ssize_t gyro_vendor_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
-	return sprintf(buf, "%s\n", VENDOR);
+	struct ssp_data *data = dev_get_drvdata(dev);
+	if (data->sns_combination == STM_K330_AG)
+		return sprintf(buf, "%s\n", VENDOR_K330);
+	else
+		return sprintf(buf, "%s\n", VENDOR);
 }
 
 static ssize_t gyro_name_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
-	return sprintf(buf, "%s\n", CHIP_ID);
+	struct ssp_data *data = dev_get_drvdata(dev);
+	if (data->sns_combination == STM_K330_AG)
+		return sprintf(buf, "%s\n", CHIP_ID_K330);
+	else
+		return sprintf(buf, "%s\n", CHIP_ID);
 }
 
 int gyro_open_calibration(struct ssp_data *data)
@@ -124,12 +134,6 @@ int set_gyro_cal(struct ssp_data *data)
 	int iRet = 0;
 	struct ssp_msg *msg;
 	s16 gyro_cal[3];
-	if (!(data->uSensorState & (1 << GYROSCOPE_SENSOR))) {
-		pr_info("[SSP]: %s - Skip this function!!!"\
-			", gyro sensor is not connected(0x%x)\n",
-			__func__, data->uSensorState);
-		return iRet;
-	}
 
 	gyro_cal[0] = data->gyrocal.x;
 	gyro_cal[1] = data->gyrocal.y;
@@ -235,7 +239,10 @@ static ssize_t gyro_get_temp(struct device *dev,
 {
 	short temperature = 0;
 	struct ssp_data *data = dev_get_drvdata(dev);
-	temperature = mpu6500_gyro_get_temp(data);
+	if (data->sns_combination == STM_K330_AG)
+		temperature = (short)k330_gyro_get_temp(data);
+	else
+		temperature = mpu6500_gyro_get_temp(data);
 	return sprintf(buf, "%d\n", temperature);
 }
 
@@ -399,11 +406,10 @@ ssize_t mpu6500_gyro_selftest(char *buf, struct ssp_data *data)
 	msg->buffer = chTempBuf;
 	msg->free_buffer = 0;
 
-	iRet = ssp_spi_sync(data, msg, 7000);
+	iRet = ssp_spi_sync(data, msg, 3000);
 
 	if (iRet != SUCCESS) {
 		pr_err("[SSP]: %s - Gyro Selftest Timeout!!\n", __func__);
-		ret_val = 1;
 		goto exit;
 	}
 
@@ -602,7 +608,10 @@ static ssize_t gyro_selftest_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct ssp_data *data = dev_get_drvdata(dev);
-	return mpu6500_gyro_selftest(buf, data);
+	if (data->sns_combination == STM_K330_AG)
+		return k330_gyro_selftest(buf, data);
+	else
+		return mpu6500_gyro_selftest(buf, data);
 }
 
 static ssize_t gyro_selftest_dps_store(struct device *dev,

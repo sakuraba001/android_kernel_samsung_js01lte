@@ -20,11 +20,6 @@
 
 #include <linux/android_alarm.h>
 
-#if defined(CONFIG_MACH_LT03SKT) || defined(CONFIG_MACH_LT03KTT) || \
-	defined(CONFIG_MACH_LT03LGT)
-#define FUELALERT_CHECK_VOLTAGE_FEATURE
-#endif
-
 /* Slave address should be shifted to the right 1bit.
  * R/W bit should NOT be included.
  */
@@ -168,13 +163,7 @@ struct sec_fg_info {
 /* power off margin */
 /* soc should be 0.1% unit */
 #define POWER_OFF_SOC_HIGH_MARGIN	20
-
-#if defined(CONFIG_MACH_VIENNAEUR) || defined(CONFIG_MACH_VIENNAVZW) || defined(CONFIG_MACH_V2LTEEUR)
-#define POWER_OFF_VOLTAGE_HIGH_MARGIN	3400
-#else
 #define POWER_OFF_VOLTAGE_HIGH_MARGIN	3500
-#endif
-
 #define POWER_OFF_VOLTAGE_LOW_MARGIN	3400
 
 /* FG recovery handler */

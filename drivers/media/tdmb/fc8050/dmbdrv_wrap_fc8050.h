@@ -52,7 +52,7 @@ struct sub_channel_info_type {
 };
 
 void dmb_drv_isr(void);
-unsigned char dmb_drv_init(unsigned long param);
+unsigned char dmb_drv_init(void);
 unsigned char dmb_drv_deinit(void);
 unsigned char dmb_drv_scan_ch(unsigned long frequency);
 int dmb_drv_get_dmb_sub_ch_cnt(void);

@@ -20,6 +20,7 @@
 #define _BARCODE_EMULATOR_H_
 
 extern struct class *sec_class;
+
 #define CONFIGURATION_SIZE	32216
 
 const u8 spiword_i2c_r2[]  = {

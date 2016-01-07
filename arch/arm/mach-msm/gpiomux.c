@@ -14,20 +14,21 @@
 #include <linux/slab.h>
 #include <linux/spinlock.h>
 #include <linux/io.h>
-#ifdef CONFIG_SEC_PM_DEBUG
-#include <linux/gpio.h>
-#include <linux/debugfs.h>
-#endif
 #include <mach/gpiomux.h>
 #include <mach/msm_iomap.h>
 
+#include <linux/gpio.h>
+#include <mach/irqs.h>
+
+#ifdef CONFIG_SEC_PM_DEBUG
+#include <linux/debugfs.h>
+#endif
 #ifdef CONFIG_SEC_GPIO_DVS
 #include <linux/errno.h>
 
 #include <linux/secgpio_dvs.h>
 #include <linux/platform_device.h>
 #endif
-#include <linux/fprint_secure.h>
 
 struct msm_gpiomux_rec {
 	struct gpiomux_setting *sets[GPIOMUX_NSETTINGS];
@@ -82,11 +83,7 @@ static void msm8974_check_gpio_status(unsigned char phonestate)
 		(phonestate == PHONE_INIT) ? "init" : "sleep");
 
 	for (i = 0; i < AP_GPIO_COUNT; i++) {
-#ifdef ENABLE_SENSORS_FPRINT_SECURE
-		if (i >= 23 && i <= 26)
-			continue;
-#endif
-		__msm_gpiomux_read(i, &val);
+		msm_gpiomux_read(i, &val);
 
 		if (val.func == GPIOMUX_FUNC_GPIO) {
 			if (val.dir == GPIOMUX_IN)
@@ -305,23 +302,17 @@ static void gpiomux_debug_print(struct seq_file *m)
 	spin_lock_irqsave(&gpiomux_lock, flags);
 
 	for (gpio = begin; gpio < msm_gpiomux_ngpio; ++gpio) {
-#ifdef ENABLE_SENSORS_FPRINT_SECURE
-		if (gpio >= 23 && gpio <= 26)
-			continue;
-#endif
-		__msm_gpiomux_read(gpio, &set);
+		msm_gpiomux_read(gpio, &set);
 		val = gpio_get_value(gpio);
 		if (IS_ERR_OR_NULL(m))
-			pr_info("GPIO[%u] \t%s \t%s \t%s \t%s \t%s\n",
-					gpio,
+			pr_info("GPIO[%u] \t%s \t%s \t%s \t%s \t%s\n", gpio,
 					gpiomux_func_str[set.func],
 					gpiomux_dir_str[set.dir],
 					gpiomux_pull_str[set.pull],
 					gpiomux_drv_str[set.drv],
 					gpiomux_val_str[val]);
 		else
-			seq_printf(m, "GPIO[%u] \t%s \t%s \t%s \t%s \t%s\n",
-					gpio,
+			seq_printf(m, "GPIO[%u] \t%s \t%s \t%s \t%s \t%s\n", gpio,
 					gpiomux_func_str[set.func],
 					gpiomux_dir_str[set.dir],
 					gpiomux_pull_str[set.pull],
@@ -460,11 +451,11 @@ EXPORT_SYMBOL(msm_gpiomux_init_dt);
 static struct platform_device secgpio_dvs_device = {
 	.name	= "secgpio_dvs",
 	.id		= -1,
-	/****************************************************************
-	 * Designate appropriate variable pointer
-	 * in accordance with the specification of each BB vendor.
-	 ***************************************************************/
+/****************************************************************/
+/* Designate appropriate variable pointer
+	in accordance with the specification of each BB vendor. */
 	.dev.platform_data = &msm8974_gpio_dvs,
+/****************************************************************/
 };
 
 static struct platform_device *secgpio_dvs_devices[] __initdata = {

@@ -814,11 +814,12 @@ static int ncm_set_alt(struct usb_function *f, unsigned intf, unsigned alt)
 			goto fail;
 
 #ifdef CONFIG_USB_ANDROID_SAMSUNG_COMPOSITE
-		if (alt > 0) {
+		if (alt == 0) {
 #endif
 		if (ncm->port.in_ep->driver_data) {
 			DBG(cdev, "reset ncm\n");
-			printk(KERN_DEBUG "usb: %s gather_disconnect\n", __func__);
+				printk(KERN_DEBUG "usb: %s gether_disconnect\n",
+						__func__);
 			gether_disconnect(&ncm->port);
 			ncm_reset_values(ncm);
 		}
@@ -859,6 +860,7 @@ static int ncm_set_alt(struct usb_function *f, unsigned intf, unsigned alt)
 			if (IS_ERR(net))
 				return PTR_ERR(net);
 		}
+
 #ifdef CONFIG_USB_ANDROID_SAMSUNG_COMPOSITE
 		/*
 		 * we don't need below code, because devguru host driver can't
@@ -1373,12 +1375,19 @@ int ncm_bind_config(struct usb_configuration *c, u8 ethaddr[ETH_ALEN])
 	ncm = kzalloc(sizeof *ncm, GFP_KERNEL);
 	if (!ncm)
 		return -ENOMEM;
-
+	printk(KERN_DEBUG "usb: %s before MAC:%02X:%02X:%02X:%02X:%02X:%02X\n",
+			__func__, ethaddr[0], ethaddr[1],
+			ethaddr[2], ethaddr[3], ethaddr[4],
+			ethaddr[5]);
 	/* export host's Ethernet address in CDC format */
 	snprintf(ncm->ethaddr, sizeof ncm->ethaddr,
 		"%02X%02X%02X%02X%02X%02X",
 		ethaddr[0], ethaddr[1], ethaddr[2],
 		ethaddr[3], ethaddr[4], ethaddr[5]);
+	printk(KERN_DEBUG "usb: %s after MAC:%02X:%02X:%02X:%02X:%02X:%02X\n",
+			__func__, ncm->ethaddr[0], ncm->ethaddr[1],
+			ncm->ethaddr[2], ncm->ethaddr[3], ncm->ethaddr[4],
+			ncm->ethaddr[5]);
 	ncm_string_defs[1].s = ncm->ethaddr;
 
 	spin_lock_init(&ncm->lock);

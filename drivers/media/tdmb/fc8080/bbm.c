@@ -297,11 +297,11 @@ void bbm_com_isr(HANDLE handle)
 	fc8080_isr(handle);
 }
 
-s32 bbm_com_hostif_select(HANDLE handle, u8 hostif, u32 param)
+s32 bbm_com_hostif_select(HANDLE handle, u8 hostif)
 {
 	s32 res = BBM_NOK;
 
-	res = bbm_hostif_select(handle, hostif, param);
+	res = bbm_hostif_select(handle, hostif);
 
 	return res;
 }

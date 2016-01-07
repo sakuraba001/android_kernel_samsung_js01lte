@@ -1,6 +1,6 @@
 /* filename: ISSP_Extern.h */
 #include "issp_revision.h"
-#include <linux/i2c/touchkey_i2c.h>
+#include <linux/i2c/cypress_touchkey.h>
 
 #ifdef PROJECT_REV_304
 /*

@@ -51,7 +51,6 @@
 #include <linux/bitops.h>
 #include <linux/pm_runtime.h>
 #include <linux/clk.h>
-#include <linux/completion.h>
 
 #include <asm/irq.h>
 #include <asm/byteorder.h>
@@ -61,6 +60,7 @@
 #include <scsi/scsi_tcq.h>
 #include <scsi/scsi_dbg.h>
 #include <scsi/scsi_eh.h>
+#include <scsi/scsi_device.h>
 
 #include "ufs.h"
 #include "ufshci.h"
@@ -76,7 +76,6 @@
  * @argument3: UIC command argument 3
  * @cmd_active: Indicate if UIC command is outstanding
  * @result: UIC command result
- * @done: UIC command completion
  */
 struct uic_command {
 	u32 command;
@@ -85,13 +84,12 @@ struct uic_command {
 	u32 argument3;
 	int cmd_active;
 	int result;
-	struct completion done;
 };
 
 /**
  * struct ufshcd_lrb - local reference block
  * @utr_descriptor_ptr: UTRD address of the command
- * @ucd_cmd_ptr: UCD address of the command
+ * @ucd_req_ptr: UCD address of the command
  * @ucd_rsp_ptr: Response UPIU address for this command
  * @ucd_prdt_ptr: PRDT address of the command
  * @cmd: pointer to SCSI command
@@ -104,7 +102,7 @@ struct uic_command {
  */
 struct ufshcd_lrb {
 	struct utp_transfer_req_desc *utr_descriptor_ptr;
-	struct utp_upiu_cmd *ucd_cmd_ptr;
+	struct utp_upiu_req *ucd_req_ptr;
 	struct utp_upiu_rsp *ucd_rsp_ptr;
 	struct ufshcd_sg_entry *ucd_prdt_ptr;
 
@@ -118,6 +116,19 @@ struct ufshcd_lrb {
 	unsigned int lun;
 };
 
+/**
+ * struct ufs_query - keeps the query request information
+ * @request: request upiu and function
+ * @descriptor: buffer for sending/receiving descriptor
+ * @response: response upiu and response
+ * @mutex: lock to allow one query at a time
+ */
+struct ufs_query {
+	struct ufs_query_req *request;
+	u8 *descriptor;
+	struct ufs_query_res *response;
+	struct mutex lock_ufs_query;
+};
 
 /**
  * struct ufs_hba - per adapter private structure
@@ -139,13 +150,14 @@ struct ufshcd_lrb {
  * @ufs_version: UFS Version to which controller complies
  * @irq: Irq number of the controller
  * @active_uic_cmd: handle of active UIC command
- * @uic_cmd_mutex: mutex for uic command
  * @ufshcd_tm_wait_queue: wait queue for task management
  * @tm_condition: condition variable for task management
  * @ufshcd_state: UFSHCD states
- * @intr_mask: Interrupt Mask Bits
+ * @int_enable_mask: Interrupt Mask Bits
+ * @uic_workq: Work queue for UIC completion handling
  * @feh_workq: Work queue for fatal controller error handling
  * @errors: HBA errors
+ * @query: query request information
  */
 struct ufs_hba {
 	void __iomem *mmio_base;
@@ -174,26 +186,23 @@ struct ufs_hba {
 	u32 ufs_version;
 	unsigned int irq;
 
-	struct uic_command *active_uic_cmd;
-	struct mutex uic_cmd_mutex;
-
+	struct uic_command active_uic_cmd;
 	wait_queue_head_t ufshcd_tm_wait_queue;
 	unsigned long tm_condition;
 
 	u32 ufshcd_state;
-	u32 intr_mask;
+	u32 int_enable_mask;
 
 	/* Work Queues */
+	struct work_struct uic_workq;
 	struct work_struct feh_workq;
 
 	/* HBA Errors */
 	u32 errors;
-};
 
-#define ufshcd_writel(hba, val, reg)	\
-	writel((val), (hba)->mmio_base + (reg))
-#define ufshcd_readl(hba, reg)	\
-	readl((hba)->mmio_base + (reg))
+	/* Query Request */
+	struct ufs_query query;
+};
 
 int ufshcd_init(struct device *, struct ufs_hba ** , void __iomem * ,
 			unsigned int);
@@ -205,7 +214,7 @@ void ufshcd_remove(struct ufs_hba *);
  */
 static inline void ufshcd_hba_stop(struct ufs_hba *hba)
 {
-	ufshcd_writel(hba, CONTROLLER_DISABLE,  REG_CONTROLLER_ENABLE);
+	writel(CONTROLLER_DISABLE, (hba->mmio_base + REG_CONTROLLER_ENABLE));
 }
 
 #endif /* End of Header */

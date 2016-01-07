@@ -134,7 +134,7 @@ struct mmc_platform_data {
 	u32 (*translate_vdd)(struct device *, unsigned int);
 	unsigned int (*status)(struct device *);
 	struct embedded_sdio_data *embedded_sdio;
-	int (*register_status_notify)(void (*callback)(int card_present, void *dev_id), void *dev_id, void *mmc_host);
+	int (*register_status_notify)(void (*callback)(int card_present, void *dev_id), void *dev_id);
 	/*
 	 * XPC controls the maximum current in the
 	 * default speed mode of SDXC card.
@@ -147,6 +147,7 @@ struct mmc_platform_data {
 	void (*sdio_lpm_gpio_setup)(struct device *, unsigned int);
         unsigned int status_irq;
 	int status_gpio;
+	int ls_gpio;
 	/* Indicates the polarity of the GPIO line when card is inserted */
 	bool is_status_gpio_active_low;
 	int sdiowakeup_irq;

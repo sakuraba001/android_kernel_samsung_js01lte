@@ -36,12 +36,10 @@
 #include <linux/ioctl.h>
 #include <linux/lcd.h>
 
-#if defined(CONFIG_SEC_LT03_PROJECT)
-#include "n1_edp_mdnie_data.h"
-#elif defined(CONFIG_SEC_PICASSO_PROJECT)
-#include "picasso_edp_mdnie_data.h"
-#else //defined(CONFIG_SEC_VIENNA_PROJECT) || defined(CONFIG_SEC_V2_PROJECT)
+#if defined(CONFIG_SEC_VIENNA_PROJECT)
 #include "v1_edp_mdnie_data.h"
+#elif defined(CONFIG_SEC_LT03_PROJECT)
+#include "n1_edp_mdnie_data.h"
 #endif
 
 #define MDNIE_LITE_TUN_DEBUG

@@ -90,11 +90,11 @@ module_param_call(runtime_disable, wdog_enable_set, param_get_int,
  */
 static int appsbark;
 module_param(appsbark, int, 0);
-#ifdef CONFIG_SEC_DEBUG
+
+#if CONFIG_SEC_DEBUG
 static unsigned int regsave_vaddr;
 static unsigned int regsave_paddr;
 #endif
-
 static int appsbark_fiq;
 
 /*
@@ -249,7 +249,8 @@ done:
 	mutex_unlock(&disable_lock);
 	return ret;
 }
-#ifdef CONFIG_SEC_DEBUG
+
+#if CONFIG_SEC_DEBUG
 static unsigned long long last_emerg_pet;
 void emerg_pet_watchdog(void)
 {
@@ -260,7 +261,6 @@ void emerg_pet_watchdog(void)
 }
 EXPORT_SYMBOL(emerg_pet_watchdog);
 #endif
-
 unsigned min_slack_ticks = UINT_MAX;
 unsigned long long min_slack_ns = ULLONG_MAX;
 
@@ -327,7 +327,8 @@ static irqreturn_t wdog_bark_handler(int irq, void *dev_id)
 	panic("Apps watchdog bark received!");
 	return IRQ_HANDLED;
 }
-#ifdef CONFIG_SEC_DEBUG
+
+#if CONFIG_SEC_DEBUG
 unsigned int get_wdog_regsave_paddr(void)
 {
 	return __pa(&regsave_paddr);
@@ -337,7 +338,6 @@ unsigned int get_last_pet_paddr(void)
 	return __pa(&last_pet);
 }
 #endif
-
 #define SCM_SET_REGSAVE_CMD 0x2
 
 static void configure_bark_dump(void)
@@ -350,7 +350,7 @@ static void configure_bark_dump(void)
 
 	if (!appsbark) {
 		scm_regsave = (void *)__get_free_page(GFP_KERNEL);
-#ifdef CONFIG_SEC_DEBUG
+#if CONFIG_SEC_DEBUG
 		printk(KERN_INFO "WDOG handled by TZ:dump @0x%08x PA:%08x\n",
 				(unsigned int) scm_regsave,
 				(unsigned int) __pa(scm_regsave));

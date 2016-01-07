@@ -80,12 +80,12 @@ struct max77803_charger_platform_data {
 #define DIVIDER_256			0x3
 
 struct max77803_haptic_platform_data {
-	u32 max_timeout;
-	u32 duty;
-	u32 period;
-	u32 reg2;
+	u16 max_timeout;
+	u16 duty;
+	u16 period;
+	u16 reg2;
 	char *regulator_name;
-	u32 pwm_id;
+	unsigned int pwm_id;
 
 	void (*init_hw) (void);
 	void (*motor_en) (bool);
@@ -153,7 +153,16 @@ extern int muic_otg_control(int enable);
 extern struct max77803_haptic_platform_data max77803_haptic_pdata;
 extern struct max77803_led_platform_data max77803_led_pdata;
 #endif
-#if defined (CONFIG_VIDEO_MHL_V2) || defined (CONFIG_VIDEO_MHL_SII8246)
+#ifdef CONFIG_VIDEO_MHL_V2
 int acc_register_notifier(struct notifier_block *nb);
 #endif
+
+#ifdef CONFIG_SEC_H_PROJECT
+#define MAX_SPEAKER_CHECK     60
+#define USB_CONNECTION_READY     0
+#define USB_CONNECTION_DISCONNECTED     1
+extern int speaker_status; // Check speak on/off
+extern void usb_status_send_event(int val); // send uevent
+#endif
+
 #endif				/* __LINUX_MFD_MAX77803_H */

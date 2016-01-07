@@ -65,7 +65,15 @@ enum {
 	QUP_I2C_CLK_CTL         = 0x400,
 	QUP_I2C_STATUS          = 0x404,
 };
-
+#ifdef CONFIG_MOTOR_DRV_TSP5000
+enum {
+	QUP_MX_OUTPUT_COUNT           = 0x100,
+	QUP_MX_OUTPUT_COUNT_CURRENT   = 0x104,
+	QUP_OUT_FIFO_WORD_CNT         = 0x10C,
+	QUP_MX_WRITE_COUNT            = 0x150,
+	QUP_MX_WRITE_COUNT_CURRENT    = 0x154,
+};
+#endif
 /* QUP States and reset values */
 enum {
 	QUP_RESET_STATE         = 0,
@@ -190,11 +198,10 @@ struct qup_i2c_dev {
 	void                         *complete;
 	int                          i2c_gpios[ARRAY_SIZE(i2c_rsrcs)];
 	struct qup_i2c_clk_path_vote clk_path_vote;
-};
-
-#ifdef CONFIG_PM
-static int i2c_qup_pm_resume_runtime(struct device *device);
+#ifdef CONFIG_MOTOR_DRV_TSP5000
+    int                          sent_cnt;
 #endif
+};
 
 #ifdef DEBUG
 static void
@@ -221,6 +228,9 @@ qup_i2c_interrupt(int irq, void *devid)
 	uint32_t status = 0;
 	uint32_t status1 = 0;
 	uint32_t op_flgs = 0;
+#ifdef CONFIG_MOTOR_DRV_TSP5000
+    uint32_t mx_cnt_cr = readl_relaxed(dev->base + QUP_MX_OUTPUT_COUNT_CURRENT);
+#endif
 	int err = 0;
 
 	if (pm_runtime_suspended(dev->dev))
@@ -241,8 +251,19 @@ qup_i2c_interrupt(int irq, void *devid)
 	}
 
 	if (status & I2C_STATUS_ERROR_MASK) {
+#ifdef CONFIG_MOTOR_DRV_TSP5000
+		if((dev->msg->addr) !=0x59){
+			dev_err(dev->dev, "QUP: I2C status flags :0x%x, irq:%d\n",
+				status, irq);
+		}
+		dev->sent_cnt = mx_cnt_cr;
+		if((status & 0xF0000) == 0x30000) dev->sent_cnt += 1;
+		if(dev->sent_cnt > 6) dev->sent_cnt -= 1;
+		if(dev->sent_cnt > 13) dev->sent_cnt -= 1;
+#else
 		dev_err(dev->dev, "QUP: I2C status flags :0x%x, irq:%d\n",
 			status, irq);
+#endif
 		err = status;
 		/* Clear Error interrupt if it's a level triggered interrupt*/
 		if (dev->num_irqs == 1) {
@@ -948,14 +969,11 @@ qup_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[], int num)
 	long timeout;
 	int err;
 
-	/* Alternate if runtime power management is disabled */
-	if (!pm_runtime_enabled(dev->dev)) {
-		dev_dbg(dev->dev, "Runtime PM is disabled\n");
-		i2c_qup_pm_resume_runtime(dev->dev);
-	} else {
-		pm_runtime_get_sync(dev->dev);
-	}
+	pm_runtime_get_sync(dev->dev);
 	mutex_lock(&dev->mlock);
+#ifdef CONFIG_MOTOR_DRV_TSP5000
+	dev->sent_cnt = 0;
+#endif
 
 	if (dev->suspended) {
 		mutex_unlock(&dev->mlock);
@@ -1175,9 +1193,17 @@ timeout_err:
 			if (dev->err) {
 				if (dev->err > 0 &&
 					dev->err & QUP_I2C_NACK_FLAG) {
+#ifdef CONFIG_MOTOR_DRV_TSP5000
+					if((dev->msg->addr) !=0x59){
+						dev_err(dev->dev,
+						"I2C slave addr:0x%x not connected\n",
+						dev->msg->addr);
+					}
+#else
 					dev_err(dev->dev,
 					"I2C slave addr:0x%x not connected\n",
 					dev->msg->addr);
+#endif
 					dev->err = ENOTCONN;
 				} else if (dev->err < 0) {
 					dev_err(dev->dev,
@@ -1395,8 +1421,7 @@ qup_i2c_probe(struct platform_device *pdev)
 	qup_mem = platform_get_resource_byname(pdev, IORESOURCE_MEM,
 						"qup_phys_addr");
 	if (!qup_mem) {
-		dev_err(&pdev->dev,
-			"platform_get_resource_byname(qup_phys_addr) failed\n");
+		dev_err(&pdev->dev, "no qup mem resource?\n");
 		ret = -ENODEV;
 		goto get_res_failed;
 	}
@@ -1666,22 +1691,11 @@ get_res_failed:
 	return ret;
 }
 
-static void qup_i2c_mem_release(struct platform_device *pdev, const char *name)
-{
-	struct resource *res =
-		platform_get_resource_byname(pdev, IORESOURCE_MEM, name);
-
-	if (res)
-		release_mem_region(res->start, resource_size(res));
-	else
-		dev_dbg(&pdev->dev,
-			"platform_get_resource_byname(%s) failed\n", name);
-}
-
 static int __devexit
 qup_i2c_remove(struct platform_device *pdev)
 {
-	struct qup_i2c_dev *dev = platform_get_drvdata(pdev);
+	struct qup_i2c_dev	*dev = platform_get_drvdata(pdev);
+	struct resource		*qup_mem, *gsbi_mem;
 
 	/* Grab mutex to ensure ongoing transaction is over */
 	mutex_lock(&dev->mlock);
@@ -1715,11 +1729,14 @@ qup_i2c_remove(struct platform_device *pdev)
 	pm_runtime_disable(&pdev->dev);
 	pm_runtime_set_suspended(&pdev->dev);
 
-	if (!(dev->pdata->use_gsbi_shared_mode))
-		qup_i2c_mem_release(pdev, "gsbi_qup_i2c_addr");
-
-	qup_i2c_mem_release(pdev, "qup_phys_addr");
-
+	if (!(dev->pdata->use_gsbi_shared_mode)) {
+		gsbi_mem = platform_get_resource_byname(pdev, IORESOURCE_MEM,
+							"gsbi_qup_i2c_addr");
+		release_mem_region(gsbi_mem->start, resource_size(gsbi_mem));
+	}
+	qup_mem = platform_get_resource_byname(pdev, IORESOURCE_MEM,
+						"qup_phys_addr");
+	release_mem_region(qup_mem->start, resource_size(qup_mem));
 	if (dev->dev->of_node)
 		kfree(dev->pdata);
 	kfree(dev);
@@ -1764,24 +1781,22 @@ static int qup_i2c_suspend(struct device *device)
 	if (!pm_runtime_enabled(device) || !pm_runtime_suspended(device)) {
 		dev_dbg(device, "system suspend");
 		i2c_qup_pm_suspend_runtime(device);
-		/*
-		 * set the device's runtime PM status to 'suspended'
-		 */
-		pm_runtime_disable(device);
-		pm_runtime_set_suspended(device);
-		pm_runtime_enable(device);
 	}
 	return 0;
 }
 
 static int qup_i2c_resume(struct device *device)
 {
-	/*
-	 * Rely on runtime-PM to call resume in case it is enabled
-	 * Even if it's not enabled, rely on 1st client transaction to do
-	 * clock ON and gpio configuration
-	 */
-	dev_dbg(device, "system resume");
+	int ret = 0;
+	if (!pm_runtime_enabled(device) || !pm_runtime_suspended(device)) {
+		dev_dbg(device, "system resume");
+		ret = i2c_qup_pm_resume_runtime(device);
+		if (!ret) {
+			pm_runtime_mark_last_busy(device);
+			pm_request_autosuspend(device);
+		}
+		return ret;
+	}
 	return 0;
 }
 #endif /* CONFIG_PM */

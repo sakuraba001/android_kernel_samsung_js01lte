@@ -196,7 +196,6 @@ extern "C"{
 	/*=================================================================
 	* Defines the register I/O macros.
 	*================================================================*/
-	void mtv319_set_port_if(unsigned long interface);
 	U8 mtv319_spi_read(U8 page, U8 reg);
 	void mtv319_spi_read_burst(U8 page, U8 reg, U8 *buf, int size);
 	void mtv319_spi_write(U8 page, U8 reg, U8 val);

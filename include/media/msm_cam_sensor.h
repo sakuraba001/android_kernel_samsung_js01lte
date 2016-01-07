@@ -50,101 +50,10 @@
 
 #define MAX_NUMBER_OF_STEPS 47
 
-//************************************* Native functionalities for YUV sensor added by jai.prakash
-#define EXT_CAM_EV			1
-#define EXT_CAM_WB			2
-#define EXT_CAM_METERING	3
-#define EXT_CAM_ISO			4
-#define EXT_CAM_EFFECT		5
-#define EXT_CAM_SCENE_MODE	6
-#define EXT_CAM_SENSOR_MODE	7
-
-//Exposure Compensation
-#define CAMERA_EV_M4		0
-#define CAMERA_EV_M3		1
-#define CAMERA_EV_M2		2
-#define CAMERA_EV_M1		3
-#define CAMERA_EV_DEFAULT	4
-#define CAMERA_EV_P1		5
-#define CAMERA_EV_P2		6
-#define CAMERA_EV_P3		7
-#define CAMERA_EV_P4		8
-
-//White Balance
-#define CAMERA_WHITE_BALANCE_OFF				0
-#define CAMERA_WHITE_BALANCE_AUTO				1
-#define CAMERA_WHITE_BALANCE_INCANDESCENT		2
-#define CAMERA_WHITE_BALANCE_FLUORESCENT		3
-#define CAMERA_WHITE_BALANCE_DAYLIGHT			5
-#define CAMERA_WHITE_BALANCE_CLOUDY_DAYLIGHT	6
-
-//Metering
-#define CAMERA_AVERAGE			0
-#define CAMERA_CENTER_WEIGHT	1
-#define CAMERA_SPOT				2
-
-//ISO
-#define CAMERA_ISO_MODE_AUTO	0
-#define CAMERA_ISO_MODE_50		1
-#define CAMERA_ISO_MODE_100		2
-#define CAMERA_ISO_MODE_200		3
-#define CAMERA_ISO_MODE_400		4
-#define CAMERA_ISO_MODE_800		5
-
-//Effect
-#define CAMERA_EFFECT_OFF			0
-#define CAMERA_EFFECT_MONO			1
-#define CAMERA_EFFECT_NEGATIVE		2
-#define CAMERA_EFFECT_SOLARIZE		3
-#define CAMERA_EFFECT_SEPIA			4
-#define CAMERA_EFFECT_POSTERIZE		5
-#define CAMERA_EFFECT_WHITEBOARD	6
-#define CAMERA_EFFECT_BLACKBOARD	7
-#define CAMERA_EFFECT_AQUA			8
-#define CAMERA_EFFECT_EMBOSS		9
-#define CAMERA_EFFECT_SKETCH		10
-#define CAMERA_EFFECT_NEON			11
-#define CAMERA_EFFECT_WASHED		12
-#define CAMERA_EFFECT_VINTAGE_WARM	13
-#define CAMERA_EFFECT_VINTAGE_COLD	14
-#define CAMERA_EFFECT_POINT_COLOR_1	15
-#define CAMERA_EFFECT_POINT_COLOR_2	16
-#define CAMERA_EFFECT_POINT_COLOR_3	17
-#define CAMERA_EFFECT_POINT_COLOR_4	18
-#define CAMERA_EFFECT_CARTOONIZE	19
-#define CAMERA_EFFECT_MAX			20
-
-//scene mode
-#define CAMERA_SCENE_AUTO		0
-#define CAMERA_SCENE_LANDSCAPE		3
-#define CAMERA_SCENE_SPORT		9
-#define CAMERA_SCENE_PARTY		13
-#define CAMERA_SCENE_BEACH		7
-#define CAMERA_SCENE_SUNSET		12
-#define CAMERA_SCENE_DAWN		21	//need to check
-#define CAMERA_SCENE_FALL		17
-#define CAMERA_SCENE_CANDLE		14
-#define CAMERA_SCENE_FIRE		11
-#define CAMERA_SCENE_AGAINST_LIGHT	16
-#define CAMERA_SCENE_NIGHT		6
-
-#define CAMERA_SCENE_PORTRAIT		7
-#define CAMERA_SCENE_TEXT		19
-
-
-#define CAMERA_MODE_INIT                0
-#define CAMERA_MODE_PREVIEW             1
-#define CAMERA_MODE_CAPTURE             2
-#define CAMERA_MODE_RECORDING           3
-
-
-//**************************************
-
 enum msm_camera_i2c_reg_addr_type {
 	MSM_CAMERA_I2C_BYTE_ADDR = 1,
 	MSM_CAMERA_I2C_WORD_ADDR,
 	MSM_CAMERA_I2C_3B_ADDR,
-	MSM_CAMERA_I2C_ADDR_TYPE_MAX,
 };
 
 enum msm_camera_i2c_data_type {
@@ -156,7 +65,6 @@ enum msm_camera_i2c_data_type {
 	MSM_CAMERA_I2C_UNSET_WORD_MASK,
 	MSM_CAMERA_I2C_SET_BYTE_WRITE_MASK_DATA,
 	MSM_CAMERA_I2C_BURST_DATA,
-	MSM_CAMERA_I2C_DATA_TYPE_MAX,
 };
 
 enum msm_sensor_power_seq_type_t {
@@ -164,7 +72,7 @@ enum msm_sensor_power_seq_type_t {
 	SENSOR_GPIO,
 	SENSOR_VREG,
 	SENSOR_I2C_MUX,
-#if defined(CONFIG_MACH_MONTBLANC) || defined(MONTBLANC_CAMERA) || defined(CONFIG_MACH_VIKALCU) || defined(VIKAL_CAMERA)
+#if defined(CONFIG_MACH_MONTBLANC)
 	SENSOR_ADDITIONAL_LDO,
 #endif
 };
@@ -178,12 +86,8 @@ enum msm_sensor_clk_type_t {
 enum msm_sensor_power_seq_gpio_t {
 	SENSOR_GPIO_RESET,
 	SENSOR_GPIO_STANDBY,
-	SENSOR_GPIO_VT_RESET,
-	SENSOR_GPIO_VT_STANDBY,
 	SENSOR_GPIO_EXT_VANA_POWER,
 	SENSOR_GPIO_EXT_VIO_POWER,
-	SENSOR_GPIO_EXT_VCORE_POWER,
-	SENSOR_GPIO_EXT_CAMIO_EN,
 	SENSOR_GPIO_MAX,
 };
 
@@ -297,7 +201,6 @@ struct msm_camera_sensor_slave_info {
 	enum msm_sensor_camera_id_t camera_id;
 	uint16_t slave_addr;
 	enum msm_camera_i2c_reg_addr_type addr_type;
-	enum msm_camera_i2c_data_type data_type;
 	struct msm_sensor_id_info_t sensor_id_info;
 	struct msm_sensor_power_setting_array power_setting_array;
 	uint8_t is_probe_succeed;
@@ -336,13 +239,6 @@ struct msm_camera_i2c_seq_reg_setting {
 	uint16_t size;
 	enum msm_camera_i2c_reg_addr_type addr_type;
 	uint16_t delay;
-};
-
-struct msm_camera_i2c_read_config {
-	uint16_t slave_addr;
-	uint16_t reg_addr;
-	enum msm_camera_i2c_data_type data_type;
-	uint16_t *data;
 };
 
 struct msm_camera_csid_vc_cfg {
@@ -482,7 +378,6 @@ struct msm_eeprom_cfg_data {
 
 enum msm_sensor_cfg_type_t {
 	CFG_SET_SLAVE_INFO,
-	CFG_SLAVE_READ_I2C,
 	CFG_WRITE_I2C_ARRAY,
 	CFG_WRITE_I2C_SEQ_ARRAY,
 	CFG_POWER_UP,
@@ -494,7 +389,6 @@ enum msm_sensor_cfg_type_t {
 	CFG_SET_STOP_STREAM,
 	CFG_SET_START_STREAM,
 	CFG_SET_GPIO_STATE,
-	CFG_SET_SENSOR_OTP_CAL, // Randy 10.08
 };
 
 enum msm_actuator_cfg_type_t {
@@ -657,14 +551,6 @@ struct sensor_init_cfg_data {
 	} cfg;
 };
 
-struct ioctl_native_cmd {
-        unsigned short mode;
-        unsigned short address;
-        unsigned short value_1;
-        unsigned short value_2;
-        unsigned short value_3;
-};
-
 #define VIDIOC_MSM_SENSOR_CFG \
 	_IOWR('V', BASE_VIDIOC_PRIVATE + 1, struct sensorb_cfg_data)
 
@@ -691,9 +577,6 @@ struct ioctl_native_cmd {
 
 #define VIDIOC_MSM_SENSOR_INIT_CFG \
 	_IOWR('V', BASE_VIDIOC_PRIVATE + 9, struct sensor_init_cfg_data)
-
-#define VIDIOC_MSM_SENSOR_NATIVE_CMD \
-	_IOWR('V', BASE_VIDIOC_PRIVATE + 10, struct ioctl_native_cmd)
 
 #define MSM_V4L2_PIX_FMT_META v4l2_fourcc('M', 'E', 'T', 'A') /* META */
 

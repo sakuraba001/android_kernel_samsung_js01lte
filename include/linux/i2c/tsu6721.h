@@ -1,6 +1,7 @@
 /*
- * Copyright (C) 2013 Samsung Electronics
- * Jeongrae Kim <jryu.kim@samsung.com>
+ * Copyright (C) 2010 Samsung Electronics
+ * Minkyu Kang <mk7.kang@samsung.com>
+ * Wonguk Jeong <wonguk.jeong@samsung.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,28 +22,7 @@
 #ifndef _TSU6721_H_
 #define _TSU6721_H_
 
-
-enum cable_type_t {
-        CABLE_TYPE_NONE = 0,
-        CABLE_TYPE_USB,
-        CABLE_TYPE_AC,
-        CABLE_TYPE_MISC,
-        CABLE_TYPE_CARDOCK,
-        CABLE_TYPE_UARTOFF,
-        CABLE_TYPE_JIG,
-        CABLE_TYPE_UNKNOWN,
-        CABLE_TYPE_CDP,
-        CABLE_TYPE_SMART_DOCK,
-        CABLE_TYPE_OTG,
-        CABLE_TYPE_AUDIO_DOCK,
-#ifdef CONFIG_WIRELESS_CHARGING
-        CABLE_TYPE_WPC,
-#endif
-        CABLE_TYPE_INCOMPATIBLE,
-        CABLE_TYPE_DESK_DOCK,
-};
-
-
+#include <linux/mfd/pm8xxx/pm8921-charger.h>
 
 enum {
 	TSU6721_DETACHED,
@@ -55,38 +35,74 @@ enum {
 };
 
 enum {
-	DOCK_UI_DESK = 1,
-	DOCK_UI_CAR
+	TSU6721_DETACHED_DOCK = 0,
+	TSU6721_ATTACHED_DESK_DOCK,
+	TSU6721_ATTACHED_CAR_DOCK,
+};
+
+enum cable_type_t {
+	CABLE_TYPE_NONE = 0,
+	CABLE_TYPE_USB,
+	CABLE_TYPE_AC,
+	CABLE_TYPE_MISC,
+	CABLE_TYPE_CARDOCK,
+	CABLE_TYPE_UARTOFF,
+	CABLE_TYPE_JIG,
+	CABLE_TYPE_UNKNOWN,
+	CABLE_TYPE_CDP,
+	CABLE_TYPE_SMART_DOCK,
+	CABLE_TYPE_OTG,
+	CABLE_TYPE_AUDIO_DOCK,
+#ifdef CONFIG_WIRELESS_CHARGING
+	CABLE_TYPE_WPC,
+#endif
+	CABLE_TYPE_INCOMPATIBLE,
+};
+
+enum tsu6721_cb_support {
+	UNSUPPORTED = 0,
+	SUPPORTED
+};
+
+struct tsu6721_cb_struct {
+	const char *name;
+	enum tsu6721_cb_support is_support;
 };
 
 struct tsu6721_platform_data {
-	void (*callback)(enum cable_type_t cable_type, int attached);
-	void (*oxp_callback)(int state);
+	void (*callback)(enum cable_type_t cable_type, int state);
+	void (*cfg_gpio) (void);
+	void (*reset_cb) (void);
+	void (*set_init_flag) (void);
+	int (*dock_init) (void);
 	void (*mhl_sel) (bool onoff);
-	int	(*dock_init) (void);
+	void (*mhl_notify) (int attached);
+	void (*oxp_callback) (int state);
+	bool i2c_pull_up;
 	int gpio_int;
 	u32 irq_gpio_flags;
 	int gpio_sda;
 	u32 sda_gpio_flags;
 	int gpio_scl;
 	u32 scl_gpio_flags;
-	int gpio_uart_on;
-	u32 uarton_gpio_flags;
 };
-
-extern int poweroff_charging;
-
+enum {
+	SWITCH_PORT_AUTO = 0,
+	SWITCH_PORT_USB,
+	SWITCH_PORT_AUDIO,
+	SWITCH_PORT_UART,
+	SWITCH_PORT_VAUDIO,
+	SWITCH_PORT_USB_OPEN,
+	SWITCH_PORT_ALL_OPEN,
+};
+extern void muic_callback(enum cable_type_t cable_type, int state);
+extern void tsu6721_manual_switching(int path);
+extern void tsu6721_otg_detach(void);
 extern int check_jig_state(void);
-extern struct tsu6721_platform_data tsu6721_pdata;
-extern void tsu6721_callback(enum cable_type_t cable_type, int attached);
-extern void tsu6721_oxp_callback(int state);
-extern int tsu6721_dock_init(void);
-
 #if defined(CONFIG_VIDEO_MHL_V2)
 extern int dock_det(void);
-#endif
 
+#endif
 extern struct class *sec_class;
 
 #endif /* _TSU6721_H_ */
-

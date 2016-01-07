@@ -147,13 +147,13 @@ struct msm_hdmi_mode_timing_info {
 	 720, 5, 5, 20, false, 74250, 60000, false, true}
 #define HDMI_VFRMT_1920x1080i60_16_9_TIMING				\
 	{HDMI_VFRMT_1920x1080i60_16_9, 1920, 88, 44, 148, false,	\
-	 540, 2, 5, 5, false, 74250, 60000, false, true}
+	 540, 2, 5, 5, false, 74250, 60000, false, false}
 #define HDMI_VFRMT_1440x480i60_4_3_TIMING				\
 	{HDMI_VFRMT_1440x480i60_4_3, 1440, 38, 124, 114, true,		\
-	 240, 4, 3, 15, true, 27000, 60000, true, true}
+	 240, 4, 3, 15, true, 27000, 60000, true, false}
 #define HDMI_VFRMT_1440x480i60_16_9_TIMING				\
 	{HDMI_VFRMT_1440x480i60_16_9, 1440, 38, 124, 114, true,		\
-	 240, 4, 3, 15, true, 27000, 60000, true, true}
+	 240, 4, 3, 15, true, 27000, 60000, true, false}
 #define HDMI_VFRMT_1920x1080p60_16_9_TIMING				\
 	{HDMI_VFRMT_1920x1080p60_16_9, 1920, 88, 44, 148, false,	\
 	 1080, 4, 5, 36, false, 148500, 60000, false, true}
@@ -168,10 +168,10 @@ struct msm_hdmi_mode_timing_info {
 	 720,  5, 5, 20, false, 74250, 50000, false, true}
 #define HDMI_VFRMT_1440x576i50_4_3_TIMING				\
 	{HDMI_VFRMT_1440x576i50_4_3, 1440, 24, 126, 138, true,		\
-	 288,  2, 3, 19, true, 27000, 50000, true, true}
+	 288,  2, 3, 19, true, 27000, 50000, true, false}
 #define HDMI_VFRMT_1440x576i50_16_9_TIMING				\
 	{HDMI_VFRMT_1440x576i50_16_9, 1440, 24, 126, 138, true,		\
-	 288,  2, 3, 19, true, 27000, 50000, true, true}
+	 288,  2, 3, 19, true, 27000, 50000, true, false}
 #define HDMI_VFRMT_1920x1080p50_16_9_TIMING				\
 	{HDMI_VFRMT_1920x1080p50_16_9, 1920, 528, 44, 148, false,	\
 	 1080, 4, 5, 36, false, 148500, 50000, false, true}
@@ -192,19 +192,19 @@ struct msm_hdmi_mode_timing_info {
 	1024, 1, 3, 38, false, 108000, 60000, false, true}
 #define HDMI_VFRMT_2560x1600p60_16_9_TIMING				\
 	{HDMI_VFRMT_2560x1600p60_16_9, 2560, 48, 32, 80, false,		\
-	 1600, 3, 6, 37, false, 268500, 60000, false, true}
+	 1600, 3, 6, 37, false, 268500, 60000, false, false}
 #define HDMI_VFRMT_3840x2160p30_16_9_TIMING				\
 	{HDMI_VFRMT_3840x2160p30_16_9, 3840, 176, 88, 296, false,	\
-	 2160, 8, 10, 72, false, 297000, 30000, false, true}
+	 2160, 8, 10, 72, false, 297000, 30000, false, false}
 #define HDMI_VFRMT_3840x2160p25_16_9_TIMING				\
 	{HDMI_VFRMT_3840x2160p25_16_9, 3840, 1056, 88, 296, false,	\
-	 2160, 8, 10, 72, false, 297000, 25000, false, true}
+	 2160, 8, 10, 72, false, 297000, 25000, false, false}
 #define HDMI_VFRMT_3840x2160p24_16_9_TIMING				\
 	{HDMI_VFRMT_3840x2160p24_16_9, 3840, 1276, 88, 296, false,	\
-	 2160, 8, 10, 72, false, 297000, 24000, false, true}
+	 2160, 8, 10, 72, false, 297000, 24000, false, false}
 #define HDMI_VFRMT_4096x2160p24_16_9_TIMING				\
 	{HDMI_VFRMT_4096x2160p24_16_9, 4096, 1020, 88, 296, false,	\
-	 2160, 8, 10, 72, false, 297000, 24000, false, true}
+	 2160, 8, 10, 72, false, 297000, 24000, false, false}
 
 #define MSM_HDMI_MODES_SET_TIMING(LUT, MODE) do {		\
 	struct msm_hdmi_mode_timing_info mode = MODE##_TIMING;	\

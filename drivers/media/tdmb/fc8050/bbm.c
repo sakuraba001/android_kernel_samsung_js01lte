@@ -309,11 +309,11 @@ void bbm_com_isr(HANDLE hDevice)
 	fc8050_isr(hDevice);
 }
 
-int bbm_com_hostif_select(HANDLE hDevice, u8 hostif,  u32 param)
+int bbm_com_hostif_select(HANDLE hDevice, u8 hostif)
 {
 	int res = BBM_NOK;
 
-	res = bbm_hostif_select(hDevice, hostif, param);
+	res = bbm_hostif_select(hDevice, hostif);
 
 	return res;
 }

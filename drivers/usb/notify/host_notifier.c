@@ -13,11 +13,8 @@
 #include <linux/platform_device.h>
 #include <linux/usb/otg.h>
 #include <linux/host_notify.h>
-#if defined(CONFIG_MFD_MAX77803)
 #include <linux/mfd/max77803.h>
-#elif defined(CONFIG_MFD_MAX77804K)
-#include <linux/mfd/max77804k.h>
-#endif
+
 #ifdef pr_fmt
 #undef pr_fmt
 #endif
@@ -108,20 +105,6 @@ static void hnotifier_work(struct work_struct *w)
 		break;
 	case HNOTIFY_AUDIODOCK_OFF:
 		sec_handle_event(0);
-		break;
-	case HNOTIFY_LANHUB_ON:
-		host_state_notify(&pinfo->ndev,	NOTIFY_HOST_ADD);
-		sec_handle_event(1);
-		break;
-	case HNOTIFY_LANHUB_OFF:
-		host_state_notify(&pinfo->ndev,	NOTIFY_HOST_REMOVE);
-		sec_handle_event(0);
-		break;
-	case HNOTIFY_LANHUBTA_ON:
-		safe_boost(pinfo, 2);
-		break;
-	case HNOTIFY_LANHUBTA_OFF:
-		safe_boost(pinfo, 1);
 		break;
 	default:
 		break;

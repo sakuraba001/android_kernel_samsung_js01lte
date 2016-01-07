@@ -90,16 +90,16 @@
 #define Q_REG_SRC_SEL_MASK		0xE
 #define Q_REG_MODE_SEL_SHIFT		4
 #define Q_REG_MODE_SEL_MASK		0x70
-#define Q_REG_INVERT_SHIFT		Q_REG_OUT_INVERT_SHIFT
-#define Q_REG_INVERT_MASK		Q_REG_OUT_INVERT_MASK
-#define Q_REG_MODE_SHIFT		Q_REG_MODE_SEL_SHIFT
-#define Q_REG_MODE_MASK			Q_REG_MODE_SEL_MASK
+#define Q_REG_INVERT_SHIFT	Q_REG_OUT_INVERT_SHIFT
+#define Q_REG_INVERT_MASK	Q_REG_OUT_INVERT_MASK
+#define Q_REG_MODE_SHIFT	Q_REG_MODE_SEL_SHIFT
+#define Q_REG_MODE_MASK	Q_REG_MODE_SEL_MASK
 
 /* control reg: dig_vin */
 #define Q_REG_VIN_SHIFT			0
 #define Q_REG_VIN_MASK			0x7
-#define Q_REG_VIN_SEL_SHIFT		Q_REG_VIN_SHIFT
-#define Q_REG_VIN_SEL_MASK		Q_REG_VIN_MASK
+#define Q_REG_VIN_SEL_SHIFT	Q_REG_VIN_SHIFT
+#define Q_REG_VIN_SEL_MASK	Q_REG_VIN_MASK
 
 /* control reg: dig_pull */
 #define Q_REG_PULL_SHIFT		0
@@ -110,8 +110,8 @@
 #define Q_REG_OUT_STRENGTH_MASK		0x3
 #define Q_REG_OUT_TYPE_SHIFT		4
 #define Q_REG_OUT_TYPE_MASK		0x30
-#define Q_REG_OUTPUT_TYPE_SHIFT		Q_REG_OUT_TYPE_SHIFT
-#define Q_REG_OUTPUT_TYPE_MASK		Q_REG_OUT_TYPE_MASK
+#define Q_REG_OUTPUT_TYPE_SHIFT	Q_REG_OUT_TYPE_SHIFT
+#define Q_REG_OUTPUT_TYPE_MASK	Q_REG_OUT_TYPE_MASK
 
 /* control reg: en */
 #define Q_REG_MASTER_EN_SHIFT		7
@@ -597,9 +597,6 @@ int qpnp_pin_config(int gpio, struct qpnp_pin_cfg *param)
 	}
 	mutex_unlock(&qpnp_pin_chips_lock);
 
-	if (!q_spec)
-		return -ENODEV;
-
 	rc = _qpnp_pin_config(q_chip, q_spec, param);
 
 	return rc;
@@ -884,16 +881,11 @@ static int qpnp_pin_apply_config(struct qpnp_pin_chip *q_chip,
 static int qpnp_pin_free_chip(struct qpnp_pin_chip *q_chip)
 {
 	struct spmi_device *spmi = q_chip->spmi;
-	struct qpnp_pin_spec *q_spec = NULL;
 	int rc, i;
 
 	if (q_chip->chip_gpios)
-		for (i = 0; i < spmi->num_dev_node; i++) {
-			q_spec = qpnp_chip_gpio_get_spec(q_chip, i);
-			if (q_spec)
-				kfree(q_spec);
+		for (i = 0; i < spmi->num_dev_node; i++)
 			kfree(q_chip->chip_gpios[i]);
-		}
 
 	mutex_lock(&qpnp_pin_chips_lock);
 	list_del(&q_chip->chip_list);
@@ -1424,8 +1416,6 @@ static int qpnp_pin_probe(struct spmi_device *spmi)
 		if (!res) {
 			dev_err(&spmi->dev, "%s: node %s is missing has no base address definition\n",
 				__func__, d_node->of_node->full_name);
-			rc = -EINVAL;
-			goto err_probe;
 		}
 
 		rc = of_property_read_u32(d_node->of_node,

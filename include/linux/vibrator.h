@@ -53,16 +53,4 @@ struct vibrator_platform_data_motor {
 	void (*power_onoff)(int onoff);
 };
 
-#if defined(CONFIG_HAPTIC_ISA1200)
-
-	struct vibrator_platform_data_isa1200 {
-		unsigned int motor_en;
-		unsigned int vib_clk;
-		struct i2c_client *client;
-#if defined(CONFIG_MACH_MATISSE3G_OPEN)
-		void (*power_onoff)(int onoff);
-#endif
-	};
-#endif
-
 #endif

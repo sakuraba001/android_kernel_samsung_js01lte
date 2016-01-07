@@ -67,6 +67,12 @@ void asmlinkage __attribute__((weak)) early_printk(const char *fmt, ...)
 
 #define __LOG_BUF_LEN	(1 << CONFIG_LOG_BUF_SHIFT)
 
+#ifdef CONFIG_SEC_LOG_LAST_KMSG
+#define LAST_LOG_BUF_SHIFT 19
+char *last_kmsg_buffer;
+unsigned last_kmsg_size;
+#endif
+
 /* printk's without a loglevel use this.. */
 #define DEFAULT_MESSAGE_LOGLEVEL CONFIG_DEFAULT_MESSAGE_LOGLEVEL
 
@@ -222,13 +228,7 @@ static unsigned long long sec_log_save_base;
 unsigned long long sec_log_reserve_base;
 unsigned sec_log_reserve_size;
 unsigned int *sec_log_irq_en;
-#ifdef CONFIG_SEC_LOG_LAST_KMSG
-#define LAST_LOG_BUF_SHIFT 19
-static char *last_kmsg_buffer;
-static unsigned last_kmsg_size;
-#endif /* CONFIG_SEC_LOG_LAST_KMSG */
-#endif /* CONFIG_PRINTK_NOCACHE */
-
+#endif
 static inline void emit_sec_log_char(char c)
 {
 	if (sec_log_buf && sec_log_ptr) {
@@ -292,7 +292,7 @@ static int __init printk_remap_nocache(void)
 
 	sec_getlog_supply_kloginfo(log_buf);
 
-#ifndef CONFIG_SEC_DEBUG_NOCACHE_LOG_IN_LEVEL_LOW
+#ifndef CONFIG_SEC_LOCALE_KOR
 	if (0 == sec_debug_is_enabled()) {
 #ifdef CONFIG_SEC_DEBUG_LOW_LOG
 		nocache_base = ioremap_nocache(sec_log_save_base - 4096,
@@ -307,7 +307,7 @@ static int __init printk_remap_nocache(void)
 #endif
 		return rc;
 	}
-#endif /* CONFIG_SEC_DEBUG_NOCACHE_LOG_IN_LEVEL_LOW */
+#endif
 
 	pr_err("%s: sec_log_save_size %d at sec_log_save_base 0x%x\n",
 	__func__, sec_log_save_size, (unsigned int)sec_log_save_base);
@@ -317,10 +317,6 @@ static int __init printk_remap_nocache(void)
 	nocache_base = ioremap_nocache(sec_log_save_base - 4096,
 					sec_log_save_size + 8192);
 
-	if (!nocache_base) {
-		pr_err("Failed to remap nocache log region\n");
-		return rc;
-	}
 	pr_err("%s: nocache_base printk virtual addrs 0x%x  phy=0x%x\n",__func__, (unsigned int)(nocache_base), (unsigned int)(sec_log_save_base));
 	
 	nocache_base = nocache_base + 4096;
@@ -1671,7 +1667,6 @@ again:
 		retry = 1;
 	else
 		retry = 0;
-
 	raw_spin_unlock_irqrestore(&logbuf_lock, flags);
 
 	if (retry && console_trylock())
@@ -2162,9 +2157,7 @@ void kmsg_dump(enum kmsg_dump_reason reason)
 		dumper->dump(dumper, reason, s1, l1, s2, l2);
 	rcu_read_unlock();
 }
-
 #ifdef CONFIG_PRINTK_NOCACHE
 module_init(printk_remap_nocache);
 #endif
-
 #endif

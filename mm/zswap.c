@@ -184,7 +184,7 @@ static void zswap_comp_exit(void)
  * offset - the swap offset for the entry.  Index into the red-black tree.
  * handle - zsmalloc allocation handle that stores the compressed page data
  * length - the length in bytes of the compressed page data.  Needed during
- *           decompression
+            decompression
  */
 struct zswap_entry {
 	struct rb_node rbnode;
@@ -322,7 +322,7 @@ static int __zswap_cpu_notifier(unsigned long action, unsigned long cpu)
 			return NOTIFY_BAD;
 		}
 		*per_cpu_ptr(zswap_comp_pcpu_tfms, cpu) = tfm;
-		dst = kmalloc(PAGE_SIZE * 2, GFP_KERNEL);
+		dst = (u8 *)__get_free_pages(GFP_KERNEL, 1);
 		if (!dst) {
 			pr_err("can't allocate compressor buffer\n");
 			crypto_free_comp(tfm);
@@ -340,7 +340,7 @@ static int __zswap_cpu_notifier(unsigned long action, unsigned long cpu)
 		}
 		dst = per_cpu(zswap_dstmem, cpu);
 		if (dst) {
-			kfree(dst);
+			free_pages((unsigned long)dst, 1);
 			per_cpu(zswap_dstmem, cpu) = NULL;
 		}
 		break;
@@ -447,10 +447,10 @@ static void zswap_free_entry(struct zswap_tree *tree, struct zswap_entry *entry)
 	atomic_dec(&zswap_stored_pages);
 }
 
-#ifdef CONFIG_ZSWAP_ENABLE_WRITEBACK
 /*********************************
 * writeback code
 **********************************/
+#ifdef CONFIG_ZSWAP_ENABLE_WRITEBACK
 static void zswap_end_swap_write(struct bio *bio, int err)
 {
 	end_swap_bio_write(bio, err);
@@ -484,7 +484,6 @@ static int zswap_get_swap_cache_page(swp_entry_t entry,
 				struct page **retpage)
 {
 	struct page *found_page, *new_page = NULL;
-	struct address_space *swapper_space = &swapper_spaces[swp_type(entry)];
 	int err;
 
 	*retpage = NULL;
@@ -494,7 +493,7 @@ static int zswap_get_swap_cache_page(swp_entry_t entry,
 		 * called after lookup_swap_cache() failed, re-calling
 		 * that would confuse statistics.
 		 */
-		found_page = find_get_page(swapper_space, entry.val);
+		found_page = find_get_page(&swapper_space, entry.val);
 		if (found_page)
 			break;
 
@@ -567,8 +566,7 @@ static int zswap_get_swap_cache_page(swp_entry_t entry,
  * the swap cache, the compressed version stored by zswap can be
  * freed.
  */
-static int zswap_writeback_entry(struct zswap_tree *tree,
-				struct zswap_entry *entry)
+static int zswap_writeback_entry(struct zswap_tree *tree, struct zswap_entry *entry)
 {
 	unsigned long type = tree->type;
 	struct page *page;
@@ -613,9 +611,13 @@ static int zswap_writeback_entry(struct zswap_tree *tree,
 
 	/* start writeback */
 	SetPageReclaim(page);
-	if (!__swap_writepage(page, &wbc, zswap_end_swap_write))
-		atomic_inc(&zswap_outstanding_writebacks);
+	/*
+	 * Return value is ignored here because it doesn't change anything
+	 * for us.  Page is returned unlocked.
+	 */
+	(void)__swap_writepage(page, &wbc, zswap_end_swap_write);
 	page_cache_release(page);
+	atomic_inc(&zswap_outstanding_writebacks);
 
 	return 0;
 }
@@ -629,16 +631,16 @@ static int zswap_writeback_entries(struct zswap_tree *tree, int nr)
 	struct zswap_entry *entry;
 	int i, ret, refcount, freed_nr = 0;
 
-	for (i = 0; i < nr; i++) {
-		/*
-		 * This limits is arbitrary for now until a better
-		 * policy can be implemented. This is so we don't
-		 * eat all of RAM decompressing pages for writeback.
-		 */
-		if (atomic_read(&zswap_outstanding_writebacks) >
-				ZSWAP_MAX_OUTSTANDING_FLUSHES)
-			break;
+	/*
+	 * This limits is arbitrary for now until a better
+	 * policy can be implemented. This is so we don't
+	 * eat all of RAM decompressing pages for writeback.
+	 */
+	if (atomic_read(&zswap_outstanding_writebacks) >
+		ZSWAP_MAX_OUTSTANDING_FLUSHES)
+		return 0;
 
+	for (i = 0; i < nr; i++) {
 		spin_lock(&tree->lock);
 
 		/* dequeue from lru */
@@ -664,21 +666,19 @@ static int zswap_writeback_entries(struct zswap_tree *tree, int nr)
 		refcount = zswap_entry_put(entry);
 
 		if (!ret)
-			/* drop the initial reference from entry creation */
+			 /* drop the initial reference from entry creation */
 			refcount = zswap_entry_put(entry);
 
 		/*
-		 * There are four possible values for refcount here:
-		 * (1) refcount is 2, writeback failed and load is in progress;
-		 *     do nothing, load will add us back to the LRU
-		 * (2) refcount is 1, writeback failed; do not free entry,
-		 *     add back to LRU
-		 * (3) refcount is 0, (normal case) not invalidate yet;
-		 *     remove from rbtree and free entry
-		 * (4) refcount is -1, invalidate happened during writeback;
+		 * There are three possible values for refcount here:
+		 * (1) refcount is 1, load is in progress or writeback failed;
+		 *     do not free entry, add back to LRU
+		 * (2) refcount is 0, (usual case) not invalidate yet;
+		 *     free entry
+		 * (3) refcount is -1, invalidate happened during writeback;
 		 *     free entry
 		 */
-		if (refcount == 1)
+		if (refcount > 0)
 			list_add(&entry->lru, &tree->lru);
 
 		if (refcount == 0) {
@@ -691,8 +691,12 @@ static int zswap_writeback_entries(struct zswap_tree *tree, int nr)
 			zswap_free_entry(tree, entry);
 			freed_nr++;
 		}
+			
+		if (atomic_read(&zswap_outstanding_writebacks) >
+			ZSWAP_MAX_OUTSTANDING_FLUSHES)
+			break;
 	}
-	return freed_nr;
+	return freed_nr++;
 }
 #endif /* CONFIG_ZSWAP_ENABLE_WRITEBACK */
 
@@ -808,7 +812,12 @@ static int zswap_frontswap_store(unsigned type, pgoff_t offset,
 		__GFP_NORETRY | __GFP_HIGHMEM | __GFP_NOMEMALLOC |
 			__GFP_NOWARN);
 	if (!handle) {
+		ret = -ENOMEM;
+		goto freepage;
+	}
+
 #ifdef CONFIG_ZSWAP_ENABLE_WRITEBACK
+	if (!handle) {
 		zswap_writeback_attempted++;
 		/*
 		 * Copy compressed buffer out of per-cpu storage so
@@ -840,11 +849,8 @@ static int zswap_frontswap_store(unsigned type, pgoff_t offset,
 			goto freepage;
 		}
 		zswap_saved_by_writeback++;
-#else
-		ret = -ENOMEM;
-		goto freepage;
-#endif
 	}
+#endif /* CONFIG_ZSWAP_ENABLE_WRITEBACK */
 
 	buf = zs_map_object(tree->pool, handle, ZS_MM_WO);
 	memcpy(buf, dst, dlen);
@@ -910,7 +916,7 @@ static int zswap_frontswap_load(unsigned type, pgoff_t offset,
 	spin_lock(&tree->lock);
 	entry = zswap_rb_search(&tree->rbroot, offset);
 	if (!entry) {
-		/* entry was written back */
+		/* entry was written_back */
 		spin_unlock(&tree->lock);
 		return -1;
 	}
@@ -1024,7 +1030,7 @@ static void zswap_frontswap_init(unsigned type)
 {
 	struct zswap_tree *tree;
 
-	tree = kzalloc(sizeof(struct zswap_tree), GFP_ATOMIC);
+	tree = kzalloc(sizeof(struct zswap_tree), GFP_NOWAIT);
 	if (!tree)
 		goto err;
 	tree->pool = zs_create_pool(GFP_NOWAIT, &zswap_zs_ops);

@@ -23,9 +23,7 @@
 #define CHIP_ID		"SHTC1"
 #define DONE_CAL	3
 
-#if defined(CONFIG_MACH_KS01EUR)
-#define MODEL_NAME	"GT-I9506"
-#elif defined(CONFIG_MACH_KS01SKT)
+#if defined(CONFIG_MACH_KS01SKT)
 #define MODEL_NAME	"SHV-E330S"
 #elif defined(CONFIG_MACH_KS01KTT)
 #define MODEL_NAME	"SHV-E330K"
@@ -69,7 +67,7 @@ static int get_cp_thm_value(struct ssp_data *data)
 	int err = 0;
 	struct qpnp_vadc_result results;
 		mutex_lock(&data->cp_temp_adc_lock);
-	err = qpnp_vadc_read(NULL, LR_MUX6_PU2_AMUX_THM3, &results);
+	err = qpnp_vadc_read(LR_MUX6_PU2_AMUX_THM3, &results);
 		mutex_unlock(&data->cp_temp_adc_lock);
 		if (err) {
 		pr_err("%s : error reading chn %d, rc = %d\n",
@@ -111,7 +109,7 @@ static int convert_adc_to_temp(struct ssp_data *data, unsigned int adc)
 	int err = 0;
 	struct qpnp_vadc_result results;
 	mutex_lock(&data->cp_temp_adc_lock);
-	err = qpnp_vadc_read(NULL, LR_MUX6_PU2_AMUX_THM3, &results);
+	err = qpnp_vadc_read(LR_MUX6_PU2_AMUX_THM3, &results);
 	mutex_unlock(&data->cp_temp_adc_lock);
 	if (err) {
 		pr_err("%s : error reading chn %d, rc = %d\n",

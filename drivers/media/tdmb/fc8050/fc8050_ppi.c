@@ -32,8 +32,7 @@
 static DEFINE_SPINLOCK(fci_lock);
 
 #ifdef CONFIG_TDMB_EBI
-u32 base_address;
-#define BBM_BASE_ADDR  (void __iomem *)base_address
+#define BBM_BASE_ADDR				v_addr_ebi_cs_base
 #define BBM_BASE_OFFSET			0x00
 #else
 #define BBM_BASE_ADDR				0x00
@@ -50,12 +49,6 @@ u32 base_address;
 
 int fc8050_ppi_init(HANDLE hDevice, u16 param1, u16 param2)
 {
-	base_address = param2;
-	base_address <<= 16;
-	base_address |= param1;
-
-	DPRINTK("%s : 0x%p\n", __func__, (void __iomem *)base_address);
-
 	return BBM_OK;
 }
 
@@ -261,6 +254,5 @@ int fc8050_ppi_dataread(HANDLE hDevice, u16 addr, u8 *data, u16 length)
 
 int fc8050_ppi_deinit(HANDLE hDevice)
 {
-	base_address = 0;
 	return BBM_OK;
 }

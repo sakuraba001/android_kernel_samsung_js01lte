@@ -72,7 +72,6 @@ extern "C" {
 #define BBM_E_MUX_DATA_MASK     0x00010001
 #define BBM_E_MUX_SUBCHANNEL    0x00010002
 #define BBM_E_MUX_INDICATOR     0x00010003
-#define BBM_E_MUX_DATA_SIZE		0x00010004
 
 #ifdef __cplusplus
 }

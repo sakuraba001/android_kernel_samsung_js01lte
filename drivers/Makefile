@@ -146,19 +146,18 @@ obj-$(CONFIG_CORESIGHT)		+= coresight/
 
 obj-$(CONFIG_BIF)		+= bif/
 obj-$(CONFIG_BATTERY_SAMSUNG)   += battery/
-obj-$(CONFIG_SENSORS)		+= sensors/
-obj-$(CONFIG_MOTOR_DRV_ISA1400) += motor/
-obj-$(CONFIG_VIBETONZ)		+= motor/
-obj-$(CONFIG_MSM_VIBRATOR)	+= motor/
-obj-$(CONFIG_HAPTIC_ISA1200)	+=motor/
-
-obj-$(CONFIG_FELICA) 		+= felica/
-
-obj-$(CONFIG_SENSORS_SSP)	+= sensorhub/
 obj-$(CONFIG_SENSORS_FINGERPRINT)	+= fingerprint/
-
-obj-$(CONFIG_EXTCON)		+= extcon/
-obj-$(CONFIG_IR_REMOCON_MC96)	+= irda/
-
-# SecFilter Driver
+obj-$(CONFIG_SENSORS_SSP)	+= sensorhub/
+obj-$(CONFIG_SENSORS)		+= sensors/
+#obj-$(CONFIG_SEC_FPGA)	+= barcode_emul/
+obj-$(CONFIG_VIBETONZ)          += motor/
+obj-$(CONFIG_MOTOR_DRV_ISA1400) += motor/
+obj-$(CONFIG_MOTOR_DRV_TSP5000) += motor/
+obj-$(CONFIG_MSM_VIBRATOR) += motor/
+obj-$(CONFIG_AUTHENTEC_VPNCLIENT_INTERCEPTOR) += interceptor/
 obj-$(CONFIG_SEC_NET_FILTER)	+= secfilter/
+
+obj-$(CONFIG_FELICA) += felica/
+ifeq (1, $(shell if [ -d ../../../../../../kernel/drivers/exfat ] ; then echo 1 ; fi))
+obj-y                           += exfat/
+endif

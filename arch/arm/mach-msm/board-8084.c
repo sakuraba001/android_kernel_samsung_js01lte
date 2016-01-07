@@ -16,7 +16,6 @@
 #include <linux/of_address.h>
 #include <linux/of_platform.h>
 #include <linux/memory.h>
-#include <linux/msm_tsens.h>
 #include <asm/hardware/gic.h>
 #include <asm/mach/map.h>
 #include <asm/mach/arch.h>
@@ -28,10 +27,6 @@
 #include <mach/restart.h>
 #include <mach/socinfo.h>
 #include <mach/clk-provider.h>
-#include <mach/msm_smem.h>
-#include <mach/rpm-smd.h>
-#include <mach/rpm-regulator-smd.h>
-#include "spm.h"
 #include "board-dt.h"
 #include "clock.h"
 #include "devices.h"
@@ -88,14 +83,9 @@ static void __init apq8084_early_memory(void)
  */
 void __init apq8084_add_drivers(void)
 {
-	msm_smem_init();
 	msm_init_modem_notifier_list();
 	msm_smd_init();
-	msm_rpm_driver_init();
-	rpm_regulator_smd_driver_init();
-	msm_spm_device_init();
 	msm_clock_init(&msm8084_clock_init_data);
-	tsens_tm_init_driver();
 }
 
 static void __init apq8084_map_io(void)

@@ -134,18 +134,20 @@ static int wfd_vidbuf_queue_setup(struct vb2_queue *q,
 
 static void wfd_vidbuf_wait_prepare(struct vb2_queue *q)
 {
-	struct file *priv_data = (struct file *)(q->drv_priv);
-	struct wfd_inst *inst = file_to_inst(priv_data);
+    struct file *priv_data = (struct file *)(q->drv_priv);
+    struct wfd_inst *inst = file_to_inst(priv_data);
 
-	mutex_unlock(&inst->vb2_lock);
+    mutex_unlock(&inst->vb2_lock);
+
 }
 
 static void wfd_vidbuf_wait_finish(struct vb2_queue *q)
 {
-	struct file *priv_data = (struct file *)(q->drv_priv);
-	struct wfd_inst *inst = file_to_inst(priv_data);
+    struct file *priv_data = (struct file *)(q->drv_priv);
+    struct wfd_inst *inst = file_to_inst(priv_data);
 
-	mutex_lock(&inst->vb2_lock);
+    mutex_lock(&inst->vb2_lock);
+
 }
 
 static unsigned long wfd_enc_addr_to_mdp_addr(struct wfd_inst *inst,
@@ -1034,9 +1036,10 @@ static int wfdioc_dqbuf(struct file *filp, void *fh,
 
 	WFD_MSG_DBG("Waiting to dequeue buffer\n");
 
-	mutex_lock(&inst->vb2_lock);
-	rc = vb2_dqbuf(&inst->vid_bufq, b, false);
-	mutex_unlock(&inst->vb2_lock);
+    mutex_lock(&inst->vb2_lock);
+    rc = vb2_dqbuf(&inst->vid_bufq, b, false);
+    mutex_unlock(&inst->vb2_lock);
+
 	if (rc)
 		WFD_MSG_ERR("Failed to dequeue buffer\n");
 	else
@@ -1133,7 +1136,7 @@ static int wfdioc_s_parm(struct file *filp, void *fh,
 	struct v4l2_qcom_frameskip frameskip;
 	int64_t frame_interval = 0,
 		max_frame_interval = 0,
-		frame_interval_variance = 0;
+		frame_interval_variance = 0;	
 	void *extendedmode = NULL;
 	enum vsg_modes vsg_mode = VSG_MODE_VFR;
 	enum venc_framerate_modes venc_mode = VENC_MODE_VFR;

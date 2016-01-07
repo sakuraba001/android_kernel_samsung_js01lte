@@ -42,11 +42,6 @@
 
 static struct acpuclk_drv_data *priv;
 static uint32_t bus_perf_client;
-#ifdef CONFIG_SEC_DEBUG_VERBOSE_SUMMARY_HTML
-extern int cpu_frequency[CONFIG_NR_CPUS];
-extern int cpu_volt[CONFIG_NR_CPUS];
-extern char cpu_state[CONFIG_NR_CPUS][30];
-#endif
 
 /* Update the bus bandwidth request. */
 static void set_bus_bw(unsigned int bw)
@@ -143,49 +138,6 @@ static void select_clk_source_div(struct acpuclk_drv_data *drv_data,
 		pr_warn("acpu rcg didn't update its configuration\n");
 }
 
-static struct clkctl_acpu_speed *__init find_cur_cpu_level(void)
-{
-	struct clkctl_acpu_speed *f, *max = priv->freq_tbl;
-	void __iomem *apcs_rcg_config = priv->apcs_rcg_config;
-	struct acpuclk_reg_data *r = &priv->reg_data;
-	u32 regval, div, src;
-	unsigned long rate;
-	struct clk *parent;
-
-	regval = readl_relaxed(apcs_rcg_config);
-	src = regval & r->cfg_src_mask;
-	src >>= r->cfg_src_shift;
-
-	div = regval & r->cfg_div_mask;
-	div >>= r->cfg_div_shift;
-	/* No support for half-integer dividers */
-	div = div > 1 ? (div + 1) / 2 : 0;
-
-	for (f = priv->freq_tbl; f->khz; f++) {
-		if (f->use_for_scaling)
-			max = f;
-
-		if (f->src_sel != src || f->src_div != div)
-			continue;
-
-		parent = priv->src_clocks[f->src].clk;
-		rate = parent->rate / (div ? div : 1);
-		if (f->khz * 1000 == rate)
-			break;
-	}
-
-	if (f->khz)
-		return f;
-
-	pr_err("CPUs are running at an unknown rate. Defaulting to %u KHz.\n",
-		max->khz);
-
-	/* Change to a safe frequency */
-	select_clk_source_div(priv, priv->freq_tbl);
-	/* Default to largest frequency */
-	return max;
-}
-
 static int set_speed_atomic(struct clkctl_acpu_speed *tgt_s)
 {
 	struct clkctl_acpu_speed *strt_s = priv->current_speed;
@@ -279,7 +231,7 @@ static int acpuclk_cortex_set_rate(int cpu, unsigned long rate,
 	strt_s = priv->current_speed;
 
 	/* Return early if rate didn't change */
-	if (rate == strt_s->khz && reason != SETRATE_INIT)
+	if (rate == strt_s->khz)
 		goto out;
 
 	/* Find target frequency */
@@ -292,7 +244,7 @@ static int acpuclk_cortex_set_rate(int cpu, unsigned long rate,
 	}
 
 	/* Increase VDD levels if needed */
-	if ((reason == SETRATE_CPUFREQ)
+	if ((reason == SETRATE_CPUFREQ || reason == SETRATE_INIT)
 			&& (tgt_s->khz > strt_s->khz)) {
 		rc = increase_vdd(tgt_s->vdd_cpu, tgt_s->vdd_mem);
 		if (rc)
@@ -322,24 +274,8 @@ static int acpuclk_cortex_set_rate(int cpu, unsigned long rate,
 	set_bus_bw(tgt_s->bw_level);
 
 	/* Drop VDD levels if we can. */
-	if (tgt_s->khz < strt_s->khz || reason == SETRATE_INIT)
+	if (tgt_s->khz < strt_s->khz)
 		decrease_vdd(tgt_s->vdd_cpu, tgt_s->vdd_mem);
-
-#ifdef CONFIG_SEC_DEBUG_VERBOSE_SUMMARY_HTML
-	/* add to sec debug variable */
-	/* save the voltage level and freq for master core*/
-	if(cpu_online(cpu) && cpu_active(cpu))
-		strncpy(cpu_state[cpu], "Online", ARRAY_SIZE(cpu_state[cpu]));
-	else if(!cpu_online(cpu) && cpu_active(cpu))
-		strncpy(cpu_state[cpu], "Migrating", ARRAY_SIZE(cpu_state[cpu]));
-	else if(!cpu_online(cpu) && !cpu_active(cpu))
-		strncpy(cpu_state[cpu], "Down", ARRAY_SIZE(cpu_state[cpu]));
-	else
-		strncpy(cpu_state[cpu], "On/NotActive", ARRAY_SIZE(cpu_state[cpu]));
-
-	cpu_frequency[cpu] = priv->current_speed->khz;
-	cpu_volt[cpu] = priv->current_speed->vdd_cpu;
-#endif
 
 out:
 	if (reason == SETRATE_CPUFREQ)
@@ -352,14 +288,6 @@ static unsigned long acpuclk_cortex_get_rate(int cpu)
 	return priv->current_speed->khz;
 }
 
-#ifdef CONFIG_SEC_DEBUG_VERBOSE_SUMMARY_HTML
-static unsigned int acpuclk_cortex_get_voltage(int cpu)
-{
-	return priv->current_speed->vdd_cpu;
-}
-#endif
-
-
 #ifdef CONFIG_CPU_FREQ_MSM
 static struct cpufreq_frequency_table freq_table[30];
 
@@ -369,7 +297,7 @@ static void __init cpufreq_table_init(void)
 
 	/* Construct the freq_table tables from priv->freq_tbl. */
 	for (i = 0; priv->freq_tbl[i].khz != 0
-			&& freq_cnt < ARRAY_SIZE(freq_table) - 1; i++) {
+			&& freq_cnt < ARRAY_SIZE(freq_table); i++) {
 		if (!priv->freq_tbl[i].use_for_scaling)
 			continue;
 		freq_table[freq_cnt].index = freq_cnt;
@@ -395,50 +323,13 @@ static void __init cpufreq_table_init(void) {}
 static struct acpuclk_data acpuclk_cortex_data = {
 	.set_rate = acpuclk_cortex_set_rate,
 	.get_rate = acpuclk_cortex_get_rate,
-#ifdef CONFIG_SEC_DEBUG_VERBOSE_SUMMARY_HTML
-	.get_voltage = acpuclk_cortex_get_voltage,
-#endif
 };
-
-void __init get_speed_bin(void __iomem *base, struct bin_info *bin)
-{
-	u32 pte_efuse, redundant_sel;
-
-	pte_efuse = readl_relaxed(base);
-	redundant_sel = (pte_efuse >> 24) & 0x7;
-	bin->speed = pte_efuse & 0x7;
-
-	if (redundant_sel == 1)
-		bin->speed = (pte_efuse >> 27) & 0x7;
-
-	bin->speed_valid = !!(pte_efuse & BIT(3));
-}
-
-static struct clkctl_acpu_speed *__init select_freq_plan(void)
-{
-	struct bin_info bin;
-
-	if (!priv->pte_efuse_base)
-		return priv->freq_tbl;
-
-	get_speed_bin(priv->pte_efuse_base, &bin);
-
-	if (bin.speed_valid) {
-		pr_info("SPEED BIN: %d\n", bin.speed);
-	} else {
-		bin.speed = 0;
-		pr_warn("SPEED BIN: Defaulting to %d\n",
-			 bin.speed);
-	}
-
-	return priv->pvs_tables[bin.speed];
-}
 
 int __init acpuclk_cortex_init(struct platform_device *pdev,
 	struct acpuclk_drv_data *data)
 {
-	int rc;
-	int parent;
+	unsigned long max_cpu_khz = 0;
+	int i, rc;
 
 	priv = data;
 	mutex_init(&priv->lock);
@@ -446,53 +337,52 @@ int __init acpuclk_cortex_init(struct platform_device *pdev,
 	acpuclk_cortex_data.power_collapse_khz = priv->wait_for_irq_khz;
 	acpuclk_cortex_data.wait_for_irq_khz = priv->wait_for_irq_khz;
 
-	priv->freq_tbl = select_freq_plan();
-	if (!priv->freq_tbl) {
-		pr_err("Invalid freq table selected\n");
-		BUG();
-	}
-
 	bus_perf_client = msm_bus_scale_register_client(priv->bus_scale);
 	if (!bus_perf_client) {
 		pr_err("Unable to register bus client\n");
 		BUG();
 	}
 
+	/* Improve boot time by ramping up CPU immediately */
+	for (i = 0; priv->freq_tbl[i].khz != 0; i++)
+		if (priv->freq_tbl[i].use_for_scaling)
+			max_cpu_khz = priv->freq_tbl[i].khz;
+
 	/* Initialize regulators */
 	rc = increase_vdd(priv->vdd_max_cpu, priv->vdd_max_mem);
 	if (rc)
-		return rc;
+		goto err_vdd;
 
 	if (priv->vdd_mem) {
 		rc = regulator_enable(priv->vdd_mem);
 		if (rc) {
 			dev_err(&pdev->dev, "regulator_enable for mem failed\n");
-			return rc;
+			goto err_vdd;
 		}
 	}
 
 	rc = regulator_enable(priv->vdd_cpu);
 	if (rc) {
 		dev_err(&pdev->dev, "regulator_enable for cpu failed\n");
-		return rc;
+		goto err_vdd_cpu;
 	}
 
-	priv->current_speed = find_cur_cpu_level();
-	parent = priv->current_speed->src;
-	rc = clk_prepare_enable(priv->src_clocks[parent].clk);
-	if (rc) {
-		dev_err(&pdev->dev, "handoff: prepare_enable failed\n");
-		return rc;
-	}
-
-	rc = acpuclk_cortex_set_rate(0, priv->current_speed->khz, SETRATE_INIT);
-	if (rc) {
-		dev_err(&pdev->dev, "handoff: set rate failed\n");
-		return rc;
-	}
+	/*
+	 * Select a state which is always a valid transition to align SW with
+	 * the HW configuration set by the bootloaders.
+	 */
+	acpuclk_cortex_set_rate(0, acpuclk_cortex_data.power_collapse_khz,
+		SETRATE_INIT);
+	acpuclk_cortex_set_rate(0, max_cpu_khz, SETRATE_INIT);
 
 	acpuclk_register(&acpuclk_cortex_data);
 	cpufreq_table_init();
 
 	return 0;
+
+err_vdd_cpu:
+	if (priv->vdd_mem)
+		regulator_disable(priv->vdd_mem);
+err_vdd:
+	return rc;
 }

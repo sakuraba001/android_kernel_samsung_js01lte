@@ -33,10 +33,6 @@
 static char klog_buf[256];
 #endif
 
-#ifndef CONFIG_LOGCAT_SIZE
-#define CONFIG_LOGCAT_SIZE 256
-#endif
-
 /*
  * struct logger_log - represents a specific log, such as 'main' or 'radio'
  *
@@ -440,6 +436,7 @@ static ssize_t do_write_log_from_user(struct logger_log *log,
 			 * message corruption from missing fragments.
 			 */
 			return -EFAULT;
+
 #ifdef CONFIG_SEC_DEBUG
 	memset(klog_buf, 0, 255);
 	if (strncmp(log->buffer + log->w_off, "!@", 2) == 0) {
@@ -450,7 +447,6 @@ static ssize_t do_write_log_from_user(struct logger_log *log,
 		klog_buf[255] = 0;
 	}
 #endif
-
 	log->w_off = logger_offset(log, log->w_off + count);
 
 	return count;
@@ -752,13 +748,13 @@ static struct logger_log VAR = { \
 };
 
 #ifdef CONFIG_SEC_LOGGER_BUFFER_EXPANSION
-DEFINE_LOGGER_DEVICE(log_main, LOGGER_LOG_MAIN, CONFIG_LOGCAT_SIZE*1024*4)	// 2MB
+DEFINE_LOGGER_DEVICE(log_main, LOGGER_LOG_MAIN, LOGGER_2MB_SIZE)
 #else
-DEFINE_LOGGER_DEVICE(log_main, LOGGER_LOG_MAIN, CONFIG_LOGCAT_SIZE*1024*2)	// 1MB
+DEFINE_LOGGER_DEVICE(log_main, LOGGER_LOG_MAIN, LOGGER_1MB_SIZE)
 #endif
-DEFINE_LOGGER_DEVICE(log_events, LOGGER_LOG_EVENTS, CONFIG_LOGCAT_SIZE*1024)	// 512KB
-DEFINE_LOGGER_DEVICE(log_radio, LOGGER_LOG_RADIO, CONFIG_LOGCAT_SIZE*1024*4)	// 2MB
-DEFINE_LOGGER_DEVICE(log_system, LOGGER_LOG_SYSTEM, CONFIG_LOGCAT_SIZE*1024)	// 512KB
+DEFINE_LOGGER_DEVICE(log_events, LOGGER_LOG_EVENTS, LOGGER_512KB_SIZE)
+DEFINE_LOGGER_DEVICE(log_radio, LOGGER_LOG_RADIO, LOGGER_2MB_SIZE)
+DEFINE_LOGGER_DEVICE(log_system, LOGGER_LOG_SYSTEM, LOGGER_512KB_SIZE)
 
 static struct logger_log *get_log_from_minor(int minor)
 {
@@ -789,7 +785,8 @@ static int __init init_log(struct logger_log *log)
 
 	return 0;
 }
-#if (defined CONFIG_SEC_DEBUG && defined CONFIG_SEC_DEBUG_SUBSYS)
+
+#ifdef CONFIG_SEC_DEBUG
 int sec_debug_subsys_set_logger_info(
 	struct sec_debug_subsys_logger_log_info *log_info)
 {
@@ -820,7 +817,6 @@ int sec_debug_subsys_set_logger_info(
 	return 0;
 }
 #endif
-
 static int __init logger_init(void)
 {
 	int ret;
@@ -840,11 +836,11 @@ static int __init logger_init(void)
 	ret = init_log(&log_system);
 	if (unlikely(ret))
 		goto out;
+
 #ifdef CONFIG_SEC_DEBUG
 	sec_getlog_supply_loggerinfo(_buf_log_main, _buf_log_radio,
 				     _buf_log_events, _buf_log_system);
 #endif
-
 out:
 	return ret;
 }

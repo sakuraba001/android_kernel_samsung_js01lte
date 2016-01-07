@@ -416,7 +416,7 @@ EXPORT_SYMBOL_GPL(rtc_initialize_alarm);
 #ifdef CONFIG_RTC_AUTO_PWRON
 int rtc_set_bootalarm(struct rtc_device *rtc, struct rtc_wkalrm *alarm)
 {
-    	int err;
+	int err;
 
 /*	err = mutex_lock_interruptible(&rtc->ops_lock); */
 /*	if (err) */
@@ -438,8 +438,8 @@ EXPORT_SYMBOL_GPL(rtc_set_bootalarm);
 
 int rtc_get_bootalarm(struct rtc_device *rtc, struct rtc_wkalrm *alarm)
 {
- 	int err;
- 
+	int err;
+
 /*	err = mutex_lock_interruptible(&rtc->ops_lock); */
 /*	if (err) */
 /*		return err; */

@@ -31,7 +31,7 @@ struct sec_therm_adc_table {
  * struct sec_bat_plaform_data - init data for sec batter driver
  * @adc_channel: adc channel that connected to thermistor
  * @adc_table: array of adc to temperature data
- * @adc_arr_size: size of adc_table
+ * @adc_arr_size: size of adc_table_ap
  * @polling_interval: interval for polling thermistor (msecs)
  * @no_polling: when true, use direct read, no polling work
  * @adc_flash_arr_size: size of adc_table_flash
@@ -41,7 +41,7 @@ struct sec_therm_platform_data {
 	unsigned int adc_channel;
 	unsigned int adc_arr_size;
 	struct sec_therm_adc_table *adc_table;
-#if defined(CONFIG_MACH_HLTEDCM) || defined(CONFIG_MACH_HLTEKDI)
+#if defined(CONFIG_MACH_HLTEDCM) || defined(CONFIG_MACH_HLTEKDI) 
 	unsigned int adc_flash_arr_size;
 	struct sec_therm_adc_table *adc_table_flash;
 #endif

@@ -36,11 +36,8 @@
 
 #include "coresight-priv.h"
 
-#if defined(CONFIG_CORESIGHT_ETM_DEFAULT_ENABLE) || \
-	defined(CONFIG_CORESIGHT_ETM_PCSAVE_DEFAULT_ENABLE)
-#ifdef CONFIG_SEC_DEBUG
+#if defined(CONFIG_CORESIGHT_ETM_DEFAULT_ENABLE) && defined(CONFIG_SEC_DEBUG)
 #include <mach/sec_debug.h>
-#endif
 #endif
 
 #define etm_writel_mm(drvdata, val, off)  \
@@ -190,11 +187,8 @@ enum etm_addr_type {
 	ETM_ADDR_TYPE_STOP,
 };
 
-#ifdef CONFIG_CORESIGHT_ETM_DEFAULT_ENABLE
-static int boot_enable = 1;
-#else
 static int boot_enable;
-#endif
+
 module_param_named(
 	boot_enable, boot_enable, int, S_IRUGO
 );
@@ -2246,18 +2240,11 @@ static int __devinit etm_probe(struct platform_device *pdev)
 
 	dev_info(dev, "ETM initialized\n");
 
-#if defined(CONFIG_CORESIGHT_ETM_DEFAULT_ENABLE) || \
-	defined(CONFIG_CORESIGHT_ETM_PCSAVE_DEFAULT_ENABLE)
-#ifdef CONFIG_SEC_DEBUG
-	if (kernel_sec_get_debug_level() == KERNEL_SEC_DEBUG_LEVEL_LOW)	{
-#ifdef CONFIG_CORESIGHT_ETM_DEFAULT_ENABLE
+#if defined(CONFIG_CORESIGHT_ETM_DEFAULT_ENABLE) && defined(CONFIG_SEC_DEBUG)
+	if (kernel_sec_get_debug_level() == KERNEL_SEC_DEBUG_LEVEL_LOW)
 		boot_enable = 0;
-#endif
-#ifdef CONFIG_CORESIGHT_ETM_PCSAVE_DEFAULT_ENABLE
-		boot_pcsave_enable = 0;
-#endif
-	}
-#endif
+	else
+		boot_enable = 1;
 #endif
 
 	if (boot_enable) {

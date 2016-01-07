@@ -36,4 +36,3 @@ msm_bt_sleep-objs                       := bluesleep.o
 obj-$(CONFIG_MSM_BT_POWER)		+= bluetooth-power.o
 obj-$(CONFIG_BT_BCM4335)		+= bluesleep_fpga.o
 obj-$(CONFIG_BT_BCM4339)		+= bluesleep.o
-obj-$(CONFIG_BT_BCM4354)		+= bluesleep.o

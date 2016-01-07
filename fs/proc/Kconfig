@@ -69,7 +69,7 @@ config PROC_PAGE_MONITOR
           interfaces will reduce the size of the kernel by approximately 4kb.
 
 config PROC_AVC
-        bool "support (/proc/avc_msg)"
-        default n
-        help
-          support logging audit avc message
+	bool "support (/proc/avc_msg)"
+	default n
+	help
+	  support logging audit avc message

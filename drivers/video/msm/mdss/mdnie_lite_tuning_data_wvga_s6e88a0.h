@@ -383,7 +383,7 @@ static char MOVIE_UI_1[] = {
 	0x01, //mdnie_en
 	0x00, //data_width mask 00 000
 	0x33, //scr_roi 1 scr algo_roi 1 algo 00 1 0 00 1 0
-	0x00, //sharpen cc gamma 00 0 0
+	0x03, //sharpen cc gamma 00 0 0
 };
 
 static char MOVIE_UI_2[] = {
@@ -405,29 +405,29 @@ static char MOVIE_UI_2[] = {
 	0x00,
 	0x00, //roi1 y end
 	0x00,
-	0x97, //scr Cr Yb
-	0xd2, //scr Rr Bb
-	0xf4, //scr Cg Yg
-	0x19, //scr Rg Bg
-	0xe7, //scr Cb Yr
-	0x16, //scr Rb Br
-	0xdb, //scr Mr Mb
-	0x70, //scr Gr Gb
-	0x24, //scr Mg Mg
-	0xf0, //scr Gg Gg
-	0xe5, //scr Mb Mr
-	0x22, //scr Gb Gr
-	0xf0, //scr Yr Cb
-	0x22, //scr Br Rb
-	0xf2, //scr Yg Cg
-	0x11, //scr Bg Rg
-	0x40, //scr Yb Cr
-	0xe1, //scr Bb Rr
+	0x00, //scr Cr Yb
+	0xff, //scr Rr Bb
+	0xff, //scr Cg Yg
+	0x00, //scr Rg Bg
+	0xff, //scr Cb Yr
+	0x00, //scr Rb Br
+	0xff, //scr Mr Mb
+	0x00, //scr Gr Gb
+	0x00, //scr Mg Mg
+	0xff, //scr Gg Gg
+	0xff, //scr Mb Mr
+	0x00, //scr Gb Gr
+	0xff, //scr Yr Cb
+	0x00, //scr Br Rb
+	0xff, //scr Yg Cg
+	0x00, //scr Bg Rg
+	0x00, //scr Yb Cr
+	0xff, //scr Bb Rr
 	0xff, //scr Wr Wb
 	0x00, //scr Kr Kb
-	0xf9, //scr Wg Wg
+	0xff, //scr Wg Wg
 	0x00, //scr Kg Kg
-	0xf0, //scr Wb Wr
+	0xff, //scr Wb Wr
 	0x00, //scr Kb Kr
 	0x00, //curve 1 b
 	0x0f, //curve 1 a
@@ -437,64 +437,64 @@ static char MOVIE_UI_2[] = {
 	0x0f, //curve 3 a
 	0x00, //curve 4 b
 	0x0f, //curve 4 a
-	0x10, //curve 5 b
-	0xb0, //curve 5 a
-	0x10, //curve 6 b
-	0xb0, //curve 6 a
-	0x10, //curve 7 b
-	0xb0, //curve 7 a
-	0x10, //curve 8 b
-	0xb0, //curve 8 a
-	0x00, //curve 9 b
-	0x20, //curve 9 a
-	0x00, //curve10 b
-	0x20, //curve10 a
-	0x00, //curve11 b
-	0x20, //curve11 a
-	0x00, //curve12 b
-	0x20, //curve12 a
-	0x00, //curve13 b
-	0x20, //curve13 a
-	0x00, //curve14 b
-	0x20, //curve14 a
-	0x00, //curve15 b
-	0x20, //curve15 a
-	0x00, //curve16 b
-	0x20, //curve16 a
-	0x00, //curve17 b
-	0x20, //curve17 a
-	0x00, //curve18 b
-	0x20, //curve18 a
-	0x00, //curve19 b
-	0x20, //curve19 a
-	0x00, //curve20 b
-	0x20, //curve20 a
-	0x00, //curve21 b
-	0x20, //curve21 a
-	0x00, //curve22 b
-	0x20, //curve22 a
-	0x00, //curve23 b
-	0x20, //curve23 a
+	0x09, //curve 5 b
+	0xa2, //curve 5 a
+	0x09, //curve 6 b
+	0xa2, //curve 6 a
+	0x09, //curve 7 b
+	0xa2, //curve 7 a
+	0x09, //curve 8 b
+	0xa2, //curve 8 a
+	0x09, //curve 9 b
+	0xa2, //curve 9 a
+	0x09, //curve10 b
+	0xa2, //curve10 a
+	0x0a, //curve11 b
+	0xa2, //curve11 a
+	0x0a, //curve12 b
+	0xa2, //curve12 a
+	0x0a, //curve13 b
+	0xa2, //curve13 a
+	0x0a, //curve14 b
+	0xa2, //curve14 a
+	0x0a, //curve15 b
+	0xa2, //curve15 a
+	0x0a, //curve16 b
+	0xa2, //curve16 a
+	0x0a, //curve17 b
+	0xa2, //curve17 a
+	0x0a, //curve18 b
+	0xa2, //curve18 a
+	0x0f, //curve19 b
+	0xa4, //curve19 a
+	0x0f, //curve20 b
+	0xa4, //curve20 a
+	0x0f, //curve21 b
+	0xa4, //curve21 a
+	0x23, //curve22 b
+	0x1c, //curve22 a
+	0x48, //curve23 b
+	0x17, //curve23 a
 	0x00, //curve24 b
 	0xFF, //curve24 a
-	0x04, //cc r1 0.2
-	0x90,
+	0x04, //cc r1 0.06
+	0x2b,
 	0x1f, //cc r2
-	0x88,
+	0xdc,
 	0x1f, //cc r3
-	0xe8,
+	0xf9,
 	0x1f, //cc g1
-	0xc3,
+	0xee,
 	0x04, //cc g2
-	0x55,
+	0x19,
 	0x1f, //cc g3
-	0xe8,
+	0xf9,
 	0x1f, //cc b1
-	0xc3,
+	0xee,
 	0x1f, //cc b2
-	0x88,
+	0xdc,
 	0x04, //cc b3
-	0xb5,
+	0x36,
 };
 
 char AUTO_UI_1[] = {
@@ -527,9 +527,9 @@ char AUTO_UI_2[] = {
 	0x00, //scr Cr Yb
 	0xff, //scr Rr Bb
 	0xff, //scr Cg Yg
-	0x00, //scr Rg Bg
+	0x0a, //scr Rg Bg
 	0xff, //scr Cb Yr
-	0x00, //scr Rb Br
+	0x0a, //scr Rb Br
 	0xff, //scr Mr Mb
 	0x00, //scr Gr Gb
 	0x00, //scr Mg Mg
@@ -647,9 +647,9 @@ static char STANDARD_GALLERY_2[] = {
 	0x00, //scr Cr Yb
 	0xff, //scr Rr Bb
 	0xff, //scr Cg Yg
-	0x00, //scr Rg Bg
+	0x1c, //scr Rg Bg
 	0xff, //scr Cb Yr
-	0x00, //scr Rb Br
+	0x1c, //scr Rb Br
 	0xff, //scr Mr Mb
 	0x00, //scr Gr Gb
 	0x00, //scr Mg Mg
@@ -1123,9 +1123,9 @@ char AUTO_GALLERY_2[] = {
 	0x00, //scr Cr Yb
 	0xff, //scr Rr Bb
 	0xff, //scr Cg Yg
-	0x1c, //scr Rg Bg
+	0x0a, //scr Rg Bg
 	0xff, //scr Cb Yr
-	0x1c, //scr Rb Br
+	0x0a, //scr Rb Br
 	0xff, //scr Mr Mb
 	0x00, //scr Gr Gb
 	0x00, //scr Mg Mg
@@ -1244,9 +1244,9 @@ static char STANDARD_VIDEO_2[] = {
 	0x00, //scr Cr Yb
 	0xff, //scr Rr Bb
 	0xff, //scr Cg Yg
-	0x00, //scr Rg Bg
+	0x1c, //scr Rg Bg
 	0xff, //scr Cb Yr
-	0x00, //scr Rb Br
+	0x1c, //scr Rb Br
 	0xff, //scr Mr Mb
 	0x00, //scr Gr Gb
 	0x00, //scr Mg Mg
@@ -1720,9 +1720,9 @@ char AUTO_VIDEO_2[] = {
 	0x00, //scr Cr Yb
 	0xff, //scr Rr Bb
 	0xff, //scr Cg Yg
-	0x1c, //scr Rg Bg
+	0x0a, //scr Rg Bg
 	0xff, //scr Cb Yr
-	0x1c, //scr Rb Br
+	0x0a, //scr Rb Br
 	0xff, //scr Mr Mb
 	0x00, //scr Gr Gb
 	0x00, //scr Mg Mg
@@ -2317,9 +2317,9 @@ char AUTO_VT_2[] = {
 	0x00, //scr Cr Yb
 	0xff, //scr Rr Bb
 	0xff, //scr Cg Yg
-	0x00, //scr Rg Bg
+	0x0a, //scr Rg Bg
 	0xff, //scr Cb Yr
-	0x00, //scr Rb Br
+	0x0a, //scr Rb Br
 	0xff, //scr Mr Mb
 	0x00, //scr Gr Gb
 	0x00, //scr Mg Mg
@@ -2438,9 +2438,9 @@ static char CAMERA_2[] = {
 	0x00, //scr Cr Yb
 	0xff, //scr Rr Bb
 	0xff, //scr Cg Yg
-	0x00, //scr Rg Bg
+	0x1c, //scr Rg Bg
 	0xff, //scr Cb Yr
-	0x00, //scr Rb Br
+	0x1c, //scr Rb Br
 	0xff, //scr Mr Mb
 	0x00, //scr Gr Gb
 	0x00, //scr Mg Mg
@@ -2557,9 +2557,9 @@ char AUTO_CAMERA_2[] = {
 	0x00, //scr Cr Yb
 	0xff, //scr Rr Bb
 	0xff, //scr Cg Yg
-	0x1c, //scr Rg Bg
+	0x0a, //scr Rg Bg
 	0xff, //scr Cb Yr
-	0x1c, //scr Rb Br
+	0x0a, //scr Rb Br
 	0xff, //scr Mr Mb
 	0x00, //scr Gr Gb
 	0x00, //scr Mg Mg
@@ -2646,7 +2646,7 @@ char AUTO_CAMERA_2[] = {
 	0x36,
 };
 
-#if 0
+
 static char CAMERA_OUTDOOR_1[] = {
 	0xEB,
 	0x01, 0x00, 0x03,
@@ -2876,8 +2876,6 @@ static char WARM_OUTDOOR_2[] = {
 	0xc3, 0x1f, 0x88,
 	0x04, 0xb5,
 };
-#endif
-
 
 static char NEGATIVE_1[] = {
 	0xEB,
@@ -2998,7 +2996,6 @@ static char NEGATIVE_2[] = {
 	0x00,
 };
 
-#if 0
 static char OUTDOOR_VIDEO_1[] = {
 	0xEB,
 	0x01, 0x00, 0x03,
@@ -3044,8 +3041,6 @@ static char OUTDOOR_VIDEO_2[] = {
 	0xc3, 0x1f, 0x88,
 	0x04, 0xb5,
 };
-#endif
-
 
 char COLOR_BLIND_1[] = {
 	0xEB,
@@ -3099,73 +3094,72 @@ char COLOR_BLIND_2[] = {
 	0xff, //scr Wb Wr
 	0x00, //scr Kb Kr
 	0x00, //curve 1 b
-	0x20, //curve 1 a
+	0x1A, //curve 1 a
 	0x00, //curve 2 b
-	0x20, //curve 2 a
+	0x1A, //curve 2 a
 	0x00, //curve 3 b
-	0x20, //curve 3 a
+	0x1A, //curve 3 a
 	0x00, //curve 4 b
-	0x20, //curve 4 a
-	0x02, //curve 5 b
-	0x1b, //curve 5 a
-	0x02, //curve 6 b
-	0x1b, //curve 6 a
-	0x02, //curve 7 b
-	0x1b, //curve 7 a
-	0x02, //curve 8 b
-	0x1b, //curve 8 a
-	0x09, //curve 9 b
-	0xa6, //curve 9 a
-	0x09, //curve10 b
-	0xa6, //curve10 a
-	0x09, //curve11 b
-	0xa6, //curve11 a
-	0x09, //curve12 b
-	0xa6, //curve12 a
+	0x1A, //curve 4 a
+	0x00, //curve 5 b
+	0x1A, //curve 5 a
+	0x00, //curve 6 b
+	0x1A, //curve 6 a
+	0x00, //curve 7 b
+	0x1A, //curve 7 a
+	0x00, //curve 8 b
+	0x1A, //curve 8 a
+	0x00, //curve 9 b
+	0x1A, //curve 9 a
+	0x00, //curve10 b
+	0x1A, //curve10 a
+	0x00, //curve11 b
+	0x1A, //curve11 a
+	0x00, //curve12 b
+	0x1A, //curve12 a
 	0x00, //curve13 b
-	0x20, //curve13 a
+	0x1A, //curve13 a
 	0x00, //curve14 b
-	0x20, //curve14 a
+	0x1A, //curve14 a
 	0x00, //curve15 b
-	0x20, //curve15 a
+	0x1A, //curve15 a
 	0x00, //curve16 b
-	0x20, //curve16 a
-	0x00, //curve17 b
-	0x20, //curve17 a
-	0x00, //curve18 b
-	0x20, //curve18 a
-	0x00, //curve19 b
-	0x20, //curve19 a
-	0x00, //curve20 b
-	0x20, //curve20 a
-	0x00, //curve21 b
-	0x20, //curve21 a
-	0x00, //curve22 b
+	0x1A, //curve16 a
+	0x14, //curve17 b
+	0xA4, //curve17 a
+	0x14, //curve18 b
+	0xA4, //curve18 a
+	0x14, //curve19 b
+	0xA4, //curve19 a
+	0x14, //curve20 b
+	0xA4, //curve20 a
+	0x14, //curve21 b
+	0xA4, //curve21 a
+	0x05, //curve22 b
 	0x20, //curve22 a
-	0x00, //curve23 b
-	0x20, //curve23 a
+	0x1B, //curve23 b
+	0x1D, //curve23 a
 	0x00, //curve24 b
 	0xFF, //curve24 a
-	0x04, //cc r1
-	0x00,
-	0x00, //cc r2
-	0x00,
-	0x00, //cc r3
-	0x00,
-	0x00, //cc g1
-	0x00,
+	0x04, //cc r1 0.06x
+	0x2b,
+	0x1f, //cc r2
+	0xdc,
+	0x1f, //cc r3
+	0xf9,
+	0x1f, //cc g1
+	0xee,
 	0x04, //cc g2
-	0x00,
-	0x00, //cc g3
-	0x00,
-	0x00, //cc b1
-	0x00,
-	0x00, //cc b2
-	0x00,
+	0x19,
+	0x1f, //cc g3
+	0xf9,
+	0x1f, //cc b1
+	0xee,
+	0x1f, //cc b2
+	0xdc,
 	0x04, //cc b3
-	0x00,
+	0x36,
 };
-
 
 ////////////////// BROWSER /////////////////////
 
@@ -3199,9 +3193,9 @@ char STANDARD_BROWSER_2[] = {
 	0x00, //scr Cr Yb
 	0xff, //scr Rr Bb
 	0xff, //scr Cg Yg
-	0x00, //scr Rg Bg
+	0x1c, //scr Rg Bg
 	0xff, //scr Cb Yr
-	0x00, //scr Rb Br
+	0x1c, //scr Rb Br
 	0xff, //scr Mr Mb
 	0x00, //scr Gr Gb
 	0x00, //scr Mg Mg
@@ -3675,9 +3669,9 @@ char AUTO_BROWSER_2[] = {
 	0x00, //scr Cr Yb
 	0xff, //scr Rr Bb
 	0xff, //scr Cg Yg
-	0x1c, //scr Rg Bg
+	0x0a, //scr Rg Bg
 	0xff, //scr Cb Yr
-	0x1c, //scr Rb Br
+	0x0a, //scr Rb Br
 	0xff, //scr Mr Mb
 	0x00, //scr Gr Gb
 	0x00, //scr Mg Mg
@@ -3796,9 +3790,9 @@ char AUTO_EBOOK_2[] = {
 	0x00, //scr Cr Yb
 	0xff, //scr Rr Bb
 	0xff, //scr Cg Yg
-	0x00, //scr Rg Bg
+	0x0a, //scr Rg Bg
 	0xff, //scr Cb Yr
-	0x00, //scr Rb Br
+	0x0a, //scr Rb Br
 	0xff, //scr Mr Mb
 	0x00, //scr Gr Gb
 	0x00, //scr Mg Mg
@@ -3813,9 +3807,9 @@ char AUTO_EBOOK_2[] = {
 	0xff, //scr Bb Rr
 	0xff, //scr Wr Wb
 	0x00, //scr Kr Kb
-	0xf7, //scr Wg Wg
+	0xf8, //scr Wg Wg
 	0x00, //scr Kg Kg
-	0xe5, //scr Wb Wr
+	0xef, //scr Wb Wr
 	0x00, //scr Kb Kr
 	0x00, //curve 1 b
 	0x20, //curve 1 a
@@ -4408,9 +4402,9 @@ char AUTO_EMAIL_2[] = {
 	0xff, //scr Bb Rr
 	0xff, //scr Wr Wb
 	0x00, //scr Kr Kb
-	0xf9, //scr Wg Wg
+	0xf8, //scr Wg Wg
 	0x00, //scr Kg Kg
-	0xed, //scr Wb Wr
+	0xeb, //scr Wb Wr
 	0x00, //scr Kb Kr
 	0x00, //curve 1 b
 	0x20, //curve 1 a
@@ -4480,113 +4474,5 @@ char AUTO_EMAIL_2[] = {
 	0x36,
 };
 
-char *blind_tune_value[ACCESSIBILITY_MAX][2] = {
-		/*
-			ACCESSIBILITY_OFF,
-			NEGATIVE,
-			COLOR_BLIND,
-		*/
-		{NULL, NULL},
-		{NEGATIVE_1, NEGATIVE_2},
-		{COLOR_BLIND_1, COLOR_BLIND_2},
-};
-
-char *mdnie_tune_value[MAX_mDNIe_MODE][MAX_BACKGROUND_MODE][MAX_OUTDOOR_MODE][2] = {
-		/*
-			DYNAMIC_MODE (outdoor off/on)
-			STANDARD_MODE (outdoor off/on)
-			NATURAL_MODE (outdoor off/on)
-			MOVIE_MODE (outdoor off/on)
-			AUTO_MODE (outdoor off/on)
-		*/
-		// UI_APP
-		{
-			{{DYNAMIC_UI_1, DYNAMIC_UI_2}, {NULL, NULL}},
-			{{STANDARD_UI_1, STANDARD_UI_2}, {NULL, NULL}},
-			{{NATURAL_UI_1, NATURAL_UI_2}, {NULL, NULL}},
-			{{MOVIE_UI_1, MOVIE_UI_2}, {NULL, NULL}},
-			{{AUTO_UI_1, AUTO_UI_2}, {NULL, NULL}},
-		},
-		// VIDEO_APP
-		{
-			{{DYNAMIC_VIDEO_1, DYNAMIC_VIDEO_2}, {OUTDOOR_VIDEO_1, OUTDOOR_VIDEO_2}},
-			{{STANDARD_VIDEO_1, STANDARD_VIDEO_2}, {OUTDOOR_VIDEO_1, OUTDOOR_VIDEO_2}},
-			{{NATURAL_VIDEO_1, NATURAL_VIDEO_2}, {OUTDOOR_VIDEO_1, OUTDOOR_VIDEO_2}},
-			{{MOVIE_VIDEO_1, MOVIE_VIDEO_2}, {OUTDOOR_VIDEO_1, OUTDOOR_VIDEO_2}},
-			{{AUTO_VIDEO_1, AUTO_VIDEO_2}, {OUTDOOR_VIDEO_1, OUTDOOR_VIDEO_2}},
-		},
-		// VIDEO_WARM_APP
-		{
-			{{WARM_1, WARM_2}, {WARM_OUTDOOR_1, WARM_OUTDOOR_2}},
-			{{WARM_1, WARM_2}, {WARM_OUTDOOR_1, WARM_OUTDOOR_2}},
-			{{WARM_1, WARM_2}, {WARM_OUTDOOR_1, WARM_OUTDOOR_2}},
-			{{WARM_1, WARM_2}, {WARM_OUTDOOR_1, WARM_OUTDOOR_2}},
-			{{WARM_1, WARM_2}, {WARM_OUTDOOR_1, WARM_OUTDOOR_2}},
-		},
-		// VIDEO_COLD_APP
-		{
-			{{COLD_1, COLD_2}, {COLD_OUTDOOR_1, COLD_OUTDOOR_2}},
-			{{COLD_1, COLD_2}, {COLD_OUTDOOR_1, COLD_OUTDOOR_2}},
-			{{COLD_1, COLD_2}, {COLD_OUTDOOR_1, COLD_OUTDOOR_2}},
-			{{COLD_1, COLD_2}, {COLD_OUTDOOR_1, COLD_OUTDOOR_2}},
-			{{COLD_1, COLD_2}, {COLD_OUTDOOR_1, COLD_OUTDOOR_2}},
-		},
-		// CAMERA_APP
-		{
-			{{CAMERA_1, CAMERA_2}, {CAMERA_OUTDOOR_1, CAMERA_OUTDOOR_2}},
-			{{CAMERA_1, CAMERA_2}, {CAMERA_OUTDOOR_1, CAMERA_OUTDOOR_2}},
-			{{CAMERA_1, CAMERA_2}, {CAMERA_OUTDOOR_1, CAMERA_OUTDOOR_2}},
-			{{CAMERA_1, CAMERA_2}, {CAMERA_OUTDOOR_1, CAMERA_OUTDOOR_2}},
-			{{AUTO_CAMERA_1, AUTO_CAMERA_2}, {CAMERA_OUTDOOR_1, CAMERA_OUTDOOR_2}},
-		},
-		// NAVI_APP
-		{
-			{{NULL, NULL}, {NULL, NULL}},
-			{{NULL, NULL}, {NULL, NULL}},
-			{{NULL, NULL}, {NULL, NULL}},
-			{{NULL, NULL}, {NULL, NULL}},
-			{{NULL, NULL}, {NULL, NULL}},
-		},
-		// GALLERY_APP
-		{
-			{{DYNAMIC_GALLERY_1, DYNAMIC_GALLERY_2}, {NULL,NULL}},
-			{{STANDARD_GALLERY_1, STANDARD_GALLERY_2}, {NULL,NULL}},
-			{{NATURAL_GALLERY_1, NATURAL_GALLERY_2}, {NULL,NULL}},
-			{{MOVIE_GALLERY_1, MOVIE_GALLERY_2}, {NULL,NULL}},
-			{{AUTO_GALLERY_1, AUTO_GALLERY_2}, {NULL,NULL}},
-		},
-		// VT_APP
-		{
-			{{DYNAMIC_VT_1, DYNAMIC_VT_2}, {NULL, NULL}},
-			{{STANDARD_VT_1, STANDARD_VT_2}, {NULL, NULL}},
-			{{NATURAL_VT_1, NATURAL_VT_2}, {NULL, NULL}},
-			{{MOVIE_VT_1, MOVIE_VT_2}, {NULL, NULL}},
-			{{AUTO_VT_1, AUTO_VT_2}, {NULL, NULL}},
-		},
-		// BROWSER_APP
-		{
-			{{DYNAMIC_BROWSER_1, DYNAMIC_BROWSER_2}, {NULL, NULL}},
-			{{STANDARD_BROWSER_1, STANDARD_BROWSER_2}, {NULL, NULL}},
-			{{NATURAL_BROWSER_1, NATURAL_BROWSER_2}, {NULL, NULL}},
-			{{MOVIE_BROWSER_1, MOVIE_BROWSER_2}, {NULL, NULL}},
-			{{AUTO_BROWSER_1, AUTO_BROWSER_2}, {NULL, NULL}},
-		},
-		// eBOOK_APP
-		{
-			{{DYNAMIC_EBOOK_1, DYNAMIC_EBOOK_2}, {NULL, NULL}},
-			{{STANDARD_EBOOK_1, STANDARD_EBOOK_2}, {NULL, NULL}},
-			{{NATURAL_EBOOK_1, NATURAL_EBOOK_2}, {NULL, NULL}},
-			{{MOVIE_EBOOK_1, MOVIE_EBOOK_2}, {NULL, NULL}},
-			{{AUTO_EBOOK_1, AUTO_EBOOK_2}, {NULL, NULL}},
-		},
-		// EMAIL_APP
-		{
-			{{AUTO_EMAIL_1, AUTO_EMAIL_2}, {NULL, NULL}},
-			{{AUTO_EMAIL_1, AUTO_EMAIL_2}, {NULL, NULL}},
-			{{AUTO_EMAIL_1, AUTO_EMAIL_2}, {NULL, NULL}},
-			{{AUTO_EMAIL_1, AUTO_EMAIL_2}, {NULL, NULL}},
-			{{AUTO_EMAIL_1, AUTO_EMAIL_2}, {NULL, NULL}},
-		},
-};
 
 #endif

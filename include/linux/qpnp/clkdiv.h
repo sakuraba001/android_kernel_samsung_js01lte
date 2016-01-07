@@ -32,4 +32,5 @@ int qpnp_clkdiv_enable(struct q_clkdiv *q_clkdiv);
 int qpnp_clkdiv_disable(struct q_clkdiv *q_clkdiv);
 int qpnp_clkdiv_config(struct q_clkdiv *q_clkdiv,
 				enum q_clkdiv_cfg cfg);
+int qpnp_clkdiv_control(struct q_clkdiv *q_clkdiv, bool enable);
 #endif

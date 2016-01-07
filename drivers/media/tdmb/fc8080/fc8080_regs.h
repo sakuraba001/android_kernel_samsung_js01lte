@@ -32,17 +32,9 @@ extern "C" {
 #endif
 
 	/* INTERFACE */
-#if defined(CONFIG_TDMB_SPI)
 #define FC8080_SPI
-#elif defined(CONFIG_TDMB_TSIF)
-#define FC8080_I2C
-#elif defined(CONFIG_TDMB_EBI)
-#define FC8080_PPI
-#endif
-
-#ifdef FC8080_I2C
-/* #define FIC_USE_I2C */
-#endif
+/*#define FC8080_I2C*/
+/*#define FC8080_PPI*/
 
 	/* X-TAL Frequency Configuration */
 /*#define FC8080_FREQ_XTAL  16000*/
@@ -109,15 +101,10 @@ extern "C" {
 #define BBM_COEF0E                  0x012e
 #define BBM_COEF0F                  0x012f
 #define BBM_AGC530_EN               0x0132
-#define BBM_BLOCK_AVG_SIZE_LOCK     0x0134
 #define BBM_GAIN_CONSTANT           0x0138
 #define BBM_DET_CNT_BOUND           0x013c
-#define BBM_PGA_GAIN_MAX            0x0144
-#define BBM_PGA_GAIN_MIN            0x0145
-#define BBM_UNLOCK_DETECT_EN        0x0150
 
 	/* SYNC */
-#define BBM_SYNC_MTH                0x0235
 #define BBM_SYNC_CNTRL              0x0236
 #define BBM_OFDM_DET                0x0220
 #define BBM_OFDM_DET_MAX_THRESHOLD  0x0222
@@ -129,7 +116,6 @@ extern "C" {
 #define BBM_NCO_INV                 0x027c
 #define BBM_EZ_CONST                0x027d
 #define BBM_CLK_MODE                0x027e
-#define BBM_SFSYNC_ON               0x0280
 #define BBM_INV_CARRIER_FREQ        0x0281
 #define BBM_RESYNC_EN               0x02a0
 #define BBM_RESYNC_AUTO_CONDITION_EN 0x02a1
@@ -158,7 +144,6 @@ extern "C" {
 #define BBM_BUF_CH0_SUBID           0x0910
 #define BBM_BUF_CH1_SUBID           0x0911
 #define BBM_BUF_CH2_SUBID           0x0912
-#define BBM_BUF_CH3_SUBID           0x0913
 #define BBM_BUF_CH0_START           0x0918
 #define BBM_BUF_CH1_START           0x091a
 #define BBM_BUF_CH2_START           0x091c
@@ -185,15 +170,10 @@ extern "C" {
 #define BBM_AP_FLAG                 0x0a07
 
 	/* FEC */
-#define BBM_FEC_RST                 0x0e00
 #define BBM_FEC_ON                  0x0e02
 #define BBM_FIC_CFG_CRC16           0x0e08
 #define BBM_MSC_CFG_SCH0            0x0e0a
 #define BBM_MSC_CFG_SCH1            0x0e0b
-#define BBM_MSC_CFG_SPD             0x0e0e
-
-	/* FIC I2C Read */
-#define BBM_FIC_I2C_RD				0x7000
 
 	/* DM */
 #define BBM_DM                      0xf000
@@ -205,27 +185,24 @@ extern "C" {
 #define FIC_BUF_THR     (FIC_BUF_LENGTH / 2 - 1)
 
 #define CH0_BUF_START   (FIC_BUF_START + FIC_BUF_LENGTH)
-#if defined(CONFIG_TDMB_TSIF)
-#define CH0_BUF_LENGTH  (188*2)
-#else
 #define CH0_BUF_LENGTH  (188*20*2)
-#endif
 #define CH0_BUF_END     (CH0_BUF_START + CH0_BUF_LENGTH - 1)
 #define CH0_BUF_THR     (CH0_BUF_LENGTH / 2 - 1)
 
-#define CH1_BUF_START   (FIC_BUF_START + FIC_BUF_LENGTH)
-#if defined(CONFIG_TDMB_TSIF)
-#define CH1_BUF_LENGTH  (188*2)
-#else
-#define CH1_BUF_LENGTH  (188*20*2)
-#endif
+#define CH1_BUF_START   (CH0_BUF_START + CH0_BUF_LENGTH)
+#define CH1_BUF_LENGTH  (0)
 #define CH1_BUF_END     (CH1_BUF_START + CH1_BUF_LENGTH - 1)
-#define CH1_BUF_THR     (CH1_BUF_LENGTH / 2 - 1)
+#define CH1_BUF_THR     (0)
 
-#define CH2_BUF_START   (FIC_BUF_START + FIC_BUF_LENGTH)
+#define CH2_BUF_START   (CH1_BUF_START + CH1_BUF_LENGTH)
 #define CH2_BUF_LENGTH  (128 * 6)
 #define CH2_BUF_END     (CH2_BUF_START + CH2_BUF_LENGTH - 1)
 #define CH2_BUF_THR     (CH2_BUF_LENGTH / 2 - 1)
+
+#define CH3_BUF_START   (CH1_BUF_START + CH1_BUF_LENGTH)
+#define CH3_BUF_LENGTH  (188*20*2)
+#define CH3_BUF_END     (CH2_BUF_START + CH2_BUF_LENGTH - 1)
+#define CH3_BUF_THR     (CH2_BUF_LENGTH / 2 - 1)
 
 #if (CH2_BUF_END >= 16384)
 internal buffer is 16K, your setting value is big !!!!!!!!!!!!!!!
@@ -236,4 +213,5 @@ internal buffer is 16K, your setting value is big !!!!!!!!!!!!!!!
 #endif
 
 #endif /* __FC8080_REGS_H__ */
+
 

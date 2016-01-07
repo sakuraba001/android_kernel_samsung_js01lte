@@ -141,9 +141,6 @@ full_search:
 				addr=%lu mmap_base=%lu\n",
 				len,TASK_SIZE,\
 				current->pid,do_align,addr,mm->mmap_base);
-#ifndef CONFIG_SAMSUNG_PRODUCT_SHIP
-			//panic("!!!! Panic for mmap!!!!");
-#endif
 			return -ENOMEM;
 		}
 		if (!vma || addr + len <= vma->vm_start) {

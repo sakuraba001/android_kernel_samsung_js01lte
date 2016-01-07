@@ -18,7 +18,7 @@
 /* factory Sysfs                                                         */
 /*************************************************************************/
 
-#define MODEL_NAME			"STM32F401CEY6B"
+#define MODEL_NAME			"STM32F401CCY6B"
 
 ssize_t mcu_revision_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
@@ -252,7 +252,11 @@ exit:
 		"ges %d,%d,%d,%d\n"
 		"prox %u,%u\n"
 		"temp %d,%d,%d\n"
+#if defined (CONFIG_SENSORS_SSP_MAX88921)
 		"light %u,%u,%u,%u,%u,%u\n", __func__,
+#else
+		"light %u,%u,%u,%u\n", __func__,
+#endif
 		fsb[ACCELEROMETER_SENSOR].x, fsb[ACCELEROMETER_SENSOR].y,
 		fsb[ACCELEROMETER_SENSOR].z, fsb[GYROSCOPE_SENSOR].x,
 		fsb[GYROSCOPE_SENSOR].y, fsb[GYROSCOPE_SENSOR].z,
@@ -262,20 +266,22 @@ exit:
 		fsb[GESTURE_SENSOR].data[0], fsb[GESTURE_SENSOR].data[1],
 		fsb[GESTURE_SENSOR].data[2], fsb[GESTURE_SENSOR].data[3],
 		fsb[PROXIMITY_SENSOR].prox[0], fsb[PROXIMITY_SENSOR].prox[1],
-		fsb[TEMPERATURE_HUMIDITY_SENSOR].x,
-		fsb[TEMPERATURE_HUMIDITY_SENSOR].y,
-		fsb[TEMPERATURE_HUMIDITY_SENSOR].z,
+		fsb[TEMPERATURE_HUMIDITY_SENSOR].data[0],
+		fsb[TEMPERATURE_HUMIDITY_SENSOR].data[1],
+		fsb[TEMPERATURE_HUMIDITY_SENSOR].data[2],
 		fsb[LIGHT_SENSOR].r, fsb[LIGHT_SENSOR].g, fsb[LIGHT_SENSOR].b,
-		fsb[LIGHT_SENSOR].w,
-#ifdef CONFIG_SENSORS_SSP_TMG399X
-		fsb[LIGHT_SENSOR].a_time, fsb[LIGHT_SENSOR].a_gain
-#else
-		fsb[LIGHT_SENSOR].ir_cmp, fsb[LIGHT_SENSOR].amb_pga
+		fsb[LIGHT_SENSOR].w
+#if defined (CONFIG_SENSORS_SSP_MAX88921)
+		, fsb[LIGHT_SENSOR].ir_cmp, fsb[LIGHT_SENSOR].amb_pga
 #endif
 		);
 
 	return sprintf(buf, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%u,"
+#ifdef CONFIG_SENSORS_SSP_MAX88921
 		"%u,%u,%u,%u,%u,%u,%d,%d,%d,%d,%d,%d\n",
+#else
+		"%u,%u,%u,%u,%d,%d,%d,%d,%d,%d\n",
+#endif
 		fsb[ACCELEROMETER_SENSOR].x, fsb[ACCELEROMETER_SENSOR].y,
 		fsb[ACCELEROMETER_SENSOR].z, fsb[GYROSCOPE_SENSOR].x,
 		fsb[GYROSCOPE_SENSOR].y, fsb[GYROSCOPE_SENSOR].z,
@@ -284,13 +290,11 @@ exit:
 		fsb[PRESSURE_SENSOR].pressure[1], fsb[PROXIMITY_SENSOR].prox[1],
 		fsb[LIGHT_SENSOR].r, fsb[LIGHT_SENSOR].g, fsb[LIGHT_SENSOR].b,
 		fsb[LIGHT_SENSOR].w,
-#ifdef CONFIG_SENSORS_SSP_TMG399X
-		fsb[LIGHT_SENSOR].a_time, fsb[LIGHT_SENSOR].a_gain,
-#else
+#ifdef CONFIG_SENSORS_SSP_MAX88921
 		fsb[LIGHT_SENSOR].ir_cmp, fsb[LIGHT_SENSOR].amb_pga,
 #endif
 		fsb[GESTURE_SENSOR].data[0], fsb[GESTURE_SENSOR].data[1],
 		fsb[GESTURE_SENSOR].data[2], fsb[GESTURE_SENSOR].data[3],
-		fsb[TEMPERATURE_HUMIDITY_SENSOR].x,
-		fsb[TEMPERATURE_HUMIDITY_SENSOR].y);
+		fsb[TEMPERATURE_HUMIDITY_SENSOR].data[0],
+		fsb[TEMPERATURE_HUMIDITY_SENSOR].data[1]);
 }

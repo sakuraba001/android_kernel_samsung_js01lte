@@ -48,10 +48,7 @@
 #endif
 #include "barcode_emul_ice4_hlte.h"
 #include <linux/err.h>
-
-#if defined(CONFIG_MACH_H3GDUOS)
 #include <mach/gpiomux.h>
-#endif
 
 #if defined(TEST_DEBUG)
 #define pr_barcode	pr_emerg
@@ -125,8 +122,7 @@ static int Is_beaming;
 static struct mutex		en_mutex;
 static struct i2c_client *g_client;
 #if defined(CONFIG_MACH_HLTESKT)||defined(CONFIG_MACH_HLTEKTT)||defined(CONFIG_MACH_HLTELGT)\
-	|| defined(CONFIG_MACH_FLTESKT) || defined(CONFIG_MACH_LT03SKT) || defined(CONFIG_MACH_LT03LGT) || defined(CONFIG_MACH_LT03KTT)\
-	|| defined(CONFIG_MACH_HLTEDCM) || defined(CONFIG_MACH_HLTEKDI) || defined(CONFIG_MACH_JS01LTEDCM) \
+	|| defined(CONFIG_MACH_HLTEDCM) || defined(CONFIG_MACH_HLTEKDI) || defined(CONFIG_MACH_JS01LTEDCM)\
 	|| defined(CONFIG_MACH_H3GDUOS_CTC) || defined(CONFIG_MACH_H3GDUOS_CU)
 bool fw_dl_complete;
 #else
@@ -172,11 +168,6 @@ static int bc_poweron(bool enable)
 	}
 	else
 	{
-		if (IS_ERR(barcode_l19_3p3)) {
-			pr_err("%s: vdda vreg isn't gotten, rc=%ld\n",
-				__func__, PTR_ERR(barcode_l19_3p3));
-			return PTR_ERR(barcode_l19_3p3);
-		}
 		ret = regulator_disable(barcode_l19_3p3);
 		if (ret)
 			pr_err("%s: error l19 enabling regulator\n", __func__);
@@ -191,7 +182,7 @@ static int ice4_clock_en(int onoff)
 	static struct clk *fpga_main_src_clk;
 	static struct clk *fpga_main_clk;
 #if defined(CONFIG_MACH_H3GDUOS)
-     if (onoff) {
+	if (onoff) {
 		int rc = 0;
 		
 		//msm_tlmm_misc_reg_write(TLMM_SPARE_REG, 0x1);
@@ -205,10 +196,10 @@ static int ice4_clock_en(int onoff)
 			return 0;
 		}
 		//gpio_direction_output(GPIO_FPGA_MAIN_CLK, 0);
-     } else {
+	} else {
 		//msm_tlmm_misc_reg_write(TLMM_SPARE_REG, 0x5);
 		gpio_free(GPIO_FPGA_MAIN_CLK);
-     }  
+	}   
 
       if (!fpga_main_src_clk){
       	fpga_main_src_clk = clk_get(NULL, "gp1_src_clk");
@@ -300,10 +291,6 @@ static int barcode_parse_dt(struct device *dev,
 				0, &pdata->spi_si_flag);
 	pdata->irda_irq =of_get_named_gpio_flags(np, "barcode,irq-gpio",
 				0, &pdata->irda_irq_flag);
-#if defined(CONFIG_MACH_MONDRIAN)
-	pdata->ir_led_en = of_get_named_gpio_flags(np, "barcode,ir_led_en",
-				0, &pdata->ir_led_en_flag);
-#endif
 
 	return 0;
 }
@@ -337,13 +324,10 @@ static void barcode_gpio_config(void)
 	gpio_request(g_pdata->irda_irq, "irda_irq");
 	gpio_direction_input(g_pdata->irda_irq);
 
-#if defined(CONFIG_MACH_MONDRIAN)
-	gpio_request(g_pdata->ir_led_en, "ir_led_en");
-	gpio_direction_output(g_pdata->ir_led_en, 0);
-#endif
+	
+
 }
 #if defined(CONFIG_MACH_HLTESKT) || defined(CONFIG_MACH_HLTEKTT) || defined(CONFIG_MACH_HLTELGT)\
-	|| defined(CONFIG_MACH_FLTESKT) || defined(CONFIG_MACH_LT03SKT) || defined(CONFIG_MACH_LT03LGT) || defined(CONFIG_MACH_LT03KTT)\
 	|| defined(CONFIG_MACH_HLTEDCM) || defined(CONFIG_MACH_HLTEKDI) || defined(CONFIG_MACH_JS01LTEDCM)
 static void barcode_gpio_reconfig(void)
 {
@@ -437,7 +421,6 @@ static int barcode_fpga_fimrware_update_start(const u8 *data, int len)
 void ice4_fpga_firmware_update_hlte(void)
 {
 #if defined(CONFIG_MACH_HLTESKT) || defined(CONFIG_MACH_HLTEKTT) || defined(CONFIG_MACH_HLTELGT)\
-	|| defined(CONFIG_MACH_FLTESKT) || defined(CONFIG_MACH_LT03SKT) || defined(CONFIG_MACH_LT03LGT) || defined(CONFIG_MACH_LT03KTT)\
 	|| defined(CONFIG_MACH_HLTEDCM) || defined(CONFIG_MACH_HLTEKDI) || defined(CONFIG_MACH_JS01LTEDCM)
 	barcode_gpio_reconfig();
 #endif
@@ -456,7 +439,6 @@ void ice4_fpga_firmware_update_hlte(void)
 
 	//verification with dummy gpio
 #if defined(CONFIG_MACH_HLTESKT) || defined(CONFIG_MACH_HLTEKTT) || defined(CONFIG_MACH_HLTELGT)\
-	|| defined(CONFIG_MACH_FLTESKT) || defined(CONFIG_MACH_LT03SKT) || defined(CONFIG_MACH_LT03LGT) || defined(CONFIG_MACH_LT03KTT)\
 	|| defined(CONFIG_MACH_HLTEDCM) || defined(CONFIG_MACH_HLTEKDI) || defined(CONFIG_MACH_JS01LTEDCM)
 	gpio_tlmm_config(GPIO_CFG(g_pdata->spi_si, 0,
 		GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA), 1);
@@ -854,9 +836,6 @@ static void ir_remocon_work(struct barcode_emul_data *ir_data, int count)
 
 	pr_barcode("%s: total buf_size: %d\n", __func__, buf_size);
 
-#if defined(CONFIG_MACH_MONDRIAN)
-	gpio_set_value(g_pdata->ir_led_en, GPIO_LEVEL_HIGH);
-#endif
 	bc_poweron(1);
 	fpga_enable(1,1);
 
@@ -969,9 +948,6 @@ static void ir_remocon_work(struct barcode_emul_data *ir_data, int count)
 	data->ir_sum = 0;
 
 	fpga_enable(0,0);
-#if defined(CONFIG_MACH_MONDRIAN)
-	gpio_set_value(g_pdata->ir_led_en, GPIO_LEVEL_LOW);
-#endif
 	bc_poweron(0);
 
 }
@@ -1140,10 +1116,6 @@ static ssize_t irda_test_store(struct device *dev,
 	for (i = 0; i < IRDA_TEST_CODE_SIZE; i++)
 		i2c_block_transfer.data[i] = BSR_data[i];
 
-#if defined(CONFIG_MACH_MONDRIAN)
-	gpio_set_value(g_pdata->ir_led_en, GPIO_LEVEL_HIGH);
-#endif
-	bc_poweron(1);
 	fpga_enable(1,1);
 
 	/* sending data by I2C */
@@ -1158,10 +1130,6 @@ static ssize_t irda_test_store(struct device *dev,
 			pr_err("%s: err2 %d\n", __func__, ret);
 	}
 
-#if defined(CONFIG_MACH_MONDRIAN)
-	gpio_set_value(g_pdata->ir_led_en, GPIO_LEVEL_LOW);
-#endif
-	bc_poweron(0);
 	fpga_enable(0,0);
 
 	return size;
@@ -1180,7 +1148,105 @@ static struct device_attribute ir_attrs[] = {
 	__ATTR(irda_test, S_IRUGO|S_IWUSR|S_IWGRP, irda_test_show, irda_test_store)
 };
 #endif
+/*
+static int ice_gpio_get(struct gpio_chip *chip, unsigned offset)
+{
+	return ice_gpiox_get((unsigned)offset);
+}
 
+static void ice_gpio_set(struct gpio_chip *chip, unsigned offset, int value)
+{
+	ice_gpiox_set((unsigned)offset, value);
+}
+
+static struct gpio_chip ice_gpio = {
+	.label = "ice-fpga-gpio",
+	.get = ice_gpio_get,
+	.set = ice_gpio_set,
+	.base = FPGA_GPIO_BASE,
+	.ngpio = NR_FPGA_GPIO,
+};
+
+int ice_gpiox_get(int num)
+{
+	int ret;
+	int cmd;
+
+	if (!fw_dl_complete)
+		return -EBUSY;
+
+	g_client->addr = BARCODE_I2C_ADDR;
+
+	if (g_pdata->fw_type == ICE_24M)
+		cmd = 0xFC | (num >> 3);
+	else
+	cmd = num >> 3;
+
+	fpga_enable(1);
+	ret = i2c_smbus_read_byte_data(g_client, cmd);
+	if (ret) {
+		fpga_enable(0);
+		fpga_enable(1);
+		ret = i2c_smbus_read_byte_data(g_client, cmd);
+	}
+
+	fpga_enable(0);
+	if (ret < 0) {
+		pr_err("%s i2c error : %d\n", __func__, ret);
+		return ret;
+	} else if (ret & (1 << (num&7))) {
+		pr_barcode("%s : num = %d , val = 1\n", __func__, num);
+		return 1;
+	} else {
+		pr_barcode("%s : num = %d , val = 0\n", __func__, num);
+		return 0;
+	}
+
+}
+
+EXPORT_SYMBOL(ice_gpiox_get);
+
+int ice_gpiox_set(int num, int val)
+{
+	int ret;
+	int cmd;
+
+	if (!fw_dl_complete)
+		return -EBUSY;
+
+	g_client->addr = BARCODE_I2C_ADDR;
+
+	if (g_pdata->fw_type == ICE_24M)
+		cmd = 0xFC | (num >> 3);
+	else
+	cmd = num >> 3;
+
+	if (val)
+		gpiox_state |= 1 << num;
+	else
+		gpiox_state &= ~(1 << num);
+
+	pr_barcode("%s : num = %d , val = %d\n", __func__, num, val);
+
+	fpga_enable(1);
+
+	ret = i2c_smbus_write_byte_data(g_client, cmd,
+			(num >> 3) ? (gpiox_state >> 8) : gpiox_state);
+	if (ret) {
+		fpga_enable(0);
+		fpga_enable(1);
+		ret = i2c_smbus_write_byte_data(g_client, cmd,
+				(num >> 3) ? (gpiox_state >> 8) : gpiox_state);
+	}
+
+	fpga_enable(0);
+	if (ret)
+		pr_err("%s i2c error : %d\n", __func__, ret);
+
+	return ret;
+}
+EXPORT_SYMBOL(ice_gpiox_set);
+*/
 static void fw_work(struct work_struct *work)
 {
 	ice4_fpga_firmware_update_hlte();
@@ -1222,7 +1288,7 @@ static int __devinit barcode_emul_probe(struct i2c_client *client,
 
 #if !defined(CONFIG_MACH_VIENNAEUR) && !defined(CONFIG_MACH_LT03EUR)\
 	&& !defined(CONFIG_MACH_LT03SKT) && !defined(CONFIG_MACH_LT03KTT)\
-	&& !defined(CONFIG_MACH_LT03LGT) && !defined(CONFIG_MACH_V2)
+	&& !defined(CONFIG_MACH_LT03LGT)
 	if(system_rev < BOARD_REV02)
 		pdata->fw_type = ICE_I2C_2;
 
@@ -1239,6 +1305,7 @@ static int __devinit barcode_emul_probe(struct i2c_client *client,
 	g_pdata = pdata;
 	pr_barcode("%s setting gpio config.\n", __func__);
 	barcode_gpio_config();
+//	bc_poweron(client->dev);
 	client->irq = gpio_to_irq(pdata->irda_irq);
 
 	data = kzalloc(sizeof(struct barcode_emul_data), GFP_KERNEL);

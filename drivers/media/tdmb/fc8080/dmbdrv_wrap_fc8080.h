@@ -51,24 +51,17 @@ struct sub_channel_info_type {
 	unsigned char ecc;
 };
 
-#ifdef CONFIG_TDMB_TSIF
-void dmb_drv_isr(unsigned char *data, unsigned int length);
-#else
 void dmb_drv_isr(void);
-#endif
-unsigned char dmb_drv_init(unsigned long param);
+unsigned char dmb_drv_init(void);
 unsigned char dmb_drv_deinit(void);
 unsigned char dmb_drv_scan_ch(unsigned long frequency);
 int dmb_drv_get_dmb_sub_ch_cnt(void);
 int dmb_drv_get_dab_sub_ch_cnt(void);
-int dmb_drv_get_dat_sub_ch_cnt(void);
 char *dmb_drv_get_ensemble_label(void);
 char *dmb_drv_get_sub_ch_dmb_label(int subchannel_count);
 char *dmb_drv_get_sub_ch_dab_label(int subchannel_count);
-char *dmb_drv_get_sub_ch_dat_label(int subchannel_count);
 struct sub_channel_info_type *dmb_drv_get_fic_dmb(int subchannel_count);
 struct sub_channel_info_type *dmb_drv_get_fic_dab(int subchannel_count);
-struct sub_channel_info_type *dmb_drv_get_fic_dat(int subchannel_count);
 unsigned char dmb_drv_set_ch(
 	unsigned long frequency
 	, unsigned char subchannel

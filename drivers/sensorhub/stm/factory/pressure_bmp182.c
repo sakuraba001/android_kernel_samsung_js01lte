@@ -14,12 +14,15 @@
  */
 #include "../ssp.h"
 
-#define LPS25H_REV	3
+#if defined(CONFIG_MACH_KS01SKT) || defined(CONFIG_MACH_KS01KTT)\
+	|| defined(CONFIG_MACH_KS01LGT)
+#define LPS25H_REV	4
+#endif
 
 #define	VENDOR		"BOSCH"
 #define	CHIP_ID		"BMP180"
-#define	VENDOR_STM	"STM"
-#define	CHIP_ID_LPS25H	"LPS25H"
+#define	VENDOR_STM		"STM"
+#define	CHIP_ID_LPS25H		"LPS25H"
 
 #define CALIBRATION_FILE_PATH		"/efs/FactoryApp/baro_delta"
 

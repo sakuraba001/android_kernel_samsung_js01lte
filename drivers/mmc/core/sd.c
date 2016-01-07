@@ -26,12 +26,6 @@
 #include "sd.h"
 #include "sd_ops.h"
 
-#define UHS_SDR104_MIN_DTR	(100 * 1000 * 1000)
-#define UHS_DDR50_MIN_DTR	(50 * 1000 * 1000)
-#define UHS_SDR50_MIN_DTR	(50 * 1000 * 1000)
-#define UHS_SDR25_MIN_DTR	(25 * 1000 * 1000)
-#define UHS_SDR12_MIN_DTR	(12.5 * 1000 * 1000)
-
 static const unsigned int tran_exp[] = {
 	10000,		100000,		1000000,	10000000,
 	0,		0,		0,		0
@@ -492,22 +486,18 @@ static void sd_update_bus_speed_mode(struct mmc_card *card)
 	}
 
 	if ((card->host->caps & MMC_CAP_UHS_SDR104) &&
-	    (card->sw_caps.sd3_bus_mode & SD_MODE_UHS_SDR104) &&
-	    (card->host->f_max > UHS_SDR104_MIN_DTR)) {
+	    (card->sw_caps.sd3_bus_mode & SD_MODE_UHS_SDR104)) {
 			card->sd_bus_speed = UHS_SDR104_BUS_SPEED;
 	} else if ((card->host->caps & MMC_CAP_UHS_DDR50) &&
-		   (card->sw_caps.sd3_bus_mode & SD_MODE_UHS_DDR50) &&
-		    (card->host->f_max > UHS_DDR50_MIN_DTR)) {
+		   (card->sw_caps.sd3_bus_mode & SD_MODE_UHS_DDR50)) {
 			card->sd_bus_speed = UHS_DDR50_BUS_SPEED;
 	} else if ((card->host->caps & (MMC_CAP_UHS_SDR104 |
 		    MMC_CAP_UHS_SDR50)) && (card->sw_caps.sd3_bus_mode &
-		    SD_MODE_UHS_SDR50) &&
-		    (card->host->f_max > UHS_SDR50_MIN_DTR)) {
+		    SD_MODE_UHS_SDR50)) {
 			card->sd_bus_speed = UHS_SDR50_BUS_SPEED;
 	} else if ((card->host->caps & (MMC_CAP_UHS_SDR104 |
 		    MMC_CAP_UHS_SDR50 | MMC_CAP_UHS_SDR25)) &&
-		   (card->sw_caps.sd3_bus_mode & SD_MODE_UHS_SDR25) &&
-		 (card->host->f_max > UHS_SDR25_MIN_DTR)) {
+		   (card->sw_caps.sd3_bus_mode & SD_MODE_UHS_SDR25)) {
 			card->sd_bus_speed = UHS_SDR25_BUS_SPEED;
 	} else if ((card->host->caps & (MMC_CAP_UHS_SDR104 |
 		    MMC_CAP_UHS_SDR50 | MMC_CAP_UHS_SDR25 |
@@ -676,12 +666,9 @@ static int mmc_sd_change_bus_speed(struct mmc_host *host, unsigned long *freq)
 				MMC_SEND_TUNING_BLOCK);
 		mmc_host_clk_release(card->host);
 
-		if (err) {
-			pr_warn("%s: %s: tuning execution failed %d. Restoring to previous clock %lu\n",
-				   mmc_hostname(card->host), __func__, err,
-				   host->clk_scaling.curr_freq);
-			mmc_set_clock(host, host->clk_scaling.curr_freq);
-		}
+		if (err)
+			pr_warn("%s: %s: tuning execution failed %d\n",
+				   mmc_hostname(card->host), __func__, err);
 	}
 
 out:
@@ -1163,7 +1150,7 @@ static void mmc_sd_detect(struct mmc_host *host)
 {
 	int err = 0;
 #ifdef CONFIG_MMC_PARANOID_SD_INIT
-        int retries = 2;
+        int retries = 5;
 #endif
 
 	BUG_ON(!host);
@@ -1253,7 +1240,7 @@ static int mmc_sd_resume(struct mmc_host *host)
 
 	mmc_claim_host(host);
 #ifdef CONFIG_MMC_PARANOID_SD_INIT
-	retries = 2;
+	retries = 5;
 	while (retries) {
 		err = mmc_sd_init_card(host, host->ocr, host->card);
 
@@ -1406,7 +1393,7 @@ int mmc_attach_sd(struct mmc_host *host)
 	 * Detect and init the card.
 	 */
 #ifdef CONFIG_MMC_PARANOID_SD_INIT
-	retries = 2;
+	retries = 5;
 	while (retries) {
 		err = mmc_sd_init_card(host, host->ocr, NULL);
 		if (err) {

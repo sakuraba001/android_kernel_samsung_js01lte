@@ -20,6 +20,8 @@
 
 #define VENDOR		"INVENSENSE"
 #define CHIP_ID		"MPU6500"
+#define VENDOR_K330	"STM"
+#define CHIP_ID_K330	"K330"
 
 #define CALIBRATION_FILE_PATH	"/efs/calibration_data"
 #define CALIBRATION_DATA_AMOUNT	20
@@ -27,13 +29,21 @@
 static ssize_t accel_vendor_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
-	return sprintf(buf, "%s\n", VENDOR);
+	struct ssp_data *data = dev_get_drvdata(dev);
+	if (data->sns_combination == STM_K330_AG)
+		return sprintf(buf, "%s\n", VENDOR_K330);
+	else
+		return sprintf(buf, "%s\n", VENDOR);
 }
 
 static ssize_t accel_name_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
-	return sprintf(buf, "%s\n", CHIP_ID);
+	struct ssp_data *data = dev_get_drvdata(dev);
+	if (data->sns_combination == STM_K330_AG)
+		return sprintf(buf, "%s\n", CHIP_ID_K330);
+	else
+		return sprintf(buf, "%s\n", CHIP_ID);
 }
 
 int accel_open_calibration(struct ssp_data *data)
@@ -81,12 +91,6 @@ int set_accel_cal(struct ssp_data *data)
 	struct ssp_msg *msg;
 	s16 accel_cal[3];
 
-	if (!(data->uSensorState & (1 << ACCELEROMETER_SENSOR))) {
-		pr_info("[SSP]: %s - Skip this function!!!"\
-			", accel sensor is not connected(0x%x)\n",
-			__func__, data->uSensorState);
-		return iRet;
-	}
 	accel_cal[0] = data->accelcal.x;
 	accel_cal[1] = data->accelcal.y;
 	accel_cal[2] = data->accelcal.z;
@@ -113,19 +117,17 @@ int set_accel_cal(struct ssp_data *data)
 
 static int enable_accel_for_cal(struct ssp_data *data)
 {
-	u8 uBuf[4] = { 0, };
-	s32 dMsDelay = get_msdelay(data->adDelayBuf[ACCELEROMETER_SENSOR]);
-	memcpy(&uBuf[0], &dMsDelay, 4);
+	u8 uBuf[2] = {0, 10};
 
 	if (atomic_read(&data->aSensorEnable) & (1 << ACCELEROMETER_SENSOR)) {
 		if (get_msdelay(data->adDelayBuf[ACCELEROMETER_SENSOR]) != 10) {
 			send_instruction(data, CHANGE_DELAY,
-				ACCELEROMETER_SENSOR, uBuf, 4);
+				ACCELEROMETER_SENSOR, uBuf, 2);
 			return SUCCESS;
 		}
 	} else {
 		send_instruction(data, ADD_SENSOR,
-			ACCELEROMETER_SENSOR, uBuf, 4);
+			ACCELEROMETER_SENSOR, uBuf, 2);
 	}
 
 	return FAIL;
@@ -133,17 +135,17 @@ static int enable_accel_for_cal(struct ssp_data *data)
 
 static void disable_accel_for_cal(struct ssp_data *data, int iDelayChanged)
 {
-	u8 uBuf[4] = { 0, };
-	s32 dMsDelay = get_msdelay(data->adDelayBuf[ACCELEROMETER_SENSOR]);
-	memcpy(&uBuf[0], &dMsDelay, 4);
+	u8 uBuf[2] = {0, 10};
 
 	if (atomic_read(&data->aSensorEnable) & (1 << ACCELEROMETER_SENSOR)) {
+		uBuf[1] = get_msdelay(data->adDelayBuf[ACCELEROMETER_SENSOR]);
+		uBuf[0] = get_delay_cmd(uBuf[1]);
 		if (iDelayChanged)
 			send_instruction(data, CHANGE_DELAY,
-				ACCELEROMETER_SENSOR, uBuf, 4);
+				ACCELEROMETER_SENSOR, uBuf, 2);
 	} else {
 		send_instruction(data, REMOVE_SENSOR,
-			ACCELEROMETER_SENSOR, uBuf, 4);
+			ACCELEROMETER_SENSOR, uBuf, 2);
 	}
 }
 

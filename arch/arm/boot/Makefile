@@ -11,9 +11,6 @@
 # Copyright (C) 1995-2002 Russell King
 #
 
-ifeq ($(CONFIG_CRYPTO_FIPS),y)
-MKFIPS          := $(srctree)/scripts/mk_fipsbinary.sh
-endif
 ifneq ($(MACHINE),)
 include $(srctree)/$(MACHINE)/Makefile.boot
 endif
@@ -29,14 +26,6 @@ INITRD_PHYS := $(initrd_phys-y)
 export ZRELADDR INITRD_PHYS PARAMS_PHYS
 
 targets := Image zImage xipImage bootpImage uImage
-
-DTB_NAMES := $(subst $\",,$(CONFIG_BUILD_ARM_APPENDED_DTB_IMAGE_NAMES))
-ifneq ($(DTB_NAMES),)
-DTB_LIST := $(addsuffix .dtb,$(DTB_NAMES))
-else
-DTB_LIST := $(dtb-y)
-endif
-DTB_OBJS := $(addprefix $(obj)/,$(DTB_LIST))
 
 ifeq ($(CONFIG_XIP_KERNEL),y)
 
@@ -64,38 +53,17 @@ $(obj)/compressed/vmlinux: $(obj)/Image FORCE
 
 $(obj)/zImage:	$(obj)/compressed/vmlinux FORCE
 	$(call if_changed,objcopy)
-ifeq ($(CONFIG_CRYPTO_FIPS),y)
-	$(MKFIPS) $(obj)/zImage
-endif
-	@echo '  Kernel: $@ is ready'
-
-$(obj)/zImage-dtb:	$(obj)/zImage $(DTB_OBJS) FORCE
-	$(call if_changed,cat)
 	@echo '  Kernel: $@ is ready'
 
 endif
 
-targets += $(DTB_LIST)
+targets += $(dtb-y)
 
 # Rule to build device tree blobs
-ifeq ($(CONFIG_ARCH_MSM8226),y)
-$(obj)/%.dtb: $(src)/dts/msm8226/%.dts FORCE
+$(obj)/%.dtb: $(src)/dts/%.dts FORCE
 	$(call if_changed_dep,dtc)
-endif
 
-ifeq ($(CONFIG_ARCH_MSM8610),y)
-$(obj)/%.dtb: $(src)/dts/msm8610/%.dts FORCE
-	$(call if_changed_dep,dtc)
-endif
-
-ifeq ($(CONFIG_ARCH_MSM8974PRO),y)
-$(obj)/%.dtb: $(src)/dts/msm8974pro/%.dts FORCE
-	$(call if_changed_dep,dtc)
-else
-     $(obj)/%.dtb: $(src)/dts/msm8974/%.dts FORCE
-	$(call if_changed_dep,dtc)
-endif
-$(obj)/dtbs: $(DTB_OBJS)
+$(obj)/dtbs: $(addprefix $(obj)/, $(dtb-y))
 
 clean-files := *.dtb
 

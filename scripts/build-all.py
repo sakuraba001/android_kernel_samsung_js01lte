@@ -38,16 +38,24 @@ import os.path
 import re
 import shutil
 import sys
+import tarfile
 
 version = 'build-all.py, version 0.01'
 
-build_dir = '../all-kernels'
-make_command = ["vmlinux", "modules", "dtbs"]
+# SS modifications for specific projects
+#  do target specific modifications for new projects here...
+target_prefix = 'msm8974_sec'
+arch_pats_expr1 = 'msm8974_sec_[hk][ls][t0][e1]???_defconfig'
+arch_pats_expr2 = 'msm8974_sec_[hk][ls][t0][e1]???_rev??_defconfig'
+cross_compile_path = os.environ.get("PWD")+'/../prebuilts/gcc/linux-x86/arm/arm-eabi-4.6/bin/arm-eabi-'
+
+build_dir = '../../output/all-kernels'
+make_command = ["zImage", "modules", "dtbs"]
 make_env = os.environ
 make_env.update({
         'ARCH': 'arm',
+        'CROSS_COMPILE': cross_compile_path,
         'KCONFIG_NOTIMESTAMP': 'true' })
-make_env.setdefault('CROSS_COMPILE', 'arm-none-linux-gnueabi-')
 all_options = {}
 
 def error(msg):
@@ -85,14 +93,12 @@ def scan_configs():
     """Get the full list of defconfigs appropriate for this tree."""
     names = {}
     arch_pats = (
-        r'[fm]sm[0-9]*_defconfig',
-        r'apq*_defconfig',
-        r'qsd*_defconfig',
-	r'msmkrypton*_defconfig',
+        arch_pats_expr1,
+	arch_pats_expr2,
         )
     for p in arch_pats:
         for n in glob.glob('arch/arm/configs/' + p):
-            names[os.path.basename(n)[:-10]] = n
+            names[os.path.basename(n)[12:-10]] = n
     return names
 
 class Builder:
@@ -138,10 +144,21 @@ failed_targets = []
 def build(target):
     dest_dir = os.path.join(build_dir, target)
     log_name = '%s/log-%s.log' % (build_dir, target)
+    zImage_name = '%s/arch/arm/boot/zImage' % (dest_dir)
+
     print 'Building %s in %s log %s' % (target, dest_dir, log_name)
     if not os.path.isdir(dest_dir):
         os.mkdir(dest_dir)
-    defconfig = 'arch/arm/configs/%s_defconfig' % target
+
+    base_defconfig = '%s_defconfig' % target_prefix
+    variant_defconfig = '%s_%s_defconfig' % (target_prefix, target)
+    debug_defconfig = '%s_eng_defconfig' % target_prefix
+    
+    print 'Base defconfig    : %s' % base_defconfig
+    print 'Variant defconfig : %s' % variant_defconfig
+    print 'Debug defconfig   : %s' % debug_defconfig
+
+    defconfig = 'arch/arm/configs/%s' % base_defconfig
     dotconfig = '%s/.config' % dest_dir
     savedefconfig = '%s/defconfig' % dest_dir
     shutil.copyfile(defconfig, dotconfig)
@@ -153,10 +170,12 @@ def build(target):
 
     devnull = open('/dev/null', 'r')
     subprocess.check_call(['make', 'O=%s' % dest_dir,
-        'SELINUX_DEFCONFIG=selinux_defconfig',
-        'SELINUX_LOG_DEFCONFIG=selinux_log_defconfig',
+        'VARIANT_DEFCONFIG=%s' % variant_defconfig,
+        'DEBUG_DEFCONFIG=%s' % debug_defconfig,
+	'SELINUX_DEFCONFIG=selinux_defconfig',
+	'SELINUX_LOG_DEFCONFIG=selinux_log_defconfig',
 	'TIMA_DEFCONFIG=tima_defconfig',
-        '%s_defconfig' % target], env=make_env, stdin=devnull)
+        '%s' % base_defconfig], env=make_env, stdin=devnull)
     devnull.close()
 
     if not all_options.updateconfigs:
@@ -192,6 +211,13 @@ def build(target):
             'savedefconfig'], env=make_env, stdin=devnull)
         devnull.close()
         shutil.copyfile(savedefconfig, defconfig)
+
+    tarball_name = '%s/boot_%s.tar' % (build_dir, target)
+    tar = tarfile.open(tarball_name, "w")
+    tar.add(zImage_name, arcname='boot.img')
+    tar.close()
+        
+    print "End build %s targets\n" % target
 
 def build_many(allconf, targets):
     print "Building %d target(s)" % len(targets)

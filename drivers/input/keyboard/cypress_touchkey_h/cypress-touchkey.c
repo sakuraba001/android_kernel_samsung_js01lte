@@ -14,7 +14,7 @@
 
 #include <linux/kernel.h>
 #include <asm/unaligned.h>
-//#include <mach/cpufreq.h>
+#include <mach/cpufreq.h>
 #include <linux/input/mt.h>
 #include <linux/of_gpio.h>
 #include <linux/regulator/consumer.h>
@@ -42,7 +42,7 @@
 #include "issp_extern.h"
 #include "coreriver_extern.h"
 #include <linux/mfd/pm8xxx/pm8921.h>
-/*
+
 #define CYPRESS_GEN		0X00
 #define CYPRESS_FW_VER		0X01
 #define CYPRESS_MODULE_VER	0X02
@@ -73,7 +73,7 @@
 #undef DO_NOT_USE_FUNC_PARAM
 
 #define KEYCODE_REG		0x00
-*/
+
 /* bit masks*/
 #define PRESS_BIT_MASK		0X08
 #define KEYCODE_BIT_MASK	0X07
@@ -865,7 +865,7 @@ static ssize_t cypress_touchkey_update_write(struct device *dev,
 		case 's':
 		case 'S':
 			fw_path = FW_BUILT_IN;
-#if !defined(CONFIG_MACH_JS01LTEDCM) && !defined(CONFIG_MACH_JS01LTESBM)
+#ifndef CONFIG_MACH_JS01LTEDCM			
 			if(info->touchkeyid == CYPRESS_TOUCHKEY && info->support_fw_update == false) {
 				dev_err(&client->dev, "%s: module %x does not support fw update\n.", __func__, info->module_ver);
 				return size;
@@ -1589,7 +1589,7 @@ static int tkey_flash_fw(struct cypress_touchkey_info *info, u8 fw_path, bool fo
 		info->support_fw_update = false;
 
 	/* firmware version compare */
-#if defined(CONFIG_MACH_JS01LTEDCM) || defined(CONFIG_MACH_JS01LTESBM)
+#ifdef CONFIG_MACH_JS01LTEDCM
 	if (info->ic_fw_ver >= info->src_fw_ver && !force) {
 #else
 	if ((info->ic_fw_ver >= info->src_fw_ver && !force) || info->support_fw_update == false) {
@@ -1727,10 +1727,6 @@ static void tkey_check_ic(struct cypress_touchkey_info *info)
 		else
 			info->touchkeyid =CYPRESS_TOUCHKEY;
 	}
-
-//TEST
-	info->touchkeyid =CYPRESS_TOUCHKEY;
-//TEST
 	dev_info(&info->client->dev, "touchkey id = %s\n",
 			info->touchkeyid ? "CYPRESS" : "CORERIVER");
 }
@@ -2101,16 +2097,12 @@ static int __init cypress_touchkey_init(void)
 {
 
 	int ret = 0;
-
 #ifdef CONFIG_SAMSUNG_LPM_MODE
 	if (poweroff_charging) {
 		pr_notice("%s : LPM Charging Mode!!\n", __func__);
 		return 0;
 	}
 #endif
-
-	printk(KERN_ERR "%s\n", __func__);
-
 	ret = i2c_add_driver(&cypress_touchkey_driver);
 	if (ret) {
 		printk(KERN_ERR "cypress touch keypad registration failed. ret= %d\n",
@@ -2126,7 +2118,7 @@ static void __exit cypress_touchkey_exit(void)
 	i2c_del_driver(&cypress_touchkey_driver);
 }
 
-module_init(cypress_touchkey_init);
+late_initcall(cypress_touchkey_init);
 module_exit(cypress_touchkey_exit);
 
 MODULE_DESCRIPTION("Touchkey driver for Cypress touchkey controller ");

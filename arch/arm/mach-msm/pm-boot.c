@@ -303,7 +303,10 @@ static int __devinit msm_pm_boot_probe(struct platform_device *pdev)
 			goto fail;
 
 		pdata.v_addr = ioremap_nocache(vaddr_val, SZ_8);
-
+		if (!pdata.v_addr) {
+			key = "qcom,virt-addr";
+			goto fail;
+		}
 		pdata.p_addr = allocate_contiguous_ebi_nomap(SZ_8, SZ_64K);
 		if (!pdata.p_addr) {
 			key = "qcom,phy-addr";

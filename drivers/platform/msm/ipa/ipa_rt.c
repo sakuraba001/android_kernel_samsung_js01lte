@@ -67,14 +67,13 @@ static int ipa_generate_rt_hw_rule(enum ipa_ip_type ip,
 	}
 	rule_hdr->u.hdr.pipe_dest_idx = pipe_idx;
 	rule_hdr->u.hdr.system = !ipa_ctx->hdr_tbl_lcl;
-	if (entry->hdr) {
+	if (entry->hdr)
 		rule_hdr->u.hdr.hdr_offset =
 			entry->hdr->offset_entry->offset >> 2;
-	} else {
+	else
 		rule_hdr->u.hdr.hdr_offset = 0;
-	}
-	buf += sizeof(struct ipa_rt_rule_hw_hdr);
 
+	buf += sizeof(struct ipa_rt_rule_hw_hdr);
 	if (ipa_generate_hw_rule(ip, &rule->attrib, &buf, &en_rule)) {
 		IPAERR("fail to generate hw rule\n");
 		return -EPERM;
@@ -360,8 +359,7 @@ static int __ipa_commit_rt(enum ipa_ip_type ip)
 	}
 
 	if (ip == IPA_IP_v4) {
-		avail = ipa_ctx->ip4_rt_tbl_lcl ? IPA_RAM_V4_RT_SIZE :
-			IPA_RAM_V4_RT_SIZE_DDR;
+		avail = IPA_RAM_V4_RT_SIZE;
 		size = sizeof(struct ipa_ip_v4_routing_init);
 	} else {
 		avail = ipa_ctx->ip6_rt_tbl_lcl ? IPA_RAM_V6_RT_SIZE :
@@ -843,11 +841,8 @@ int ipa_reset_rt(enum ipa_ip_type ip)
 					 &tbl->head_rt_rule_list, link) {
 			node = ipa_search(&ipa_ctx->rt_rule_hdl_tree,
 					  (u32)rule);
-			if (node == NULL) {
+			if (node == NULL)
 				WARN_ON(1);
-				mutex_unlock(&ipa_ctx->lock);
-				return -EFAULT;
-			}
 
 			/*
 			 * for the "default" routing tbl, remove all but the
@@ -869,11 +864,8 @@ int ipa_reset_rt(enum ipa_ip_type ip)
 		}
 
 		node = ipa_search(&ipa_ctx->rt_tbl_hdl_tree, (u32)tbl);
-		if (node  == NULL) {
+		if (node  == NULL)
 			WARN_ON(1);
-			mutex_unlock(&ipa_ctx->lock);
-			return -EFAULT;
-		}
 
 		/* do not remove the "default" routing tbl which has index 0 */
 		if (tbl->idx != 0) {

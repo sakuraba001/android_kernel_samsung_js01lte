@@ -19,31 +19,23 @@
 #define MSG2AP_INST_LIBRARY_DATA		0x01
 #define MSG2AP_INST_DEBUG_DATA			0x03
 #define MSG2AP_INST_BIG_DATA			0x04
-#define MSG2AP_INST_META_DATA			0x05
-#define MSG2AP_INST_TIME_SYNC			0x06
-#define MSG2AP_INST_RESET			0x07
 
 /*************************************************************************/
 /* SSP parsing the dataframe                                             */
 /*************************************************************************/
-
-static void get_timestamp(struct ssp_data *data, char *pchRcvDataFrame,
-		int *iDataIdx, struct sensor_value *sensorsdata) {
-	s32 otimestamp = 0;
-	s64 ctimestamp = 0;
-
-	memcpy(&otimestamp, pchRcvDataFrame + *iDataIdx, 4);
-	*iDataIdx += 4;
-
-	ctimestamp = (s64) otimestamp * 1000000;
-	sensorsdata->timestamp = data->timestamp + ctimestamp;
-}
 
 static void get_3axis_sensordata(char *pchRcvDataFrame, int *iDataIdx,
 	struct sensor_value *sensorsdata)
 {
 	memcpy(sensorsdata, pchRcvDataFrame + *iDataIdx, 6);
 	*iDataIdx += 6;
+}
+
+static void get_geomagnetic_sensordata(char *pchRcvDataFrame, int *iDataIdx,
+	struct sensor_value *sensorsdata)
+{
+	memcpy(sensorsdata, pchRcvDataFrame + *iDataIdx, 7);
+	*iDataIdx += 7;
 }
 
 static void get_uncalib_sensordata(char *pchRcvDataFrame, int *iDataIdx,
@@ -53,32 +45,6 @@ static void get_uncalib_sensordata(char *pchRcvDataFrame, int *iDataIdx,
 	*iDataIdx += 12;
 }
 
-
-static void get_geomagnetic_uncaldata(char *pchRcvDataFrame, int *iDataIdx,
-	struct sensor_value *sensorsdata)
-{
-	memcpy(sensorsdata, pchRcvDataFrame + *iDataIdx, 12);
-	*iDataIdx += 12;
-}
-
-static void get_geomagnetic_rawdata(char *pchRcvDataFrame, int *iDataIdx,
-	struct sensor_value *sensorsdata)
-{
-	memcpy(sensorsdata, pchRcvDataFrame + *iDataIdx, 6);
-	*iDataIdx += 6;
-}
-
-static void get_geomagnetic_caldata(char *pchRcvDataFrame, int *iDataIdx,
-	struct sensor_value *sensorsdata)
-{
-#ifdef SAVE_MAG_LOG
-	memcpy(sensorsdata, pchRcvDataFrame + *iDataIdx, 20);
-	*iDataIdx += 20;
-#else
-	memcpy(sensorsdata, pchRcvDataFrame + *iDataIdx, 7);
-	*iDataIdx += 7;
-#endif
-}
 static void get_rot_sensordata(char *pchRcvDataFrame, int *iDataIdx,
 	struct sensor_value *sensorsdata)
 {
@@ -96,13 +62,15 @@ static void get_step_det_sensordata(char *pchRcvDataFrame, int *iDataIdx,
 static void get_light_sensordata(char *pchRcvDataFrame, int *iDataIdx,
 	struct sensor_value *sensorsdata)
 {
-#ifdef CONFIG_SENSORS_SSP_TMG399X
-	memcpy(sensorsdata, pchRcvDataFrame + *iDataIdx, 10);
-	*iDataIdx += 10;
+
+#if defined (CONFIG_SENSORS_SSP_MAX88921)
+	memcpy(sensorsdata, pchRcvDataFrame + *iDataIdx, 12);
+	*iDataIdx += 12;
 #else
 	memcpy(sensorsdata, pchRcvDataFrame + *iDataIdx, 8);
 	*iDataIdx += 8;
 #endif
+
 }
 
 static void get_pressure_sensordata(char *pchRcvDataFrame, int *iDataIdx,
@@ -118,24 +86,31 @@ static void get_pressure_sensordata(char *pchRcvDataFrame, int *iDataIdx,
 static void get_gesture_sensordata(char *pchRcvDataFrame, int *iDataIdx,
 	struct sensor_value *sensorsdata)
 {
-	memcpy(sensorsdata, pchRcvDataFrame + *iDataIdx, 20);
-	*iDataIdx += 20;
+	memcpy(sensorsdata, pchRcvDataFrame + *iDataIdx, 38);
+	*iDataIdx += 38;
 }
 
 static void get_proximity_sensordata(char *pchRcvDataFrame, int *iDataIdx,
 	struct sensor_value *sensorsdata)
 {
-	memset(&sensorsdata->prox[0], 0, 1);
-	memcpy(&sensorsdata->prox[0], pchRcvDataFrame + *iDataIdx, 2);
-	//memcpy(&sensorsdata->prox[1], pchRcvDataFrame + *iDataIdx + 1, 1);
-	*iDataIdx += 2;
+	memset(&sensorsdata->prox[0], 0, 2);
+	memcpy(&sensorsdata->prox[0], pchRcvDataFrame + *iDataIdx, 1);
+	memcpy(&sensorsdata->prox[1], pchRcvDataFrame + *iDataIdx + 1, 2);
+	*iDataIdx += 3;
 }
 
 static void get_proximity_rawdata(char *pchRcvDataFrame, int *iDataIdx,
 	struct sensor_value *sensorsdata)
 {
-	memcpy(&sensorsdata->prox[0], pchRcvDataFrame + *iDataIdx, 1);
-	*iDataIdx += 1;
+	memcpy(&sensorsdata->prox[0], pchRcvDataFrame + *iDataIdx, 2);
+	*iDataIdx += 2;
+}
+
+static void get_geomagnetic_rawdata(char *pchRcvDataFrame, int *iDataIdx,
+	struct sensor_value *sensorsdata)
+{
+	memcpy(sensorsdata, pchRcvDataFrame + *iDataIdx, 6);
+	*iDataIdx += 6;
 }
 
 static void get_temp_humidity_sensordata(char *pchRcvDataFrame, int *iDataIdx,
@@ -153,13 +128,6 @@ static void get_sig_motion_sensordata(char *pchRcvDataFrame, int *iDataIdx,
 	*iDataIdx += 1;
 }
 
-static void get_step_cnt_sensordata(char *pchRcvDataFrame, int *iDataIdx,
-	struct sensor_value *sensorsdata)
-{
-	memcpy(&sensorsdata->step_diff, pchRcvDataFrame + *iDataIdx, 4);
-	*iDataIdx += 4;
-}
-
 int handle_big_data(struct ssp_data *data, char *pchRcvDataFrame, int *pDataIdx) {
 	u8 bigType = 0;
 	struct ssp_big *big = kzalloc(sizeof(*big), GFP_KERNEL);
@@ -170,32 +138,8 @@ int handle_big_data(struct ssp_data *data, char *pchRcvDataFrame, int *pDataIdx)
 	memcpy(&big->addr, pchRcvDataFrame + *pDataIdx, 4);
 	*pDataIdx += 4;
 
-	INIT_WORK(&big->work, data->ssp_big_task[bigType]);
+	INIT_WORK(&big->work, data->ssp_big_task[bigType] );
 	queue_work(data->debug_wq, &big->work);
-	return SUCCESS;
-}
-
-void refresh_task(struct work_struct *work) {
-	struct ssp_data *data = container_of((struct delayed_work *)work,
-	struct ssp_data, work_firmware);
-
-	pr_err("[SSP]: %s\n", __func__);
-
-	if (initialize_mcu(data) > 0) {
-		sync_sensor_state(data);
-		ssp_sensorhub_report_notice(data, MSG2SSP_AP_STATUS_RESET);
-		if (data->uLastAPState != 0)
-			ssp_send_cmd(data, data->uLastAPState, 0);
-		if (data->uLastResumeState != 0)
-			ssp_send_cmd(data, data->uLastResumeState, 0);
-		data->uTimeOutCnt = 0;
-	}
-}
-
-int queue_refresh_task(struct ssp_data *data, int delay) {
-	INIT_DELAYED_WORK(&data->work_firmware, refresh_task);
-	queue_delayed_work(data->debug_wq, &data->work_firmware,
-			msecs_to_jiffies(delay));
 	return SUCCESS;
 }
 
@@ -203,9 +147,6 @@ int parse_dataframe(struct ssp_data *data, char *pchRcvDataFrame, int iLength) {
 	int iDataIdx, iSensorData;
 	u16 length = 0;
 	struct sensor_value sensorsdata;
-	struct timespec ts;
-
-	getnstimeofday(&ts);
 
 	for (iDataIdx = 0; iDataIdx < iLength;) {
 		switch (pchRcvDataFrame[iDataIdx++]) {
@@ -218,7 +159,6 @@ int parse_dataframe(struct ssp_data *data, char *pchRcvDataFrame, int iLength) {
 			}
 			data->get_sensor_data[iSensorData](pchRcvDataFrame, &iDataIdx,
 					&sensorsdata);
-			get_timestamp(data, pchRcvDataFrame, &iDataIdx, &sensorsdata);
 			data->report_sensor_data[iSensorData](data, &sensorsdata);
 			break;
 		case MSG2AP_INST_DEBUG_DATA:
@@ -239,23 +179,8 @@ int parse_dataframe(struct ssp_data *data, char *pchRcvDataFrame, int iLength) {
 		case MSG2AP_INST_BIG_DATA:
 			handle_big_data(data, pchRcvDataFrame, &iDataIdx);
 			break;
-		case MSG2AP_INST_META_DATA:
-			sensorsdata.meta_data.what = pchRcvDataFrame[iDataIdx++];
-			sensorsdata.meta_data.sensor = pchRcvDataFrame[iDataIdx++];
-			report_meta_data(data, &sensorsdata);
-			break;
-		case MSG2AP_INST_TIME_SYNC:
-			data->bTimeSyncing = true;
-			break;
-		case MSG2AP_INST_RESET:
-			queue_refresh_task(data, 0);
-			break;
 		}
 	}
-
-	if (data->bTimeSyncing)
-		data->timestamp = ts.tv_sec * 1000000000ULL + ts.tv_nsec;
-
 	return SUCCESS;
 }
 
@@ -263,11 +188,8 @@ void initialize_function_pointer(struct ssp_data *data)
 {
 	data->get_sensor_data[ACCELEROMETER_SENSOR] = get_3axis_sensordata;
 	data->get_sensor_data[GYROSCOPE_SENSOR] = get_3axis_sensordata;
-	data->get_sensor_data[GEOMAGNETIC_UNCALIB_SENSOR] =
-		get_geomagnetic_uncaldata;
-	data->get_sensor_data[GEOMAGNETIC_RAW] = get_geomagnetic_rawdata;
-	data->get_sensor_data[GEOMAGNETIC_SENSOR] =
-		get_geomagnetic_caldata;
+	data->get_sensor_data[GEOMAGNETIC_SENSOR] = get_geomagnetic_sensordata;
+	data->get_sensor_data[GEOMAGNETIC_UNCALIB_SENSOR] = get_uncalib_sensordata;
 	data->get_sensor_data[PRESSURE_SENSOR] = get_pressure_sensordata;
 	data->get_sensor_data[GESTURE_SENSOR] = get_gesture_sensordata;
 	data->get_sensor_data[PROXIMITY_SENSOR] = get_proximity_sensordata;
@@ -275,20 +197,17 @@ void initialize_function_pointer(struct ssp_data *data)
 	data->get_sensor_data[LIGHT_SENSOR] = get_light_sensordata;
 	data->get_sensor_data[TEMPERATURE_HUMIDITY_SENSOR] =
 		get_temp_humidity_sensordata;
+	data->get_sensor_data[GEOMAGNETIC_RAW] = get_geomagnetic_rawdata;
 	data->get_sensor_data[ROTATION_VECTOR] = get_rot_sensordata;
 	data->get_sensor_data[GAME_ROTATION_VECTOR] = get_rot_sensordata;
 	data->get_sensor_data[STEP_DETECTOR] = get_step_det_sensordata;
 	data->get_sensor_data[SIG_MOTION_SENSOR] = get_sig_motion_sensordata;
 	data->get_sensor_data[GYRO_UNCALIB_SENSOR] = get_uncalib_sensordata;
-	data->get_sensor_data[STEP_COUNTER] = get_step_cnt_sensordata;
 
 	data->report_sensor_data[ACCELEROMETER_SENSOR] = report_acc_data;
 	data->report_sensor_data[GYROSCOPE_SENSOR] = report_gyro_data;
-	data->report_sensor_data[GEOMAGNETIC_UNCALIB_SENSOR] =
-		report_mag_uncaldata;
-	data->report_sensor_data[GEOMAGNETIC_RAW] = report_geomagnetic_raw_data;
-	data->report_sensor_data[GEOMAGNETIC_SENSOR] =
-		report_mag_data;
+	data->report_sensor_data[GEOMAGNETIC_SENSOR] = report_mag_data;
+	data->report_sensor_data[GEOMAGNETIC_UNCALIB_SENSOR] = report_uncalib_mag_data;
 	data->report_sensor_data[PRESSURE_SENSOR] = report_pressure_data;
 	data->report_sensor_data[GESTURE_SENSOR] = report_gesture_data;
 	data->report_sensor_data[PROXIMITY_SENSOR] = report_prox_data;
@@ -296,19 +215,17 @@ void initialize_function_pointer(struct ssp_data *data)
 	data->report_sensor_data[LIGHT_SENSOR] = report_light_data;
 	data->report_sensor_data[TEMPERATURE_HUMIDITY_SENSOR] =
 		report_temp_humidity_data;
+	data->report_sensor_data[GEOMAGNETIC_RAW] = report_geomagnetic_raw_data;
 	data->report_sensor_data[ROTATION_VECTOR] = report_rot_data;
 	data->report_sensor_data[GAME_ROTATION_VECTOR] = report_game_rot_data;
 	data->report_sensor_data[STEP_DETECTOR] = report_step_det_data;
 	data->report_sensor_data[SIG_MOTION_SENSOR] = report_sig_motion_data;
 	data->report_sensor_data[GYRO_UNCALIB_SENSOR] = report_uncalib_gyro_data;
-	data->report_sensor_data[STEP_COUNTER] = report_step_cnt_data;
 
 	data->ssp_big_task[BIG_TYPE_DUMP] = ssp_dump_task;
 	data->ssp_big_task[BIG_TYPE_READ_LIB] = ssp_read_big_library_task;
 	data->ssp_big_task[BIG_TYPE_VOICE_NET] = ssp_send_big_library_task;
 	data->ssp_big_task[BIG_TYPE_VOICE_GRAM] = ssp_send_big_library_task;
 	data->ssp_big_task[BIG_TYPE_VOICE_PCM] = ssp_pcm_dump_task;
-#ifdef CONFIG_SENSORS_SSP_SHTC1
 	data->ssp_big_task[BIG_TYPE_TEMP] = ssp_temp_task;
-#endif
 }

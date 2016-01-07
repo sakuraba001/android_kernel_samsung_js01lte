@@ -19,47 +19,14 @@
 #ifndef _MDNIE_LITE_TUNING_H_
 #define _MDNIE_LITE_TUNING_H_
 
-#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_CMD_FULL_HD_PT_PANEL)
-#include "mdss_samsung_dsi_panel.h"
-#elif defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_CMD_WQHD_PT_PANEL)
-#include "mdss_samsung_oled_cmd_hd_wqhd_panel.h"
-#elif defined(CONFIG_FB_MSM_MIPI_SAMSUNG_TFT_VIDEO_WQXGA_PT_PANEL)
-#include "mdss_samsung_tft_video_dual_dsi_panel.h"
-#else
-#include "mdss_samsung_dsi_panel.h"
-#endif
-
 #define LDI_COORDINATE_REG 0xA1
 
-#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_CMD_WQHD_PT_PANEL) // K
-#define MDNIE_TUNE_FIRST_SIZE 128
-#define MDNIE_TUNE_SECOND_SIZE 22
-/*temp*/
-#define MDNIE_COLOR_BLIND_FIRST_SIZE 128
-#define MDNIE_COLOR_BLIND_SECOND_SIZE 22
-#elif defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_CMD_FULL_HD_PT_PANEL)  // H
 #define MDNIE_TUNE_FIRST_SIZE 108
 #define MDNIE_TUNE_SECOND_SIZE 5
-#define MDNIE_COLOR_BLIND_FIRST_SIZE 118
-#define MDNIE_COLOR_BLIND_SECOND_SIZE 5
-#elif defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_VIDEO_FULL_HD_PT_PANEL) // KS01
-#define MDNIE_TUNE_FIRST_SIZE 108
-#define MDNIE_TUNE_SECOND_SIZE 5
-#define MDNIE_COLOR_BLIND_FIRST_SIZE 118
-#define MDNIE_COLOR_BLIND_SECOND_SIZE 5
-#elif defined(CONFIG_FB_MSM_MIPI_SAMSUNG_YOUM_CMD_FULL_HD_PT_PANEL) // F
-#define MDNIE_TUNE_FIRST_SIZE 108
-#define MDNIE_TUNE_SECOND_SIZE 5
-#endif
 
+#define MDNIE_COLOR_BLIND_FIRST_SIZE 118
+#define MDNIE_COLOR_BLIND_SECOND_SIZE 5
 #define MDNIE_COLOR_BLINDE_CMD 18
-
-/* blind setting value offset (ascr_Cr ~ ascr_Bb) */
-#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_CMD_WQHD_PT_PANEL)
-#define MDNIE_COLOR_BLINDE_OFFSET 104
-#else
-#define MDNIE_COLOR_BLINDE_OFFSET 18
-#endif
 
 #define BROWSER_COLOR_TONE_SET
 
@@ -95,7 +62,7 @@
 #define SIG_MDNIE_BROWSER_TONE3	42
 #endif
 
-enum SCENARIO {
+enum Lcd_mDNIe_UI {
 	mDNIe_UI_MODE,
 	mDNIe_VIDEO_MODE,
 	mDNIe_VIDEO_WARM_MODE,
@@ -107,10 +74,7 @@ enum SCENARIO {
 	mDNIe_BROWSER_MODE,
 	mDNIe_eBOOK_MODE,
 	mDNIe_EMAIL_MODE,
-#if defined(CONFIG_LCD_HMT)
-	mDNIe_HMT_8_MODE,
-	mDNIe_HMT_16_MODE,
-#endif
+	mDNIE_BLINE_MODE,
 #if defined(CONFIG_TDMB)
 	mDNIe_DMB_MODE = 20,
 	mDNIe_DMB_WARM_MODE,
@@ -124,7 +88,12 @@ enum SCENARIO {
 #endif
 };
 
-enum BACKGROUND {
+enum Lcd_mDNIe_Negative {
+	mDNIe_NEGATIVE_OFF = 0,
+	mDNIe_NEGATIVE_ON,
+};
+
+enum Background_Mode {
 	DYNAMIC_MODE = 0,
 	STANDARD_MODE,
 #if !defined(CONFIG_SUPPORT_DISPLAY_OCTA_TFT)
@@ -135,48 +104,32 @@ enum BACKGROUND {
 	MAX_BACKGROUND_MODE,
 };
 
-enum OUTDOOR {
+enum Outdoor_Mode {
 	OUTDOOR_OFF_MODE = 0,
 	OUTDOOR_ON_MODE,
 	MAX_OUTDOOR_MODE,
 };
 
 enum ACCESSIBILITY {
-    ACCESSIBILITY_OFF,
-	NEGATIVE,
-	COLOR_BLIND,
-#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_CMD_WQHD_PT_PANEL) || \
-	defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_CMD_FULL_HD_PT_PANEL) ||\
-	defined(CONFIG_MACH_JS01LTEDCM)
-	SCREEN_CURTAIN,
-#endif
-	ACCESSIBILITY_MAX,
+        ACCESSIBILITY_OFF,
+        NEGATIVE,
+        COLOR_BLIND,
+        ACCESSIBILITY_MAX,
 };
-
-#if defined(CONFIG_TDMB)
-enum DMB {
-	DMB_MODE_OFF = -1,
-	DMB_MODE,
-	DMB_WARM_MODE,
-	DMB_COLD_MODE,
-	MAX_DMB_MODE,
-};
-#endif
 
 struct mdnie_lite_tun_type {
 	bool mdnie_enable;
-	enum SCENARIO scenario;
-	enum BACKGROUND background;
-	enum OUTDOOR outdoor;
-	enum ACCESSIBILITY accessibility;
-#if defined(CONFIG_TDMB)
-	enum DMB dmb;
-#endif
+	enum Background_Mode background;
+	enum Outdoor_Mode outdoor;
+	enum Lcd_mDNIe_UI scenario;
+	enum Lcd_mDNIe_Negative negative;
+	enum ACCESSIBILITY blind;
 };
 
-void mdnie_lite_tuning_init(struct mipi_samsung_driver_data *msd);
+void mdnie_lite_tuning_init(struct mipi_samsung_driver_data *);
 void init_mdnie_class(void);
 void is_negative_on(void);
+
 void coordinate_tunning(int x, int y);
 
 #endif /*_MDNIE_LITE_TUNING_H_*/

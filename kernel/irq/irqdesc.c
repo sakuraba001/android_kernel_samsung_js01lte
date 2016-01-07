@@ -322,7 +322,6 @@ int generic_handle_irq(unsigned int irq)
 		sec_debug_irq_sched_log(irq, (void *)desc->handle_irq,
 			irqs_disabled());
 #endif
-
 	generic_handle_irq_desc(irq, desc);
 	return 0;
 }

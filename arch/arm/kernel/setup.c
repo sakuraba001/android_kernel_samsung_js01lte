@@ -107,9 +107,6 @@ EXPORT_SYMBOL(elf_hwcap);
 unsigned int boot_reason;
 EXPORT_SYMBOL(boot_reason);
 
-unsigned int cold_boot;
-EXPORT_SYMBOL(cold_boot);
-
 #ifdef MULTI_CPU
 struct processor processor __read_mostly;
 #endif
@@ -149,7 +146,6 @@ static const char *cpu_name;
 static const char *machine_name;
 static char __initdata cmd_line[COMMAND_LINE_SIZE];
 struct machine_desc *machine_desc __initdata;
-
 #ifdef CONFIG_SEC_DEBUG_SUBSYS
 const char *unit_name;
 EXPORT_SYMBOL(unit_name);

@@ -5,14 +5,13 @@
 #include <linux/err.h>
 #include <linux/skbuff.h>
 #include <linux/wlan_plat.h>
-#include <linux/mmc/host.h>
 #include <mach/gpio.h>
 #include <mach/board.h>
 #if defined(CONFIG_SPARSE_IRQ)
 #include <linux/of_gpio.h>
 #include <linux/of_irq.h>
 #endif /* defined(CONFIG_SPARSE_IRQ) */
-#include <linux/barcode_emul.h>
+#include <linux/barcode_emul.h> // yhcha-patch
 
 #ifdef CONFIG_BROADCOM_WIFI_RESERVED_MEM
 
@@ -55,7 +54,9 @@ void *wlan_static_scan_buf0;
 void *wlan_static_scan_buf1;
 void *wlan_static_dhd_info_buf;
 
-#ifdef CONFIG_SEC_KS01_PROJECT
+#if !defined(CONFIG_SEC_H_PROJECT) && !defined(CONFIG_SEC_MONTBLANC_PROJECT) && !defined(CONFIG_SEC_VIENNA_PROJECT) && !defined(CONFIG_SEC_LT03_PROJECT)\
+	&& !defined(CONFIG_MACH_MELIUSCASKT) && !defined(CONFIG_MACH_MELIUSCAKTT) && !defined(CONFIG_MACH_MELIUSCALGT) && !defined(CONFIG_SEC_JS_PROJECT) || defined(CONFIG_SEC_F_PROJECT)
+/* GPIO Expander GPIO mapping */
 enum {
     FPGA_VSIL_A_1P2_EN = 0,
     FPGA_GPIO_01,
@@ -68,7 +69,7 @@ enum {
     FPGA_GPIO_MHL_RST,
     FPGA_GPIO_VPS_SOUND_EN,
 };
-#endif /* defined(CONFIG_SEC_KS01_PROJECT) */
+#endif /* !defined(CONFIG_SEC_H_PROJECT) */
 
 static void *brcm_wlan_mem_prealloc(int section, unsigned long size)
 {
@@ -159,39 +160,26 @@ static int brcm_init_wlan_mem(void)
 #endif /* CONFIG_BROADCOM_WIFI_RESERVED_MEM */
 
 /* MSM8974 WLAN_EN GPIO Number */
-#if defined(CONFIG_SEC_K_PROJECT) || defined(CONFIG_SEC_KACTIVE_PROJECT)
-#define GPIO_WL_REG_ON 308
-#elif defined(CONFIG_SEC_H_PROJECT) || defined(CONFIG_SEC_VIENNA_PROJECT) || defined(CONFIG_SEC_LT03_PROJECT) ||\
-      defined(CONFIG_SEC_PICASSO_PROJECT) || defined(CONFIG_SEC_V2_PROJECT) || defined(CONFIG_SEC_JS_PROJECT) ||\
-      defined(CONFIG_SEC_F_PROJECT) || defined(CONFIG_SEC_MONTBLANC_PROJECT) || defined(CONFIG_SEC_KACTIVE_PROJECT)
+#if defined(CONFIG_SEC_H_PROJECT) || defined(CONFIG_SEC_VIENNA_PROJECT) || defined(CONFIG_SEC_LT03_PROJECT) || defined(CONFIG_SEC_JS_PROJECT) || defined(CONFIG_SEC_F_PROJECT)
+#define GPIO_WL_REG_ON 53
+#elif defined CONFIG_SEC_MONTBLANC_PROJECT
 #define GPIO_WL_REG_ON 53
 #elif defined(CONFIG_MACH_MELIUSCASKT) || defined(CONFIG_MACH_MELIUSCAKTT) || defined(CONFIG_MACH_MELIUSCALGT)
 #define GPIO_WL_REG_ON 100
-#endif /* defined CONFIG_SEC_K_PROJECT and CONFIG_SEC_KACTIVE_PROJECT */
+#endif /* defined CONFIG_SEC_H_PROJECT */
 
 /* MSM8974 WLAN_HOST_WAKE GPIO Number */
-#if defined(CONFIG_SEC_K_PROJECT) || defined(CONFIG_SEC_KACTIVE_PROJECT)
-#define GPIO_WL_HOST_WAKE 92
-#else
 #define GPIO_WL_HOST_WAKE 54
-#endif
 
-#ifdef CONFIG_SEC_KS01_PROJECT
 extern int ice_gpiox_get(int num);
 extern int ice_gpiox_set(int num, int val);
-#endif
 
-#if !defined(CONFIG_SEC_K_PROJECT) && !defined(CONFIG_SEC_KS01_PROJECT) && !defined(CONFIG_SEC_KACTIVE_PROJECT)
+#if defined(CONFIG_SEC_H_PROJECT) || defined(CONFIG_SEC_MONTBLANC_PROJECT) || defined(CONFIG_SEC_VIENNA_PROJECT) || defined(CONFIG_SEC_LT03_PROJECT)\
+	|| defined(CONFIG_MACH_MELIUSCASKT) || defined(CONFIG_MACH_MELIUSCAKTT) || defined(CONFIG_MACH_MELIUSCALGT) || defined(CONFIG_SEC_JS_PROJECT) || defined(CONFIG_SEC_F_PROJECT)
 static unsigned config_gpio_wl_reg_on[] = {
 	GPIO_CFG(GPIO_WL_REG_ON, 0, GPIO_CFG_OUTPUT,
 		GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA) };
-#endif /* not defined (CONFIG_SEC_K_PROJECT && CONFIG_SEC_KS01_PROJECT) && CONFIG_SEC_KACTIVE_PROJECT*/
-
-static int brcm_wifi_cd; /* WIFI virtual 'card detect' status */
-static void (*wifi_status_cb)(int card_present, void *dev_id);
-static void *wifi_status_cb_devid;
-static void *wifi_mmc_host;
-extern void sdio_ctrl_power(struct mmc_host *card, bool onoff);
+#endif /* defined CONFIG_SEC_H_PROJECT */
 
 static unsigned get_gpio_wl_host_wake(void)
 {
@@ -202,21 +190,16 @@ static unsigned get_gpio_wl_host_wake(void)
 	return gpio_wl_host_wake;
 }
 
-#if defined(CONFIG_SEC_K_PROJECT) || defined(CONFIG_SEC_KACTIVE_PROJECT)
-extern unsigned int system_rev;
-#endif
-
 int __init brcm_wifi_init_gpio(void)
 {
 	unsigned gpio_cfg = GPIO_CFG(get_gpio_wl_host_wake(), 0, GPIO_CFG_INPUT,
 		GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA);
 
-#ifndef CONFIG_SEC_KS01_PROJECT
-#if !defined(CONFIG_SEC_K_PROJECT) && !defined(CONFIG_SEC_KACTIVE_PROJECT)
+#if defined(CONFIG_SEC_H_PROJECT) || defined(CONFIG_SEC_MONTBLANC_PROJECT) || defined(CONFIG_SEC_VIENNA_PROJECT) || defined(CONFIG_SEC_LT03_PROJECT)\
+	|| defined(CONFIG_MACH_MELIUSCASKT) || defined(CONFIG_MACH_MELIUSCAKTT) || defined(CONFIG_MACH_MELIUSCALGT) || defined(CONFIG_SEC_JS_PROJECT) || defined(CONFIG_SEC_F_PROJECT)
 	if (gpio_tlmm_config(config_gpio_wl_reg_on[0], GPIO_CFG_ENABLE))
 		printk(KERN_ERR "%s: Failed to configure GPIO"
 			" - WL_REG_ON\n", __func__);
-#endif /* not defined CONFIG_SEC_K_PROJECT and CONFIG_SEC_KACTIVE_PROJECT*/
 
 	if (gpio_request(GPIO_WL_REG_ON, "WL_REG_ON"))
 		printk(KERN_ERR "Failed to request gpio %d for WL_REG_ON\n",
@@ -225,37 +208,17 @@ int __init brcm_wifi_init_gpio(void)
 	if (gpio_direction_output(GPIO_WL_REG_ON, 0))
 		printk(KERN_ERR "%s: WL_REG_ON  "
 			"failed to pull down\n", __func__);
-#endif /* not defined CONFIG_SEC_KS01_PROJECT */
+#endif /* defined CONFIG_SEC_H_PROJECT */
 
-#if defined(CONFIG_SEC_K_PROJECT) || defined(CONFIG_SEC_KACTIVE_PROJECT)
-	if (system_rev == 4) {
-		printk("WLAN: Skip wlan irq setting..\n");
-	}
-	else
-	{
-		if (gpio_tlmm_config(gpio_cfg, GPIO_CFG_ENABLE))
-			printk(KERN_ERR "%s: Failed to configure GPIO"
-				" - WL_HOST_WAKE\n", __func__);
-
-		if (gpio_request(get_gpio_wl_host_wake(), "WL_HOST_WAKE"))
-			printk(KERN_ERR "Failed to request gpio for WL_HOST_WAKE\n");
-
-		if (gpio_direction_input(get_gpio_wl_host_wake()))
-			printk(KERN_ERR "%s: WL_HOST_WAKE  "
-				"failed to pull down\n", __func__);
-	}
-#else
 	if (gpio_tlmm_config(gpio_cfg, GPIO_CFG_ENABLE))
 		printk(KERN_ERR "%s: Failed to configure GPIO"
 			" - WL_HOST_WAKE\n", __func__);
-
 	if (gpio_request(get_gpio_wl_host_wake(), "WL_HOST_WAKE"))
 		printk(KERN_ERR "Failed to request gpio for WL_HOST_WAKE\n");
-
 	if (gpio_direction_input(get_gpio_wl_host_wake()))
 		printk(KERN_ERR "%s: WL_HOST_WAKE  "
 			"failed to pull down\n", __func__);
-#endif
+
 	return 0;
 }
 
@@ -272,98 +235,90 @@ static int brcm_wlan_power(int onoff)
 			printk("Failed to request for WL_REG_ON\n");
 		}
 		*/
-
-#ifdef CONFIG_SEC_KS01_PROJECT
-		if (ice_gpiox_set(FPGA_GPIO_WLAN_EN, 1)) {
-			printk(KERN_ERR "%s: WL_REG_ON  failed to pull up\n", __func__);
-				return -EIO;
-		}
-#else
-		printk(KERN_INFO"WL_REG_ON on-step : [%d]\n" , gpio_get_value(GPIO_WL_REG_ON));
+#if defined(CONFIG_SEC_H_PROJECT) || defined(CONFIG_SEC_MONTBLANC_PROJECT) || defined(CONFIG_SEC_VIENNA_PROJECT) || defined(CONFIG_SEC_LT03_PROJECT)\
+	|| defined(CONFIG_MACH_MELIUSCASKT) || defined(CONFIG_MACH_MELIUSCAKTT) || defined(CONFIG_MACH_MELIUSCALGT) || defined(CONFIG_SEC_JS_PROJECT) || defined(CONFIG_SEC_F_PROJECT)
 		if (gpio_direction_output(GPIO_WL_REG_ON, 1)) {
 			printk(KERN_ERR "%s: check WL_REG_ON pin for H\n", __func__);
-			printk(KERN_ERR "%s: WL_REG_ON  failed to pull up\n", __func__);
-				return -EIO;
+#else
+		if (ice_gpiox_set(FPGA_GPIO_WLAN_EN, 1)) {		// yhcha-patch
+#endif /* defined CONFIG_SEC_H_PROJECT */
+			printk(KERN_ERR "%s: WL_REG_ON  failed to pull up\n",
+				__func__);
+			return -EIO;
 		}
 
+#if defined(CONFIG_SEC_H_PROJECT) || defined(CONFIG_SEC_MONTBLANC_PROJECT) || defined(CONFIG_SEC_VIENNA_PROJECT) || defined(CONFIG_SEC_LT03_PROJECT)\
+	|| defined(CONFIG_MACH_MELIUSCASKT) || defined(CONFIG_MACH_MELIUSCAKTT) || defined(CONFIG_MACH_MELIUSCALGT) || defined(CONFIG_SEC_JS_PROJECT) || defined(CONFIG_SEC_F_PROJECT)
 		if(gpio_get_value(GPIO_WL_REG_ON)){
-			printk(KERN_INFO"WL_REG_ON on-step-2 : [%d]\n" , gpio_get_value(GPIO_WL_REG_ON));
+			printk("[%s] gpio ok!!!\n",__func__);
 		}
 		else
 		{
 			printk("[%s] gpio value is 0. We need reinit.\n",__func__);
-#if !defined(CONFIG_SEC_K_PROJECT) && !defined(CONFIG_SEC_KACTIVE_PROJECT)
 			if (gpio_tlmm_config(config_gpio_wl_reg_on[0], GPIO_CFG_ENABLE))
 				printk(KERN_ERR "%s: Failed to configure GPIO"
 						" - WL_REG_ON\n", __func__);
-#endif /* not defined CONFIG_SEC_K_PROJECT and CONFIG_SEC_KACTIVE_PROJECT*/
 
 			if (gpio_direction_output(GPIO_WL_REG_ON, 1))
 				printk(KERN_ERR "%s: WL_REG_ON  "
 						"failed to pull down\n", __func__);
 		}
-#endif /* defined CONFIG_SEC_KS01_PROJECT */
+#endif /* defined CONFIG_SEC_H_PROJECT */
 	} else {
-/*
+		/*
 		if (gpio_request(GPIO_WL_REG_ON, "WL_REG_ON"))
 		{
 			printk("Failed to request for WL_REG_ON\n");
 		}
-*/
-
-#ifdef CONFIG_SEC_KS01_PROJECT
-		if (ice_gpiox_set(FPGA_GPIO_WLAN_EN, 0)) {
-			printk(KERN_ERR "%s: WL_REG_ON  failed to pull down\n", __func__);
-				return -EIO;
-		}
-#else
-		printk(KERN_INFO"WL_REG_ON off-step : [%d]\n" , gpio_get_value(GPIO_WL_REG_ON));
-
+		*/
+#if defined(CONFIG_SEC_H_PROJECT) || defined(CONFIG_SEC_MONTBLANC_PROJECT) || defined(CONFIG_SEC_VIENNA_PROJECT) || defined(CONFIG_SEC_LT03_PROJECT)\
+	|| defined(CONFIG_MACH_MELIUSCASKT) || defined(CONFIG_MACH_MELIUSCAKTT) || defined(CONFIG_MACH_MELIUSCALGT) || defined(CONFIG_SEC_JS_PROJECT) || defined(CONFIG_SEC_F_PROJECT)
 		if (gpio_direction_output(GPIO_WL_REG_ON, 0)) {
-			printk(KERN_ERR "%s: WL_REG_ON  failed to pull down\n", __func__);
-				return -EIO;
+#else
+		if (ice_gpiox_set(FPGA_GPIO_WLAN_EN, 0)) {		// yhcha-patch
+#endif /* defined CONFIG_SEC_H_PROJECT */
+			printk(KERN_ERR "%s: WL_REG_ON  failed to pull down\n",
+				__func__);
+			return -EIO;
 		}
-
-		printk(KERN_INFO"WL_REG_ON off-step-2 : [%d]\n" , gpio_get_value(GPIO_WL_REG_ON));
-#endif
 	}
-
-#if defined(CONFIG_BCM4339) || defined(CONFIG_BCM4335) || defined(CONFIG_BCM4354)
-	/* Power on/off SDIO host */
-	sdio_ctrl_power((struct mmc_host *)wifi_mmc_host, onoff);
-#endif /* CONFIG_BCM4339 || CONFIG_BCM4335  || CONFIG_BCM4354 */
-
 	return 0;
 }
 
 static int brcm_wlan_reset(int onoff)
 {
-/*
+  /*
 	gpio_set_value(GPIO_WLAN_ENABLE,
 			onoff ? GPIO_LEVEL_HIGH : GPIO_LEVEL_LOW);
-*/
+  */
 	return 0;
 }
 
+
+static int brcm_wifi_cd; /* WIFI virtual 'card detect' status */
+static void (*wifi_status_cb)(int card_present, void *dev_id);
+static void *wifi_status_cb_devid;
+
 int brcm_wifi_status_register(
-	void (*callback)(int card_present, void *dev_id),
-	void *dev_id, void *mmc_host)
+		void (*callback)(int card_present, void *dev_id),
+		void *dev_id)
 {
 	if (wifi_status_cb)
 		return -EAGAIN;
 	wifi_status_cb = callback;
 	wifi_status_cb_devid = dev_id;
-	wifi_mmc_host = mmc_host;
 	printk(KERN_INFO "%s: callback is %p, devid is %p\n",
 		__func__, wifi_status_cb, dev_id);
 	return 0;
 }
 
+#if 1
 unsigned int brcm_wifi_status(struct device *dev)
 {
 	printk("%s:%d status %d\n",__func__,__LINE__,brcm_wifi_cd);
 	return brcm_wifi_cd;
 }
+#endif
 
 static int brcm_wlan_set_carddetect(int val)
 {
@@ -495,14 +450,5 @@ int __init brcm_wlan_init(void)
 #ifdef CONFIG_BROADCOM_WIFI_RESERVED_MEM
 	brcm_init_wlan_mem();
 #endif
-
-#if defined(CONFIG_SEC_K_PROJECT) || defined(CONFIG_SEC_KACTIVE_PROJECT)
-	if (system_rev >= 4)
-		return platform_device_register(&brcm_device_wlan);
-	else
-		return -1;
-#else
 	return platform_device_register(&brcm_device_wlan);
-#endif
 }
-device_initcall_sync(brcm_wlan_init);

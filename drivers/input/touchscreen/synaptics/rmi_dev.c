@@ -19,7 +19,7 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <asm/unaligned.h>
-//#include <mach/cpufreq.h>
+#include <mach/cpufreq.h>
 #include <linux/slab.h>
 #include <linux/i2c.h>
 #include <linux/interrupt.h>
@@ -264,8 +264,10 @@ static ssize_t rmidev_sysfs_attn_state_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	int attn_state;
+	const struct synaptics_rmi4_platform_data *platform_data =
+		rmidev->rmi4_data->board;
 
-	attn_state = gpio_get_value(rmidev->rmi4_data->dt_data->irq_gpio);
+	attn_state = gpio_get_value(platform_data->tsp_int);
 
 	return snprintf(buf, PAGE_SIZE, "%u\n", attn_state);
 }
@@ -628,14 +630,19 @@ static int rmidev_init_device(struct synaptics_rmi4_data *rmi4_data)
 		goto err_char_device;
 	}
 
-	retval = gpio_export(rmi4_data->dt_data->irq_gpio, false);
+	retval = gpio_request(rmi4_data->board->tsp_int, "synaptics,tsp_int");
+	if (retval) {
+		pr_err("[TSP]%s: unable to request tsp_int [%d]\n",
+				__func__, rmi4_data->board->tsp_int);
+	}
+	retval = gpio_export(rmi4_data->board->tsp_int, false);
 	if (retval < 0) {
 		dev_err(&rmi4_data->i2c_client->dev,
 				"%s: Failed to export attention gpio\n",
 				__func__);
 	} else {
 		retval = gpio_export_link(&(rmi4_data->input_dev->dev),
-				"attn", rmi4_data->dt_data->irq_gpio);
+				"attn", rmi4_data->board->tsp_int);
 		if (retval < 0) {
 			dev_err(&rmi4_data->input_dev->dev,
 					"%s Failed to create gpio symlink\n",
@@ -643,7 +650,7 @@ static int rmidev_init_device(struct synaptics_rmi4_data *rmi4_data)
 		} else {
 			dev_dbg(&rmi4_data->input_dev->dev,
 					"%s: Exported attention gpio %d\n",
-					__func__, rmi4_data->dt_data->irq_gpio);
+					__func__, rmi4_data->board->tsp_int);
 		}
 	}
 
@@ -683,7 +690,7 @@ static int rmidev_init_device(struct synaptics_rmi4_data *rmi4_data)
 err_sysfs_attrs:
 	attr_count_num = (int)attr_count;
 	for (attr_count_num--; attr_count_num >= 0; attr_count_num--)
-		sysfs_remove_file(rmidev->sysfs_dir, &attrs[attr_count_num].attr);
+		sysfs_remove_file(rmidev->sysfs_dir, &attrs[attr_count].attr);
 
 	sysfs_remove_bin_file(rmidev->sysfs_dir, &attr_data);
 
@@ -693,7 +700,6 @@ err_sysfs_bin:
 err_sysfs_dir:
 err_char_device:
 	rmidev_device_cleanup(dev_data);
-	mutex_destroy(&dev_data->file_mutex);
 	kfree(dev_data);
 
 err_dev_data:
@@ -731,7 +737,6 @@ static void rmidev_remove_device(struct synaptics_rmi4_data *rmi4_data)
 	dev_data = rmidev->data;
 	if (dev_data) {
 		rmidev_device_cleanup(dev_data);
-		mutex_destroy(&dev_data->file_mutex);
 		kfree(dev_data);
 	}
 

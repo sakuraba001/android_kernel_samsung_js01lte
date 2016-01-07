@@ -300,16 +300,6 @@ config LEDS_QPNP
 	  To compile this driver as a module, choose M here: the module will
 	  be called leds-qpnp.
 
-config LEDS_MSM_GPIO_FLASH
-	tristate "Support for GPIO Flash LEDs"
-	depends on GPIO_MSM_V3
-	help
-	  This driver supports the leds functionality of GPIO Flash LED. It
-	  includes flash mode and torch mode.
-
-	  To compile this driver as a module, choose M here: the module will
-	  be called leds-gpio-flash.
-
 config LEDS_WM831X_STATUS
 	tristate "LED support for status LEDs on WM831x PMICs"
 	depends on LEDS_CLASS
@@ -502,20 +492,6 @@ config LEDS_OT200
 	  This option enables support for the LEDs on the Bachmann OT200.
 	  Say Y to enable LEDs on the Bachmann OT200.
 
-config LEDS_AN30259A
-	tristate "LED support for AN30259A I2C chip"
-	depends on LEDS_CLASS
-	depends on I2C
-	help
-	  This option enables support for LEDs connected to the AN30259A
-	  LED driver chip accessed via the I2C bus.
-
-config LEDS_SEC_BACKLIGHT
-	tristate "common LCD Backlight driver for SEC"
-	depends on LEDS_CLASS
-	help
-	  This option enables support for the LCD backlight on SEC device.
-
 config LEDS_TRIGGERS
 	bool "LED Trigger support"
 	depends on LEDS_CLASS
@@ -589,6 +565,17 @@ config LEDS_TRIGGER_SLEEP
 	help
 	  This turns LEDs on when the screen is off but the cpu still running.
 
+comment "iptables trigger is under Netfilter config (LED target)"
+	depends on LEDS_TRIGGERS
+
+config LEDS_AN30259A
+	tristate "LED support for AN30259A I2C chip"
+	depends on LEDS_CLASS
+	depends on I2C
+	help
+	  This option enables support for LEDs connected to the AN30259A
+	  LED driver chip accessed via the I2C bus.
+
 config LEDS_MAX77803
 	bool "LED support for the MAX77803"
 	depends on LEDS_CLASS
@@ -596,19 +583,8 @@ config LEDS_MAX77803
 	default n
 	help
 	  This option enables support for the LEDs
-
-config LEDS_MAX77804K
-	bool "LED support for the MAX77804K"
-	depends on LEDS_CLASS
-	depends on MFD_MAX77804K
-	default n
-	help
-	  This option enables support for the LEDs
 	  Now camera_class is exceptioned
-	  by sanghoon.lee.
-
-comment "iptables trigger is under Netfilter config (LED target)"
-	depends on LEDS_TRIGGERS
+	  by sgonil.kim.
 
 config LEDS_SEPERATE_MOVIE_FLASH
        bool "LED support for seperate movie flash"
@@ -616,5 +592,4 @@ config LEDS_SEPERATE_MOVIE_FLASH
        default n
        help
 	 This option enables support for seperate movie flash
-
 endif # NEW_LEDS

@@ -22,7 +22,7 @@
 /* Slave address should be shifted to the right 1bit.
  * R/W bit should NOT be included.
  */
-#define BQ24260_I2C_SLAVEADDR	(0x6B)
+#define SEC_CHARGER_I2C_SLAVEADDR	(0x6B)
 
 /* BQ24260 Registers. */
 #define BQ24260_STATUS		0x00
@@ -32,20 +32,6 @@
 #define BQ24260_CURRENT		0x04
 #define BQ24260_SPECIAL		0x05
 #define BQ24260_SAFETY		0x06
-
-ssize_t bq24260_chg_show_attrs(struct device *dev,
-				struct device_attribute *attr, char *buf);
-
-ssize_t bq24260_chg_store_attrs(struct device *dev,
-				struct device_attribute *attr,
-				const char *buf, size_t count);
-
-#define BQ24260_CHARGER_ATTR(_name)				\
-{							\
-	.attr = {.name = #_name, .mode = 0664},	\
-	.show = bq24260_chg_show_attrs,			\
-	.store = bq24260_chg_store_attrs,			\
-}
 
 #endif /* __BQ24260_CHARGER_H */
 

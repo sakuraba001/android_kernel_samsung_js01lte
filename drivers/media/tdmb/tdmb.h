@@ -23,6 +23,7 @@
 #include <linux/types.h>
 #include <linux/irq.h>
 #include <linux/interrupt.h>
+#include <mach/tdmb_pdata.h>
 #include <mach/gpio.h>
 
 
@@ -119,6 +120,12 @@ struct ensemble_info_type {
 #define DMB_FIC_RESULT_DONE	0x01
 #define DMB_TS_PACKET_RESYNC	0x02
 
+#if defined(CONFIG_TDMB_EBI)
+int tdmb_init_bus(unsigned long addr, int size);
+#else
+int tdmb_init_bus(void);
+#endif
+void tdmb_exit_bus(void);
 irqreturn_t tdmb_irq_handler(int irq, void *dev_id);
 unsigned long tdmb_get_chinfo(void);
 void tdmb_pull_data(struct work_struct *work);
@@ -132,45 +139,6 @@ void tdmb_init_data(void);
 #if defined(CONFIG_TDMB_ANT_DET)
 bool tdmb_ant_det_irq_set(bool set);
 #endif
-
-
-struct tdmb_if_gpio_func {
-	void (*gpio_cfg_on) (void);
-	void (*gpio_cfg_off) (void);
-};
-
-#if defined(CONFIG_TDMB_EBI)
-struct tdmb_ebi_dt_data {
-	u32 cs_base;
-	u32 mem_size;
-};
-#endif
-
-#if defined(CONFIG_TDMB_TSIF)
-struct tdmb_tsi_dt_data {
-	int clk;
-	int sync;
-	int valid;
-	int error;
-	int data;
-};
-#endif
-
-#if defined(CONFIG_TDMB_I2C)
-struct tdmb_i2c_dev {
-	struct i2c_client *client;
-	struct mutex lock;
-};
-#endif
-struct tdmb_dt_platform_data {
-	int tdmb_irq;
-	int tdmb_en;
-	int tdmb_rst;
-#ifdef CONFIG_TDMB_ANT_DET
-	int tdmb_ant_irq;
-#endif
-};
-
 unsigned char tdmb_make_result
 (
 	unsigned char cmd,
@@ -192,6 +160,8 @@ struct tdmb_drv_func {
 	unsigned long (*get_int_size) (void);
 };
 
+extern unsigned int get_hw_rev(void);
+
 extern unsigned int *tdmb_ts_head;
 extern unsigned int *tdmb_ts_tail;
 extern char *tdmb_ts_buffer;
@@ -212,16 +182,14 @@ struct tdmb_drv_func *mtv318_drv_func(void);
 #if defined(CONFIG_TDMB_MTV319)
 struct tdmb_drv_func *mtv319_drv_func(void);
 #endif
+
 #if defined(CONFIG_TDMB_TCC3170)
 struct tdmb_drv_func *tcc3170_drv_func(void);
 extern struct tcbd_fic_ensbl *tcbd_fic_get_ensbl_info(s32 _disp);
 #endif
 
-extern unsigned long tdmb_get_if_handle(void);
-
-#ifdef CONFIG_TDMB_TSIF
-extern int tdmb_tsi_start(void (*callback)(u8 *data, u32 length), int packet_cnt);
-extern int tdmb_tsi_stop(void);
+#if defined(CONFIG_TDMB_SPI)
+struct spi_device *tdmb_get_spi_handle(void);
 #endif
 
 #ifdef CONFIG_SAMSUNG_LPM_MODE

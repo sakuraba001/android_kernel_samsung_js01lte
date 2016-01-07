@@ -65,13 +65,14 @@ static void spin_dump(raw_spinlock_t *lock, const char *msg)
 		msg, raw_smp_processor_id(),
 		current->comm, task_pid_nr(current));
 	printk(KERN_EMERG " lock: %pS, .magic: %08x, .owner: %s/%d, "
-			".owner_cpu: %d\n",
+			".owner_cpu: %d, lock_val: %08x\n",
 		lock, lock->magic,
 		owner ? owner->comm : "<none>",
 		owner ? task_pid_nr(owner) : -1,
-		lock->owner_cpu);
+		lock->owner_cpu,
+		lock->raw_lock.lock);
 #ifdef CONFIG_SEC_DEBUG_SPINLOCK_PANIC
-		panic("spinlock bug");
+	panic("spinlock bug");
 #else
 	dump_stack();
 #endif
@@ -113,15 +114,23 @@ static inline void debug_spin_unlock(raw_spinlock_t *lock)
 	lock->owner_cpu = -1;
 }
 
-#if 0
+#if 0 /* Temporarily comment out for testing hrtimer spinlock issue */
 static void __spin_lock_debug(raw_spinlock_t *lock)
 {
 	u64 i;
-	u64 loops = (loops_per_jiffy * HZ) >> 1;
+	u64 loops = (loops_per_jiffy * HZ) >> 4;
 
 	for (i = 0; i < loops; i++) {
 		if (arch_spin_trylock(&lock->raw_lock))
 			return;
+#ifdef CONFIG_SEC_DEBUG_SPINLOCK_PANIC
+		if (i >= (loops - DBG_HRT_MAX)) {
+			debug_hrtimer_spinlock[i-(loops-DBG_HRT_MAX)].raw_lock.lock = lock->raw_lock.lock;
+			debug_hrtimer_spinlock[i-(loops-DBG_HRT_MAX)].magic = lock->magic;
+			debug_hrtimer_spinlock[i-(loops-DBG_HRT_MAX)].owner = lock->owner;
+			debug_hrtimer_spinlock[i-(loops-DBG_HRT_MAX)].owner_cpu = lock->owner_cpu;
+		}
+#endif
 		__delay(1);
 	}
 	/* lockup suspected: */
@@ -145,6 +154,7 @@ static void __spin_lock_debug(raw_spinlock_t *lock)
 void do_raw_spin_lock(raw_spinlock_t *lock)
 {
 	debug_spin_lock_before(lock);
+
 #if 0 /* Temporarily comment out for testing hrtimer spinlock issue */
 	if (unlikely(!arch_spin_trylock(&lock->raw_lock)))
 		__spin_lock_debug(lock);

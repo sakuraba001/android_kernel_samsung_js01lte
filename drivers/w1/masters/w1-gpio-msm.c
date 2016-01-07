@@ -195,13 +195,13 @@ static u8 w1_gpio_read_bit(void *data)
 	/* sample timing is critical here */
 	write_bit(data, 0);
 	write_bit(data, 1);
-
+	
 	result = w1_gpio_read_bit_val(data);
 
 	(pdata->slave_speed == 0)? w1_delay(55) : w1_delay(8);
 
 	spin_unlock_irqrestore(&w1_gpio_msm_lock, irq_flags);
-
+	
 	return result & 0x1;
 }
 
@@ -334,7 +334,7 @@ static u8 w1_gpio_reset_bus(void *data)
 	 */
 	/* w1_delay(410); min required time */
 	(pdata->slave_speed == 0)? msleep(1) : w1_delay(40);
-
+	
 	spin_unlock_irqrestore(&w1_gpio_msm_lock, irq_flags);
 	return result;
 }
@@ -469,7 +469,7 @@ static int w1_gpio_msm_remove(struct platform_device *pdev)
 		pdata->enable_external_pullup(0);
 
 	if (gpio_is_valid(pdata->ext_pullup_enable_pin))
-		gpio_set_value_msm(pdata->ext_pullup_enable_pin, 0);
+ 		gpio_set_value_msm(pdata->ext_pullup_enable_pin, 0);
 
 	w1_remove_master_device(master);
 	gpio_free(pdata->pin);
@@ -486,12 +486,9 @@ static int w1_gpio_msm_suspend(struct platform_device *pdev, pm_message_t state)
 
 	if (pdata->enable_external_pullup)
 		pdata->enable_external_pullup(0);
-
+	
 	gpio_tlmm_config(GPIO_CFG(pdata->pin, 0, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA), 1);
 	gpio_direction_input(pdata->pin);
-#ifdef CONFIG_W1_WORKQUEUE
-	cancel_delayed_work_sync(&w1_gdev->w1_dwork);
-#endif
 	return 0;
 }
 
@@ -504,9 +501,6 @@ static int w1_gpio_msm_resume(struct platform_device *pdev)
 
 	gpio_tlmm_config(GPIO_CFG(pdata->pin, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA), 1);
 	gpio_direction_output(pdata->pin, 1);
-#ifdef CONFIG_W1_WORKQUEUE
-	schedule_delayed_work(&w1_gdev->w1_dwork, HZ * 2);
-#endif
 	return 0;
 }
 

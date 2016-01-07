@@ -34,7 +34,7 @@
 #include <linux/fb.h>
 
 #include <asm/fb.h>
-#include "dlog.h"
+
 
     /*
      *  Frame buffer device initialization and setup routines
@@ -1077,7 +1077,7 @@ static long do_fb_ioctl(struct fb_info *info, unsigned int cmd,
 	struct fb_event event;
 	void __user *argp = (void __user *)arg;
 	long ret = 0;
-	__DLOG__(info->node,cmd);
+
 	switch (cmd) {
 	case FBIOGET_VSCREENINFO:
 		if (!lock_fb_info(info))
@@ -1113,10 +1113,6 @@ static long do_fb_ioctl(struct fb_info *info, unsigned int cmd,
 		if (copy_from_user(&cmap, argp, sizeof(cmap)))
 			return -EFAULT;
 		ret = fb_set_user_cmap(&cmap, info);
-		if (ret) {
-			if (info)
-				fb_dealloc_cmap(&info->cmap);
-		}
 		break;
 	case FBIOGETCMAP:
 		if (copy_from_user(&cmap, argp, sizeof(cmap)))
@@ -1193,7 +1189,6 @@ static long do_fb_ioctl(struct fb_info *info, unsigned int cmd,
 		else
 			ret = -ENOTTY;
 	}
-	__DLOG__(info->node,cmd,FUNC_END);
 	return ret;
 }
 

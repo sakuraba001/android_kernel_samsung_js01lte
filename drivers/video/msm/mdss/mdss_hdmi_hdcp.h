@@ -14,9 +14,6 @@
 #define __MDSS_HDMI_HDCP_H__
 
 #include "mdss_hdmi_util.h"
-#ifdef	CONFIG_VIDEO_MHL_V2
-#include "video/msm_hdmi_hdcp_mgr.h"
-#endif
 
 enum hdmi_hdcp_state {
 	HDCP_STATE_INACTIVE,
@@ -29,7 +26,6 @@ struct hdmi_hdcp_init_data {
 	struct dss_io_data *core_io;
 	struct dss_io_data *qfprom_io;
 	struct mutex *mutex;
-	struct kobject *sysfs_kobj;
 	struct workqueue_struct *workq;
 	void *cb_data;
 	void (*notify_status)(void *cb_data, enum hdmi_hdcp_state status);
@@ -38,17 +34,12 @@ struct hdmi_hdcp_init_data {
 };
 
 struct hdmi_hdcp_ctrl {
-	u32 auth_retries;
-	u32 tp_msgid;
-	enum hdmi_hdcp_state hdcp_state;
-	struct HDCP_V2V1_MSG_TOPOLOGY cached_tp;
-	struct HDCP_V2V1_MSG_TOPOLOGY current_tp;
-	struct delayed_work hdcp_auth_work;
-	struct work_struct hdcp_int_work;
-	struct completion r0_checked;
-	struct hdmi_hdcp_init_data init_data;
+        enum hdmi_hdcp_state hdcp_state;
+        struct delayed_work hdcp_auth_work;
+        struct work_struct hdcp_int_work;
+        struct completion r0_checked;
+        struct hdmi_hdcp_init_data init_data;
 };
-
 const char *hdcp_state_name(enum hdmi_hdcp_state hdcp_state);
 void *hdmi_hdcp_init(struct hdmi_hdcp_init_data *init_data);
 void hdmi_hdcp_deinit(void *input);

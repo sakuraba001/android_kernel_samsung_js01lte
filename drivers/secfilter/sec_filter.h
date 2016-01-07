@@ -44,12 +44,10 @@
 #define SET_USER_SELECT     1
 #define SET_EXCEPTION_URL   2
 #define SET_ERROR_MSG       3
-#define SET_CLOSING_TIME    4
-#define MAX_CMDS            5
+#define MAX_CMDS            4
 //  USER COMMANDS END
 
 #define FILTER_MODE_OFF                 0
-#define	FILTER_MODE_CLOSING             100
 #define FILTER_MODE_ON_BLOCK            1
 #define FILTER_MODE_ON_RESPONSE         2
 #define FILTER_MODE_ON_BLOCK_REFER      11
@@ -58,16 +56,12 @@
 #define	SEC_MODULE_NAME "Samsung_URL_Filter"
 //  MACRO FUNCTION START
 #define SEC_FREE(x)                         if((x)!=NULL){kfree(x);(x)=NULL;}
-#define	USE_ATOMIC
-#ifdef USE_ATOMIC
-#define SEC_MALLOC(x)                       kzalloc((x),(in_atomic()==0)?GFP_KERNEL:GFP_ATOMIC)
-#define SEC_spin_lock_irqsave(x, y)         spin_lock_irqsave((x), (y))
-#define SEC_spin_unlock_irqrestore(x, y)    spin_unlock_irqrestore((x), (y))
-#else
+//#define SEC_MALLOC(x)                       kzalloc((x),(in_serving_softirq()==0)?GFP_KERNEL:GFP_ATOMIC)
 #define SEC_MALLOC(x)                       kzalloc((x),GFP_ATOMIC)
+//#define SEC_spin_lock_irqsave(x, y)         if(in_serving_softirq()==0){spin_lock_irqsave((x), (y));}
 #define SEC_spin_lock_irqsave(x, y)         spin_lock_irqsave((x), (y))
+//#define SEC_spin_unlock_irqrestore(x, y)    if(in_serving_softirq()==0){spin_unlock_irqrestore((x), (y));}
 #define SEC_spin_unlock_irqrestore(x, y)    spin_unlock_irqrestore((x), (y))
-#endif
 //  MACRO FUNCTION END
 
 extern  int filterMode;

@@ -31,8 +31,8 @@ void __msm_gpiomux_write(unsigned gpio, struct gpiomux_setting val)
 	mb();
 }
 
-#if defined(CONFIG_ARCH_MSM8974) || defined(CONFIG_ARCH_MSM8610)
-void __msm_gpiomux_read(unsigned gpio, struct gpiomux_setting *val)
+#ifdef CONFIG_SEC_PM_DEBUG
+void msm_gpiomux_read(unsigned gpio, struct gpiomux_setting *val)
 {
 	uint32_t bits = readl_relaxed(GPIO_CFG(gpio));
 
@@ -43,7 +43,6 @@ void __msm_gpiomux_read(unsigned gpio, struct gpiomux_setting *val)
 
 	if ((val->func == GPIOMUX_FUNC_GPIO) && (val->dir))
 		val->dir = readl_relaxed(GPIO_IN_OUT(gpio)) & BIT_MASK(1) ?
-					GPIOMUX_OUT_HIGH : GPIOMUX_OUT_LOW;
+			GPIOMUX_OUT_HIGH : GPIOMUX_OUT_LOW;
 }
 #endif
-

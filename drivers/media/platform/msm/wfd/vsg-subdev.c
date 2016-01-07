@@ -24,12 +24,6 @@
 #define DEFAULT_MODE ((enum vsg_modes)VSG_MODE_CFR)
 #define MAX_BUFS_BUSY_WITH_ENC 5
 
-static void vsg_reset_timer(struct hrtimer *timer, ktime_t time)
-{
-	hrtimer_forward_now(timer, time);
-	hrtimer_restart(timer);
-}
-
 static int vsg_release_input_buffer(struct vsg_context *context,
 		struct vsg_buf_info *buf)
 {
@@ -120,7 +114,7 @@ static void vsg_work_func(struct work_struct *task)
 	INIT_LIST_HEAD(&buf_info->node);
 
 	ktime_get_ts(&buf_info->time);
-	vsg_reset_timer(&context->threshold_timer, ns_to_ktime(
+	hrtimer_forward_now(&context->threshold_timer, ns_to_ktime(
 				context->max_frame_interval));
 
 	temp = NULL;
@@ -444,7 +438,7 @@ static long vsg_queue_buffer(struct v4l2_subdev *sd, void *arg)
 			 * otherwise, diff between two consecutive frames might
 			 * be less than max_frame_interval (for just one sample)
 			 */
-			vsg_reset_timer(&context->threshold_timer,
+			hrtimer_forward_now(&context->threshold_timer,
 				ns_to_ktime(context->max_frame_interval));
 		}
 	}
@@ -470,15 +464,16 @@ static long vsg_return_ip_buffer(struct v4l2_subdev *sd, void *arg)
 {
 	struct vsg_context *context = NULL;
 	struct vsg_buf_info *buf_info = NULL, *temp = NULL,
-			/* last buffer sent for encoding */
-			*last_buffer = NULL,
-			/* buffer we expected to get back, ideally ==
-			 * last_buffer, but might not be if sequence is
-			 * encode, encode, return */
-			*expected_buffer = NULL,
-			/* buffer that we've sent for encoding at some point */
-			*known_buffer = NULL;
+	/* last buffer sent for encoding */
+				*last_buffer = NULL,
+				/* buffer we expected to get back, ideally ==
+				* last_buffer, but might not be if sequence is
+				* encode, encode, return */
+				*expected_buffer = NULL,
+				/* buffer that we've sent for encoding at some point */
+	*known_buffer = NULL;
 	bool is_last_buffer = false;
+
 	int rc = 0;
 
 	if (!arg || !sd) {
@@ -492,9 +487,6 @@ static long vsg_return_ip_buffer(struct v4l2_subdev *sd, void *arg)
 	buf_info = (struct vsg_buf_info *)arg;
 	last_buffer = context->last_buffer;
 
-	WFD_MSG_DBG("Return frame with paddr %p\n",
-			(void *)buf_info->mdp_buf_info.paddr);
-
 	if (!list_empty(&context->busy_queue.node)) {
 		expected_buffer = list_first_entry(&context->busy_queue.node,
 				struct vsg_buf_info, node);
@@ -502,11 +494,12 @@ static long vsg_return_ip_buffer(struct v4l2_subdev *sd, void *arg)
 
 	list_for_each_entry(temp, &context->busy_queue.node, node) {
 		if (mdp_buf_info_equals(&temp->mdp_buf_info,
-				&buf_info->mdp_buf_info)) {
+			&buf_info->mdp_buf_info)) {
 			known_buffer = temp;
 			break;
 		}
 	}
+
 
 	if (!expected_buffer || !known_buffer) {
 		WFD_MSG_ERR("Unexpectedly received buffer from enc with "
@@ -524,8 +517,8 @@ static long vsg_return_ip_buffer(struct v4l2_subdev *sd, void *arg)
 
 	known_buffer->flags &= ~VSG_BUF_BEING_ENCODED;
 	is_last_buffer = context->last_buffer &&
-		mdp_buf_info_equals(
-				&context->last_buffer->mdp_buf_info,
+			mdp_buf_info_equals(
+					&context->last_buffer->mdp_buf_info,
 				&known_buffer->mdp_buf_info);
 
 	list_del(&known_buffer->node);

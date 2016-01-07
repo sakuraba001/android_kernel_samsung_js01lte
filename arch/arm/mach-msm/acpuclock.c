@@ -17,20 +17,6 @@
 
 static struct acpuclk_data *acpuclk_data;
 
-#ifdef CONFIG_SEC_DEBUG_VERBOSE_SUMMARY_HTML
-unsigned int acpuclk_get_voltage(int cpu)
-{
-	if(!acpuclk_data || !acpuclk_data->get_voltage)
-		return 0;
-	return acpuclk_data->get_voltage(cpu);
-}
-#else
-unsigned int acpuclk_get_voltage(int cpu)
-{
-	return 0;
-}
-#endif
-
 unsigned long acpuclk_get_rate(int cpu)
 {
 	if (!acpuclk_data || !acpuclk_data->get_rate)
@@ -41,16 +27,23 @@ unsigned long acpuclk_get_rate(int cpu)
 
 int acpuclk_set_rate(int cpu, unsigned long rate, enum setrate_reason reason)
 {
+	int ret;
+
 	if (!acpuclk_data || !acpuclk_data->set_rate)
 		return 0;
 
-	return acpuclk_data->set_rate(cpu, rate, reason);
+	trace_cpu_frequency_switch_start(acpuclk_get_rate(cpu), rate, cpu);
+	ret = acpuclk_data->set_rate(cpu, rate, reason);
+	if (!ret) {
+		trace_cpu_frequency_switch_end(cpu);
+		trace_cpu_frequency(rate, cpu);
+	}
+
+	return ret;
 }
 
 uint32_t acpuclk_get_switch_time(void)
 {
-	if (!acpuclk_data)
-		return 0;
 	return acpuclk_data->switch_time_us;
 }
 

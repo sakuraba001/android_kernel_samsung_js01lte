@@ -110,4 +110,5 @@ struct mmc_ioc_rpmb {
  * block device operations.
  */
 #define MMC_IOC_MAX_BYTES  (512L * 512)
-#endif /* LINUX_MMC_IOCTL_H */
+#define MMC_IOC_EXT_SET_CLOCK 1
+#endif  /* LINUX_MMC_IOCTL_H */

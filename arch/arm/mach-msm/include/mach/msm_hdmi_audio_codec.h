@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -30,10 +30,15 @@ struct msm_hdmi_audio_codec_ops {
 		bool down_mix);
 	int (*get_audio_edid_blk) (struct platform_device *pdev,
 		struct msm_hdmi_audio_edid_blk *blk);
-	int (*hdmi_cable_status) (struct platform_device *pdev, u32 vote);
 };
-
+#ifdef CONFIG_FB_MSM_MDSS_HDMI_PANEL
 int msm_hdmi_register_audio_codec(struct platform_device *pdev,
 	struct msm_hdmi_audio_codec_ops *ops);
-
+#else
+static inline int msm_hdmi_register_audio_codec(struct platform_device *pdev,
+	struct msm_hdmi_audio_codec_ops *ops)
+{
+	return 0;
+}
+#endif
 #endif /* __MSM_HDMI_AUDIO_CODEC_H__ */

@@ -123,6 +123,7 @@ static int mmc_bus_remove(struct device *dev)
 	return 0;
 }
 
+#if 0
 static void mmc_bus_shutdown(struct device *dev)
 {
 	struct mmc_driver *drv = to_mmc_driver(dev->driver);
@@ -141,6 +142,7 @@ static void mmc_bus_shutdown(struct device *dev)
 	if (drv->shutdown)
 		drv->shutdown(card);
 }
+#endif
 
 #ifdef CONFIG_PM_SLEEP
 static int mmc_bus_suspend(struct device *dev)
@@ -204,11 +206,9 @@ static int mmc_runtime_idle(struct device *dev)
 
 	if (mmc_use_core_runtime_pm(card->host)) {
 		ret = pm_schedule_suspend(dev, card->idle_timeout);
-		if ((ret < 0) && (dev->power.runtime_error ||
-				  dev->power.disable_depth > 0)) {
-			pr_err("%s: %s: %s: pm_schedule_suspend failed: err: %d\n",
-			       mmc_hostname(host), __func__, dev_name(dev),
-			       ret);
+		if (ret) {
+			pr_err("%s: %s: pm_schedule_suspend failed: err: %d\n",
+			       mmc_hostname(host), __func__, ret);
 			return ret;
 		}
 	}
@@ -267,7 +267,7 @@ static struct bus_type mmc_bus_type = {
 	.uevent		= mmc_bus_uevent,
 	.probe		= mmc_bus_probe,
 	.remove		= mmc_bus_remove,
-	.shutdown        = mmc_bus_shutdown,
+//	.shutdown	= mmc_bus_shutdown,
 	.pm		= &mmc_bus_pm_ops,
 };
 
@@ -399,11 +399,10 @@ int mmc_add_card(struct mmc_card *card)
 			mmc_card_ddr_mode(card) ? "DDR " : "",
 			type);
 	} else {
-		pr_info("%s: new %s%s%s%s%s%s card at address %04x\n",
+		pr_info("%s: new %s%s%s%s%s card at address %04x\n",
 			mmc_hostname(card->host),
 			mmc_card_uhs(card) ? "ultra high speed " :
 			(mmc_card_highspeed(card) ? "high speed " : ""),
-			(mmc_card_hs400(card) ? "HS400 " : ""),
 			(mmc_card_hs200(card) ? "HS200 " : ""),
 			mmc_card_ddr_mode(card) ? "DDR " : "",
 			uhs_bus_speed_mode, type, card->rca);
@@ -419,21 +418,15 @@ int mmc_add_card(struct mmc_card *card)
 		if (ret)
 			pr_err("%s: %s: failed setting runtime active: ret: %d\n",
 			       mmc_hostname(card->host), __func__, ret);
-		else if (!mmc_card_sdio(card))
+		else
 			pm_runtime_enable(&card->dev);
 	}
 
-	if (mmc_card_sdio(card)) {
-		ret = device_init_wakeup(&card->dev, true);
-		if (ret)
-			pr_err("%s: %s: failed to init wakeup: %d\n",
-			       mmc_hostname(card->host), __func__, ret);
-	}
 	ret = device_add(&card->dev);
 	if (ret)
 		return ret;
 
-	if (mmc_use_core_runtime_pm(card->host) && !mmc_card_sdio(card)) {
+	if (mmc_use_core_runtime_pm(card->host)) {
 		card->rpm_attrib.show = show_rpm_delay;
 		card->rpm_attrib.store = store_rpm_delay;
 		sysfs_attr_init(&card->rpm_attrib.attr);

@@ -53,6 +53,9 @@ struct q_clkdiv {
 
 static LIST_HEAD(qpnp_clkdiv_devs);
 
+static int clkdiv_users = 0;
+static struct mutex clkdiv_mutex;
+
 /**
  * qpnp_clkdiv_get - get a clkdiv handle
  * @dev: client device pointer.
@@ -126,6 +129,54 @@ int qpnp_clkdiv_disable(struct q_clkdiv *q_clkdiv)
 	return __clkdiv_enable(q_clkdiv, false);
 }
 EXPORT_SYMBOL(qpnp_clkdiv_disable);
+
+int qpnp_clkdiv_control(struct q_clkdiv *q_clkdiv, bool enable)
+{
+	int ret = 0;
+	pr_debug("%s: enable = %d clk_users = %d\n",
+		__func__, enable, clkdiv_users);
+
+	mutex_lock(&clkdiv_mutex);
+	if (enable) {
+		if (!q_clkdiv) {
+			pr_err("%s: did not get clkdiv\n", __func__);
+			ret = -EINVAL;
+			goto exit;
+		}
+
+		clkdiv_users++;
+		if (clkdiv_users != 1)
+			goto exit;
+
+		ret = __clkdiv_enable(q_clkdiv, true);
+		if (ret) {
+			pr_err("%s: Error enabling clkdiv\n",
+			       __func__);
+			ret = -ENODEV;
+			goto exit;
+		}
+	} else {
+		if (clkdiv_users > 0) {
+			clkdiv_users--;
+			if (clkdiv_users == 0) {
+				ret = __clkdiv_enable(q_clkdiv, false);
+				if (ret) {
+					pr_err("%s: Error enabling clkdiv\n", __func__);
+					ret = -ENODEV;
+					goto exit;
+				}
+			}
+		} else {
+			pr_err("%s: Error releasing clkdiv\n", __func__);
+			ret = -EINVAL;
+			goto exit;
+		}
+	}
+exit:
+	mutex_unlock(&clkdiv_mutex);
+	return ret;
+}
+EXPORT_SYMBOL(qpnp_clkdiv_control);
 
 /**
  * @q_clkdiv: pointer to clkdiv handle
@@ -202,7 +253,7 @@ static int __devinit qpnp_clkdiv_probe(struct spmi_device *spmi)
 	if (!res) {
 		dev_err(&spmi->dev, "%s: unable to get device reg resource\n",
 					__func__);
-		return -ENOMEM;
+		return -EINVAL;
 	}
 
 	q_clkdiv->slave = spmi->sid;
@@ -210,6 +261,7 @@ static int __devinit qpnp_clkdiv_probe(struct spmi_device *spmi)
 	q_clkdiv->ctrl = spmi->ctrl;
 	q_clkdiv->node = node;
 	mutex_init(&q_clkdiv->lock);
+	mutex_init(&clkdiv_mutex);
 
 	rc = of_property_read_u32(node, "qcom,cxo-div",
 					&q_clkdiv->cxo_div);

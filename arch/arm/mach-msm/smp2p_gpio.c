@@ -420,7 +420,7 @@ static void msm_summary_irq_handler(struct smp2p_chip_dev *chip,
 		spin_unlock_irqrestore(&chip->irq_lock, flags);
 
 		if (trigger_interrrupt) {
-			SMP2P_INFO(
+			SMP2P_GPIO(
 				"'%s':%d GPIO bit %d virq %d (%s,%s) - edge %s triggering\n",
 				chip->name, chip->remote_pid, i,
 				chip->irq_base + i,
@@ -644,7 +644,8 @@ static int __devinit smp2p_gpio_probe(struct platform_device *pdev)
 	return 0;
 
 fail:
-	kfree(chip);
+	if(chip)
+		kfree(chip);
 	return ret;
 }
 

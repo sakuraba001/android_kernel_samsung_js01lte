@@ -38,7 +38,7 @@
 #include "issp_extern.h"
 #include <asm/mach-types.h>
 
-#ifdef CONFIG_KEYBOARD_CYPRESS_TOUCHKEY_H
+#if CONFIG_KEYBOARD_CYPRESS_TOUCHKEY
 #include <linux/i2c/touchkey_i2c.h>
 #endif
 

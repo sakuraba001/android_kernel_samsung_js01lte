@@ -40,7 +40,7 @@
 #define TUNER_CONFIG_INT              0x07       /* IRQ No. ( Not Used )     */
 
 /* I2C bus # */
-#define TUNER_CONFIG_I2C_BUSNUM       0x0A       /* I2C Bus No.              */
+#define TUNER_CONFIG_I2C_BUSNUM       0x09       /* I2C Bus No.              */
 
 /* kernel thread priority  */
 #define TUNER_CONFIG_KTH_PRI            95       /* priority (0Å`99)         */

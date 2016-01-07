@@ -43,30 +43,6 @@
 static bool fc8080_on_air;
 static bool fc8080_pwr_on;
 
-#if defined(CONFIG_TDMB_TSIF)
-#define FIC_PACKET_COUNT 3
-#define MSC_PACKET_COUNT 16
-#endif
-/* #define TDMB_DEBUG_SCAN */
-#ifdef TDMB_DEBUG_SCAN
-static void __print_ensemble_info(struct ensemble_info_type *e_info)
-{
-	int i = 0;
-
-	DPRINTK("ensem_freq(%ld)\n", e_info->ensem_freq);
-	DPRINTK("ensem_label(%s)\n", e_info->ensem_label);
-	for (i = 0; i < e_info->tot_sub_ch; i++) {
-		DPRINTK("sub_ch_id(0x%x)\n", e_info->sub_ch[i].sub_ch_id);
-		DPRINTK("start_addr(0x%x)\n", e_info->sub_ch[i].start_addr);
-		DPRINTK("tmid(0x%x)\n", e_info->sub_ch[i].tmid);
-		DPRINTK("svc_type(0x%x)\n", e_info->sub_ch[i].svc_type);
-		DPRINTK("svc_label(%s)\n", e_info->sub_ch[i].svc_label);
-		DPRINTK("scids(0x%x)\n", e_info->sub_ch[i].scids);
-		DPRINTK("ecc(0x%x)\n", e_info->sub_ch[i].ecc);
-	}
-}
-#endif
-
 static bool __get_ensemble_info(struct ensemble_info_type *e_info
 							, unsigned long freq)
 {
@@ -131,9 +107,6 @@ static bool __get_ensemble_info(struct ensemble_info_type *e_info
 
 			}
 		}
-#ifdef TDMB_DEBUG_SCAN
-		__print_ensemble_info(e_info);
-#endif
 		return true;
 	} else {
 		return false;
@@ -142,18 +115,14 @@ static bool __get_ensemble_info(struct ensemble_info_type *e_info
 
 static void fc8080_power_off(void)
 {
-	DPRINTK("%s %d\n", __func__, fc8080_pwr_on);
+	DPRINTK("call TDMB_PowerOff !\n");
 
 	if (fc8080_pwr_on) {
 		fc8080_on_air = false;
 
 		dmb_drv_deinit();
 
-#ifdef CONFIG_TDMB_TSIF
-		tdmb_tsi_stop();
-#else
 		tdmb_control_irq(false);
-#endif
 		tdmb_control_gpio(false);
 
 		fc8080_pwr_on = false;
@@ -162,19 +131,18 @@ static void fc8080_power_off(void)
 
 static bool fc8080_power_on(void)
 {
-	DPRINTK("%s\n", __func__);
+	DPRINTK("fc8080_power_on\n");
 
 	if (fc8080_pwr_on) {
 		return true;
 	} else {
 		tdmb_control_gpio(true);
-		if (dmb_drv_init(tdmb_get_if_handle()) == TDMB_FAIL) {
+
+		if (dmb_drv_init() == TDMB_FAIL) {
 			tdmb_control_gpio(false);
 			return false;
 		} else {
-#if !defined(CONFIG_TDMB_TSIF)
 			tdmb_control_irq(true);
-#endif
 			fc8080_pwr_on = true;
 			return true;
 		}
@@ -212,10 +180,6 @@ static bool fc8080_set_ch(unsigned long freq,
 			freq_temp, sub_ch_id_temp, svc_type_temp);
 
 	fc8080_on_air = false;
-#ifdef CONFIG_TDMB_TSIF
-	if (tdmb_tsi_start(dmb_drv_isr, MSC_PACKET_COUNT) != 0)
-		return false;
-#endif
 
 	if (factory_test) {
 		if (dmb_drv_set_ch_factory(freq_temp, sub_ch_id_temp, \
@@ -243,33 +207,17 @@ static bool fc8080_set_ch(unsigned long freq,
 static bool fc8080_scan_ch(struct ensemble_info_type *e_info
 							, unsigned long freq)
 {
-	bool ret = false;
 	if (fc8080_pwr_on == false || e_info == NULL)
-		return ret;
-	else {
-#ifdef CONFIG_TDMB_TSIF
-		tdmb_tsi_stop();
-		if (tdmb_tsi_start(dmb_drv_isr, FIC_PACKET_COUNT) != 0)
 		return false;
-#endif
-		if (dmb_drv_scan_ch((freq / 1000)) == TDMB_SUCCESS)
-			ret = __get_ensemble_info(e_info, freq);
+	else if (dmb_drv_scan_ch((freq / 1000)) == TDMB_SUCCESS)
+		return __get_ensemble_info(e_info, freq);
 	else
-			ret = false;
-#ifdef CONFIG_TDMB_TSIF
-		tdmb_tsi_stop();
-#endif
-		return ret;
-	}
+		return false;
 }
 
 static unsigned long fc8080_int_size(void)
 {
-#if defined(CONFIG_TDMB_TSIF)
-	return 188*16;
-#else
 	return 188*20;
-#endif
 }
 
 static struct tdmb_drv_func fci_fc8080_drv_func = {
@@ -278,9 +226,7 @@ static struct tdmb_drv_func fci_fc8080_drv_func = {
 	.scan_ch = fc8080_scan_ch,
 	.get_dm = fc8080_get_dm,
 	.set_ch = fc8080_set_ch,
-#if !defined(CONFIG_TDMB_TSIF)
 	.pull_data = dmb_drv_isr,
-#endif
 	.get_int_size = fc8080_int_size,
 };
 

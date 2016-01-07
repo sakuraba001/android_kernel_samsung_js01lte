@@ -9,19 +9,10 @@
  */
 
 #include <linux/host_notify.h>
-#include <linux/of_gpio.h>
 
 #ifdef CONFIG_CHARGER_BQ24260
 #include <linux/gpio.h>
-#include <mach/rpm-regulator-smd.h>
-#endif
-#ifdef CONFIG_EXTCON
-#include <linux/extcon.h>
-#include <linux/power_supply.h>
-#endif
-
-#if defined(CONFIG_SEC_K_PROJECT) || defined(CONFIG_SEC_KACTIVE_PROJECT)
-	extern int vienna_usb_rdrv_pin;
+#define GPIO_USB_VBUS_MSM 50
 #endif
 
 struct dwc3_sec {
@@ -30,12 +21,7 @@ struct dwc3_sec {
 };
 static struct dwc3_sec sec_noti;
 
-#ifdef CONFIG_USB_HOST_NOTIFY
-static int booster_enable;
-#endif
-
 #ifdef CONFIG_CHARGER_BQ24260
-struct delayed_work	bq24260_late_power_work;
 int bq24260_otg_control(int enable)
 {
 	union power_supply_propval value;
@@ -45,9 +31,6 @@ int bq24260_otg_control(int enable)
 
 	pr_info("%s: enable(%d)\n", __func__, enable);
 
-#ifdef CONFIG_USB_HOST_NOTIFY
-	booster_enable = enable;
-#endif
 	for (i = 0; i < 10; i++) {
 		psy = power_supply_get_by_name("battery");
 		if (psy)
@@ -55,18 +38,15 @@ int bq24260_otg_control(int enable)
 	}
 	if (i == 10) {
 		pr_err("%s: fail to get battery ps\n", __func__);
-		schedule_delayed_work(&bq24260_late_power_work, msecs_to_jiffies(5000));
 		return -1;
 	}
 
-	if (enable == 1)
+	if (enable)
 		current_cable_type = POWER_SUPPLY_TYPE_OTG;
-	else if (enable == 2)
-		current_cable_type = POWER_SUPPLY_TYPE_LAN_HUB;
 	else
 		current_cable_type = POWER_SUPPLY_TYPE_BATTERY;
 
-	value.intval = current_cable_type;
+	value.intval = current_cable_type<<ONLINE_TYPE_MAIN_SHIFT;
 	ret = psy->set_property(psy, POWER_SUPPLY_PROP_ONLINE, &value);
 
 	if (ret) {
@@ -76,109 +56,47 @@ int bq24260_otg_control(int enable)
 	return ret;
 }
 
-static void bq24260_late_power(struct work_struct *work)
-{
-	struct dwc3_sec *snoti = &sec_noti;
-	struct dwc3_msm *dwcm;
-	
-	if (!snoti) {
-		pr_err("%s: dwc3_otg (snoti) is null\n", __func__);
-		return;
-	}
-
-	dwcm = snoti->dwcm;
-	if (!dwcm) {
-		pr_err("%s: dwc3_otg (dwcm) is null\n", __func__);
-		return;
-	}
-	
-	pr_info("%s, ext_xceiv.id=%d\n", __func__, dwcm->ext_xceiv.id);
-
-	if (dwcm->ext_xceiv.id == DWC3_ID_GROUND)
-		bq24260_otg_control(booster_enable);
-}
-
 struct booster_data sec_booster = {
 	.name = "bq24260",
 	.boost = bq24260_otg_control,
 };
 
-#if defined(CONFIG_MACH_VIENNA)
-static struct rpm_regulator *s2a_regulator;
-
-static void usb_vbus_s2a_force_pwm(unsigned int en)
-{
-	if (!s2a_regulator) {
-		pr_err("%s, s2a_regulator is not init\n", __func__);
-		return;
-	}
-	pr_info("%s, s2a_regulator %s mode\n", __func__,
-			en ? "HPM" : "AUTO");
-	rpm_regulator_set_mode(s2a_regulator,
-			en ? RPM_REGULATOR_MODE_HPM : RPM_REGULATOR_MODE_AUTO);
-}
-#endif
-
-static void usb_vbus_msm_init(struct dwc3_msm *dwcm, struct usb_phy *phy)
-{
-#ifdef CONFIG_USB_HOST_NOTIFY
-	sec_otg_register_booster(&sec_booster);
-#endif
-	INIT_DELAYED_WORK(&bq24260_late_power_work, bq24260_late_power);
-}
-#endif
-
-
-#ifdef CONFIG_USB_HOST_NOTIFY
-static int gpio_usb_vbus_msm;
 static irqreturn_t msm_usb_vbus_msm_irq(int irq, void *data)
 {
 	struct dwc3_sec *snoti = &sec_noti;
 	struct dwc3_msm *dwcm;
-	int enable = gpio_get_value(gpio_usb_vbus_msm);
+	int enable = gpio_get_value(GPIO_USB_VBUS_MSM);
 	pr_info("%s usb_vbus_msm=%d\n", __func__, enable);
 	dwcm = snoti->dwcm;
 	if (!dwcm) {
 		pr_err("%s: dwc3_otg (dwcm) is null\n", __func__);
 		return NOTIFY_BAD;
 	}
-	if (dwcm->ext_xceiv.id == DWC3_ID_GROUND && enable == 0 && booster_enable == 1) {
+	if (dwcm->ext_xceiv.id == DWC3_ID_GROUND && enable == 0) {
 		pr_info("%s over current\n", __func__);
 		sec_otg_notify(HNOTIFY_OVERCURRENT);
 		return IRQ_HANDLED;
 	}
 	sec_otg_notify(enable ?
 		HNOTIFY_OTG_POWER_ON : HNOTIFY_OTG_POWER_OFF);
-
-#if defined(CONFIG_MACH_VIENNA)
-	usb_vbus_s2a_force_pwm(enable);
-#endif
-
 	return IRQ_HANDLED;
 }
 
-static int get_vbus_detect_gpio(struct dwc3_msm *dwcm, struct device *dev)
+static int usb_vbus_msm_init(struct dwc3_msm *dwcm, struct usb_phy *phy)
 {
 	int ret;
-	struct device_node *np = dev->of_node;	
 
-	gpio_usb_vbus_msm = of_get_named_gpio(np, "qcom,vbus-detect-gpio", 0);
-	if (gpio_usb_vbus_msm < 0) {
-		pr_err("%s, cannot get vbus-detect-gpio, ret=%d\n", __func__, gpio_usb_vbus_msm);
-		return gpio_usb_vbus_msm;
-	}
-	else
-		pr_info("%s, can get vbus-detect-gpio, ret=%d\n", __func__, gpio_usb_vbus_msm);
+	sec_otg_register_booster(&sec_booster);
 
-	ret = gpio_tlmm_config(GPIO_CFG(gpio_usb_vbus_msm, 0, GPIO_CFG_INPUT,
+	ret = gpio_tlmm_config(GPIO_CFG(GPIO_USB_VBUS_MSM, 0, GPIO_CFG_INPUT,
 		GPIO_CFG_NO_PULL, GPIO_CFG_2MA), 1);
 	if (unlikely(ret)) {
-	    pr_err("%s gpio_usb_vbus_msm gpio_tlmm_config failed. ret=%d\n", __func__, ret);
+	    pr_err("%s GPIO_USB_VBUS_MSM gpio_tlmm_config failed. ret=%d\n", __func__, ret);
 	    return ret;
 	}
 
-	pr_info("%s usb_vbus_msm=%d\n", __func__, gpio_get_value(gpio_usb_vbus_msm));
-	ret = request_threaded_irq(gpio_to_irq(gpio_usb_vbus_msm),
+	pr_info("%s usb_vbus_msm=%d\n", __func__, gpio_get_value(GPIO_USB_VBUS_MSM));
+	ret = request_threaded_irq(gpio_to_irq(GPIO_USB_VBUS_MSM),
 						NULL, msm_usb_vbus_msm_irq,
 						IRQF_TRIGGER_RISING |
 						IRQF_TRIGGER_FALLING,
@@ -186,15 +104,7 @@ static int get_vbus_detect_gpio(struct dwc3_msm *dwcm, struct device *dev)
 	if (ret)
 		pr_err("%s request irq failed for usb_vbus_msm\n", __func__);
 	else
-		pr_info("%s request irq succeed for usb_vbus_msm\n", __func__);
-
-#if defined(CONFIG_MACH_VIENNA)
-	s2a_regulator = rpm_regulator_get(NULL, "8941_s2");
-	if (IS_ERR_OR_NULL(s2a_regulator))
-		pr_err("%s, could not get rpm regulator err\n", __func__);
-	usb_vbus_s2a_force_pwm(gpio_get_value(gpio_usb_vbus_msm));
-#endif
-
+		pr_err("%s request irq succeed for usb_vbus_msm\n", __func__);
 	return ret;
 }
 #endif
@@ -296,125 +206,6 @@ static int sec_otg_notifications(struct notifier_block *nb,
 
 	return NOTIFY_OK;
 }
-
-#ifdef CONFIG_EXTCON
-struct sec_cable {
-	struct work_struct work;
-	struct notifier_block nb;
-	struct extcon_specific_cable_nb extcon_nb;
-	struct extcon_dev *edev;
-	enum extcon_cable_name cable_type;
-	int cable_state;
-};
-
-static struct sec_cable support_cable_list[] = {
-	{ .cable_type = EXTCON_USB, },
-	{ .cable_type = EXTCON_USB_HOST, },
-	{ .cable_type = EXTCON_TA, },
-	{ .cable_type = EXTCON_AUDIODOCK, },
-	{ .cable_type = EXTCON_SMARTDOCK_TA, },
-	{ .cable_type = EXTCON_SMARTDOCK_USB, },
-};
-
-static void sec_usb_work(int usb_mode)
-{
-	struct power_supply *psy;
-
-#if defined(CONFIG_SEC_K_PROJECT) || defined(CONFIG_SEC_KACTIVE_PROJECT)
-	gpio_set_value(vienna_usb_rdrv_pin, usb_mode);
-	pr_info("%s klte_usb_rdrv_pin = %d, enable=%d\n",
-		__func__,
-		vienna_usb_rdrv_pin,
-		usb_mode);
-#endif
-
-	psy = power_supply_get_by_name("dwc-usb");
-	pr_info("usb: dwc3 power supply set(%d)", usb_mode);
-	power_supply_set_present(psy, usb_mode);
-}
-
-static void sec_cable_event_worker(struct work_struct *work)
-{
-	struct sec_cable *cable =
-			    container_of(work, struct sec_cable, work);
-
-	pr_info("sec otg: %s is %s\n",
-		extcon_cable_name[cable->cable_type],
-		cable->cable_state ? "attached" : "detached");
-
-#ifdef CONFIG_USB_HOST_NOTIFY
-	switch (cable->cable_type) {
-	case EXTCON_USB:
-	case EXTCON_SMARTDOCK_USB: 
-		sec_usb_work(cable->cable_state);
-		break;
-	case EXTCON_USB_HOST: 
-		if (cable->cable_state)
-			sec_otg_notify(HNOTIFY_ID);
-		else	
-			sec_otg_notify(HNOTIFY_ID_PULL);
-		break;
-	case EXTCON_TA: break;
-	case EXTCON_AUDIODOCK:
-		if (cable->cable_state)
-			sec_otg_notify(HNOTIFY_AUDIODOCK_ON);
-		else
-			sec_otg_notify(HNOTIFY_AUDIODOCK_OFF);
-		break;
-	case EXTCON_SMARTDOCK_TA:
-		if (cable->cable_state)
-			sec_otg_notify(HNOTIFY_SMARTDOCK_ON);
-		else
-			sec_otg_notify(HNOTIFY_SMARTDOCK_OFF);
-		break;
-	default : break;
-	}
-#endif
-}
-
-static int sec_cable_notifier(struct notifier_block *nb,
-					unsigned long stat, void *ptr)
-{
-	struct sec_cable *cable =
-			container_of(nb, struct sec_cable, nb);
-
-	cable->cable_state = stat;
-
-	schedule_work(&cable->work);
-
-	return NOTIFY_DONE;
-}
-
-static int __init sec_otg_init_cable_notify(void)
-{
-	struct sec_cable *cable;
-	int i;
-	int ret;
-
-	pr_info("%s register extcon notifier for usb and ta\n", __func__);
-	for (i = 0; i < ARRAY_SIZE(support_cable_list); i++) {
-		cable = &support_cable_list[i];
-
-		INIT_WORK(&cable->work, sec_cable_event_worker);
-		cable->nb.notifier_call = sec_cable_notifier;
-
-		ret = extcon_register_interest(&cable->extcon_nb,
-				EXTCON_DEV_NAME,
-				extcon_cable_name[cable->cable_type],
-				&cable->nb);
-		if (ret)
-			pr_err("%s: fail to register extcon notifier(%s, %d)\n",
-				__func__, extcon_cable_name[cable->cable_type],
-				ret);
-
-		cable->edev = cable->extcon_nb.edev;
-		if (!cable->edev)
-			pr_err("%s: fail to get extcon device\n", __func__);
-	}
-	return 0;
-}
-device_initcall_sync(sec_otg_init_cable_notify);
-#endif
 
 static int sec_otg_init(struct dwc3_msm *dwcm, struct usb_phy *phy)
 {

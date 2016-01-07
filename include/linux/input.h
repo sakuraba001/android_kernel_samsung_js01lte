@@ -411,7 +411,6 @@ struct input_keymap_entry {
 #define KEY_F23			193
 #define KEY_F24			194
 
-#define KEY_VOICE_WAKEUP	199	/* Samsung Voice Wakeup */
 #define KEY_PLAYCD		200
 #define KEY_PAUSECD		201
 #define KEY_PROG3		202
@@ -471,11 +470,10 @@ struct input_keymap_entry {
 
 #define KEY_MICMUTE		248	/* Mute / unmute the microphone */
 
+#define KEY_DUMMY_MENU		251	/* Dummy Touchkey : MENU*/
 #define KEY_DUMMY_HOME1		249	/* Dummy Touchkey : HOME1*/
 #define KEY_DUMMY_HOME2		250	/* Dummy Touchkey : HOME2*/
-#define KEY_DUMMY_MENU		251	/* Dummy Touchkey : MENU*/
 #define KEY_DUMMY_BACK		253	/* Dummy Touchkey : BACK*/
-#define KEY_RECENT	254	/* Key recent */
 
 /* Code 255 is reserved for special needs of AT keyboard driver */
 
@@ -731,7 +729,7 @@ struct input_keymap_entry {
 #define BTN_TRIGGER_HAPPY3		0x2c2
 #define BTN_TRIGGER_HAPPY4		0x2c3
 #define BTN_TRIGGER_HAPPY5		0x2c4
-#define BTN_TRIGGER_HAPPY6		0x2c5 /* For Samsung S Action Mouse button */
+#define BTN_TRIGGER_HAPPY6		0x2c5
 #define BTN_TRIGGER_HAPPY7		0x2c6
 #define BTN_TRIGGER_HAPPY8		0x2c7
 #define BTN_TRIGGER_HAPPY9		0x2c8
@@ -766,21 +764,6 @@ struct input_keymap_entry {
 #define BTN_TRIGGER_HAPPY38		0x2e5
 #define BTN_TRIGGER_HAPPY39		0x2e6
 #define BTN_TRIGGER_HAPPY40		0x2e7
-
-/* SAMSUNG
- * 0	 3
- * 1	 4
- * 2	 5
- */
-#define KEY_SIDE_TOUCH_0		0x2e8
-#define KEY_SIDE_TOUCH_1		0x2e9
-#define KEY_SIDE_TOUCH_2		0x2ea
-#define KEY_SIDE_TOUCH_3		0x2eb
-#define KEY_SIDE_TOUCH_4		0x2ec
-#define KEY_SIDE_TOUCH_5		0x2ed
-#define KEY_SIDE_TOUCH_6		0x2ee
-#define KEY_SIDE_TOUCH_7		0x2ef
-#define KEY_SIDE_CAMERA_DETECTED	0x2f0
 
 /* We avoid low common keys in module aliases so they don't get huge. */
 #define KEY_MIN_INTERESTING	KEY_MUTE
@@ -850,15 +833,15 @@ struct input_keymap_entry {
 #define ABS_MT_TRACKING_ID	0x39	/* Unique ID of initiated contact */
 #define ABS_MT_PRESSURE		0x3a	/* Pressure on contact area */
 #define ABS_MT_DISTANCE		0x3b	/* Contact hover distance */
-#define ABS_MT_ANGLE		0x3c	/* touch angle */
-#define ABS_MT_PALM		0x3d	/* palm touch */
+#define ABS_MT_ANGLE            0x3c    /* touch angle */
+#define ABS_MT_PALM             0x3d    /* palm touch */
 #define ABS_MT_COMPONENT	0x3e	/* touch component */
 #define ABS_MT_SUMSIZE		0x3f	/* touch sumsize */
 
 #ifdef __KERNEL__
 /* Implementation details, userspace should not care about these */
 #define ABS_MT_FIRST		ABS_MT_TOUCH_MAJOR
-#define ABS_MT_LAST		ABS_MT_SUMSIZE
+#define ABS_MT_LAST         ABS_MT_SUMSIZE
 #endif
 
 #define ABS_MAX			0x3f
@@ -887,7 +870,6 @@ struct input_keymap_entry {
 #define SW_HPHL_OVERCURRENT    0x0e  /* set = over current on left hph */
 #define SW_HPHR_OVERCURRENT    0x0f  /* set = over current on right hph */
 #define SW_UNSUPPORT_INSERT	0x10  /* set = unsupported device inserted */
-#define SW_FLIP			0x15  /* set = flip cover */
 #define SW_PEN_INSERT		0x13
 #define SW_STROBE_INSERT	0x14
 #define SW_FLIP			0x15  /* set = flip cover... */
@@ -896,7 +878,7 @@ struct input_keymap_entry {
 #define SW_RIGHT_HAND	0x18	/* set = right hand*/
 #define SW_BOTH_HAND	0x19	/* set = both hand*/
 
-#define SW_MAX			0x20
+#define SW_MAX			0x1F
 #define SW_CNT			(SW_MAX+1)
 
 /*

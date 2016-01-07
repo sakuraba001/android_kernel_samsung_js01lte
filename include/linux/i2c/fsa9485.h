@@ -72,7 +72,6 @@
 #define DEV_T1_CHARGER_MASK	(DEV_DEDICATED_CHG | DEV_CAR_KIT)
 
 /* Device Type 2 */
-#define DEV_LANHUB		(1 << 9)
 #define DEV_AUDIO_DOCK		(1 << 8)
 #define DEV_SMARTDOCK		(1 << 7)
 #define DEV_AV			(1 << 6)
@@ -87,14 +86,6 @@
 #define DEV_T2_UART_MASK	(DEV_JIG_UART_OFF)
 #define DEV_T2_JIG_MASK		(DEV_JIG_USB_OFF | DEV_JIG_USB_ON | \
 				DEV_JIG_UART_OFF)
-
-/* Device Type 3 */
-#define DEV_MHL				(1 << 0)
-#define DEV_VBUS_DEBOUNCE		(1 << 1)
-#define DEV_NON_STANDARD		(1 << 2)
-#define DEV_AV_VBUS			(1 << 4)
-#define DEV_APPLE_CHARGER		(1 << 5)
-#define DEV_U200_CHARGER		(1 << 6)
 
 /*
  * Manual Switch
@@ -120,7 +111,6 @@
 #define	ADC_DOCK_VOL_DN		0x0a
 #define	ADC_DOCK_VOL_UP		0x0b
 #define	ADC_DOCK_PLAY_PAUSE_KEY 0x0d
-#define ADC_LANHUB		0x13
 #define	ADC_CEA936ATYPE1_CHG	0x17
 #define	ADC_JIG_USB_OFF		0x18
 #define	ADC_JIG_USB_ON		0x19
@@ -138,7 +128,6 @@ enum cable_type_t {
 	CABLE_TYPE_AC,
 	CABLE_TYPE_MISC,
 	CABLE_TYPE_CARDOCK,
-	CABLE_TYPE_LANHUB,
 	CABLE_TYPE_UARTOFF,
 	CABLE_TYPE_JIG,
 	CABLE_TYPE_UNKNOWN,
@@ -170,9 +159,8 @@ enum {
 
 
 enum {
-	FSA9485_NONE = -1,
-	FSA9485_DETACHED = 0,
-	FSA9485_ATTACHED = 1
+	FSA9485_DETACHED,
+	FSA9485_ATTACHED
 };
 
 enum {
@@ -196,7 +184,6 @@ struct fsa9485_platform_data {
 	void (*usb_cb) (bool attached);
 	void (*uart_cb) (bool attached);
 	void (*charger_cb) (bool attached);
-	void (*in_charger_cb) (bool attached);
 	void (*jig_cb) (bool attached);
 	void (*mhl_cb) (bool attached);
 	void (*reset_cb) (void);
@@ -205,8 +192,6 @@ struct fsa9485_platform_data {
 	void (*dock_cb) (int attached);
 	int  (*dock_init) (void);
 	void (*usb_cdp_cb) (bool attached);
-	void (*lanhub_cb) (bool attached);
-	void (*lanhubta_cb) (bool attached);
 	void (*smartdock_cb) (bool attached);
 	void (*audio_dock_cb) (bool attached);
 };

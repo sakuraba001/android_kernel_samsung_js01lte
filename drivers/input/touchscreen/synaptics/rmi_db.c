@@ -15,7 +15,7 @@
 #include <linux/module.h>
 #include <asm/unaligned.h>
 #include <asm/siginfo.h>
-//#include <mach/cpufreq.h>
+#include <mach/cpufreq.h>
 #include <linux/slab.h>
 #include <linux/i2c.h>
 #include <linux/interrupt.h>
@@ -457,7 +457,7 @@ static int rmidb_init(struct synaptics_rmi4_data *rmi4_data)
 err_sysfs_attrs:
 	attr_count_num = (int)attr_count;
 	for (attr_count_num--; attr_count_num >= 0; attr_count_num--)
-		sysfs_remove_file(rmidb->sysfs_dir, &attrs[attr_count_num].attr);
+		sysfs_remove_file(rmidb->sysfs_dir, &attrs[attr_count].attr);
 
 	sysfs_remove_bin_file(rmidb->sysfs_dir, &attr_data);
 

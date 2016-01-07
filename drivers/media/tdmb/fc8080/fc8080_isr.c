@@ -23,7 +23,7 @@
 	History :
 	----------------------------------------------------------------------
 *******************************************************************************/
-#include <linux/kernel.h>
+
 #include <linux/cache.h>
 #include "fci_types.h"
 #include "fci_hal.h"
@@ -43,18 +43,15 @@ static void fc8080_data(HANDLE handle, u16 status)
 {
 	u16 size;
 	s32 i;
+
 	if (status & 0x0100) {
 		bbm_word_read(handle, BBM_BUF_FIC_THR, &size);
 		size++;
 
 		bbm_data(handle, BBM_RD_FIC, &fic_buffer[0], size);
-#ifdef CONFIG_TDMB_SPI
+
 		if (fic_callback)
 			(*fic_callback)(fic_user_data, &fic_buffer[4], size);
-#else
-		if (fic_callback)
-			(*fic_callback)(fic_user_data, &fic_buffer[0], size);
-#endif
 	}
 
 	for (i = 0; i < 3; i++) {
@@ -62,20 +59,18 @@ static void fc8080_data(HANDLE handle, u16 status)
 
 		if (!(status & (1 << i)))
 			continue;
+
 		bbm_word_read(handle, BBM_BUF_CH0_THR + i * 2, &size);
 		size++;
+
 		bbm_read(handle, BBM_BUF_CH0_SUBID + i, &subch_id);
 		subch_id &= 0x3f;
+
 		bbm_data(handle, (BBM_RD_BUF0 + i), &msc_buffer[0], size);
-#ifdef CONFIG_TDMB_SPI
+
 		if (msc_callback)
 			(*msc_callback)(msc_user_data, subch_id, &msc_buffer[4],
 						size);
-#else
-		if (msc_callback)
-			(*msc_callback)(msc_user_data, subch_id, &msc_buffer[0],
-						size);
-#endif
 	}
 }
 
@@ -84,6 +79,7 @@ void fc8080_isr(HANDLE handle)
 	u16 buf_int_status = 0;
 
 	bbm_word_read(handle, BBM_BUF_STATUS, &buf_int_status);
+
 	if (buf_int_status) {
 		bbm_word_write(handle, BBM_BUF_STATUS, buf_int_status);
 		fc8080_data(handle, buf_int_status);
@@ -91,6 +87,7 @@ void fc8080_isr(HANDLE handle)
 
 	buf_int_status = 0;
 	bbm_word_read(handle, BBM_BUF_STATUS, &buf_int_status);
+
 	if (buf_int_status) {
 		bbm_word_write(handle, BBM_BUF_STATUS, buf_int_status);
 		fc8080_data(handle, buf_int_status);

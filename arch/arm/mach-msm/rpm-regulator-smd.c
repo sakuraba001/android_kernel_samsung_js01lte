@@ -29,6 +29,10 @@
 #include <mach/rpm-regulator-smd.h>
 #include <mach/socinfo.h>
 
+#ifdef CONFIG_SEC_PM
+#undef PM_FORCE_SEND_SLEEP
+#endif
+
 /* Debug Definitions */
 
 enum {
@@ -163,7 +167,6 @@ struct rpm_vreg {
 	struct mutex		mlock;
 	unsigned long		flags;
 	bool			sleep_request_sent;
-	bool			apps_only;
 	struct msm_rpm_request	*handle_active;
 	struct msm_rpm_request	*handle_sleep;
 };
@@ -239,16 +242,6 @@ static inline bool rpm_vreg_active_or_sleep_enabled(struct rpm_vreg *rpm_vreg)
 				& BIT(RPM_REGULATOR_PARAM_ENABLE)))
 	    || ((rpm_vreg->aggr_req_sleep.param[RPM_REGULATOR_PARAM_ENABLE])
 				&& (rpm_vreg->aggr_req_sleep.valid
-					& BIT(RPM_REGULATOR_PARAM_ENABLE)));
-}
-
-static inline bool rpm_vreg_shared_active_or_sleep_enabled_valid
-						(struct rpm_vreg *rpm_vreg)
-{
-	return !rpm_vreg->apps_only &&
-		((rpm_vreg->aggr_req_active.valid
-					& BIT(RPM_REGULATOR_PARAM_ENABLE))
-		 || (rpm_vreg->aggr_req_sleep.valid
 					& BIT(RPM_REGULATOR_PARAM_ENABLE)));
 }
 
@@ -490,6 +483,13 @@ static int rpm_vreg_aggregate_requests(struct rpm_regulator *regulator)
 	bool send_sleep = false;
 	int rc = 0;
 	int i;
+#ifdef PM_FORCE_SEND_SLEEP
+	int send_vdd_mx = 0;
+
+	if ((!strncmp(rpm_vreg->resource_name, "smpb", 4)
+		&& rpm_vreg->resource_id == 1))
+		send_vdd_mx = 1; /* vdd_mx */
+#endif
 
 	memset(param_active, 0, sizeof(param_active));
 	memset(param_sleep, 0, sizeof(param_sleep));
@@ -545,7 +545,11 @@ static int rpm_vreg_aggregate_requests(struct rpm_regulator *regulator)
 	 * additional sleep set requests must be sent in the future even if they
 	 * match the corresponding active set requests.
 	 */
-	if (rpm_vreg->sleep_request_sent || sleep_set_differs) {
+	if (rpm_vreg->sleep_request_sent || sleep_set_differs
+#ifdef PM_FORCE_SEND_SLEEP
+		|| send_vdd_mx
+#endif
+	) {
 		/* Add KVPs to the sleep set RPM request if they are new. */
 		rpm_vreg_check_modified_requests(rpm_vreg->aggr_req_sleep.param,
 			param_sleep, rpm_vreg->aggr_req_sleep.valid,
@@ -573,6 +577,13 @@ static int rpm_vreg_aggregate_requests(struct rpm_regulator *regulator)
 	rpm_regulator_req(regulator, RPM_SET_ACTIVE, send_active);
 	if (send_active)
 		rpm_vreg->aggr_req_active.modified = 0;
+
+#ifdef PM_FORCE_SEND_SLEEP
+	if (send_vdd_mx && (send_sleep == 0)) {
+		send_sleep = 1;
+		pr_debug ("force send_sleep for vdd_mx\n");
+	}
+#endif
 
 	/* Send sleep set request to the RPM if it contains new KVPs. */
 	if (send_sleep) {
@@ -671,8 +682,7 @@ static int rpm_vreg_set_voltage(struct regulator_dev *rdev, int min_uV,
 	 * if the regulator has been configured to always send voltage updates.
 	 */
 	if (reg->always_send_voltage
-	    || rpm_vreg_active_or_sleep_enabled(reg->rpm_vreg)
-	    || rpm_vreg_shared_active_or_sleep_enabled_valid(reg->rpm_vreg))
+	    || rpm_vreg_active_or_sleep_enabled(reg->rpm_vreg))
 		rc = rpm_vreg_aggregate_requests(reg);
 
 	if (rc) {
@@ -731,8 +741,7 @@ static int rpm_vreg_set_voltage_corner(struct regulator_dev *rdev, int min_uV,
 	 * updates.
 	 */
 	if (reg->always_send_voltage
-	    || rpm_vreg_active_or_sleep_enabled(reg->rpm_vreg)
-	    || rpm_vreg_shared_active_or_sleep_enabled_valid(reg->rpm_vreg))
+	    || rpm_vreg_active_or_sleep_enabled(reg->rpm_vreg))
 		rc = rpm_vreg_aggregate_requests(reg);
 
 	if (rc) {
@@ -787,8 +796,7 @@ static int rpm_vreg_set_voltage_floor_corner(struct regulator_dev *rdev,
 	 * voltage updates.
 	 */
 	if (reg->always_send_voltage
-	    || rpm_vreg_active_or_sleep_enabled(reg->rpm_vreg)
-	    || rpm_vreg_shared_active_or_sleep_enabled_valid(reg->rpm_vreg))
+	    || rpm_vreg_active_or_sleep_enabled(reg->rpm_vreg))
 		rc = rpm_vreg_aggregate_requests(reg);
 
 	if (rc) {
@@ -843,8 +851,7 @@ static int rpm_vreg_set_mode(struct regulator_dev *rdev, unsigned int mode)
 	 * current updates.
 	 */
 	if (reg->always_send_current
-	    || rpm_vreg_active_or_sleep_enabled(reg->rpm_vreg)
-	    || rpm_vreg_shared_active_or_sleep_enabled_valid(reg->rpm_vreg))
+	    || rpm_vreg_active_or_sleep_enabled(reg->rpm_vreg))
 		rc = rpm_vreg_aggregate_requests(reg);
 
 	if (rc) {
@@ -1281,16 +1288,14 @@ static int __devexit rpm_vreg_device_remove(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct rpm_regulator *reg;
-	struct rpm_vreg *rpm_vreg;
 
 	reg = platform_get_drvdata(pdev);
 	if (reg) {
-		rpm_vreg = reg->rpm_vreg;
-		rpm_vreg_lock(rpm_vreg);
+		rpm_vreg_lock(reg->rpm_vreg);
 		regulator_unregister(reg->rdev);
 		list_del(&reg->list);
 		kfree(reg);
-		rpm_vreg_unlock(rpm_vreg);
+		rpm_vreg_unlock(reg->rpm_vreg);
 	} else {
 		dev_err(dev, "%s: drvdata missing\n", __func__);
 		return -EINVAL;
@@ -1596,7 +1601,6 @@ static int __devinit rpm_vreg_resource_probe(struct platform_device *pdev)
 	of_property_read_u32(node, "qcom,enable-time", &rpm_vreg->enable_time);
 	of_property_read_u32(node, "qcom,hpm-min-load",
 		&rpm_vreg->hpm_min_load);
-	rpm_vreg->apps_only = of_property_read_bool(node, "qcom,apps-only");
 
 	rpm_vreg->handle_active = msm_rpm_create_request(RPM_SET_ACTIVE,
 		resource_type, rpm_vreg->resource_id, RPM_REGULATOR_PARAM_MAX);

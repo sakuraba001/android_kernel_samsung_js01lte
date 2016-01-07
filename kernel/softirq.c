@@ -32,7 +32,6 @@
 #ifdef CONFIG_SEC_DEBUG
 #include <mach/sec_debug.h>
 #endif
-
 /*
    - No shared variables, all the data are CPU local.
    - If a softirq needs serialization, let it serialize itself
@@ -239,11 +238,11 @@ restart:
 			kstat_incr_softirqs_this_cpu(vec_nr);
 
 			trace_softirq_entry(vec_nr);
-#ifdef CONFIG_SEC_DEBUG
+#if CONFIG_SEC_DEBUG
 			secdbg_msg("softirq %pS entry", h->action);
 #endif
 			h->action(h);
-#ifdef CONFIG_SEC_DEBUG
+#if CONFIG_SEC_DEBUG
 			secdbg_msg("softirq %pS exit", h->action);
 #endif
 			trace_softirq_exit(vec_nr);
@@ -343,10 +342,9 @@ void irq_exit(void)
 {
 	account_system_vtime(current);
 	trace_hardirq_exit();
-#ifdef CONFIG_SEC_DEBUG
+#if CONFIG_SEC_DEBUG
 	secdbg_msg("hardirq exit");
 #endif
-
 	sub_preempt_count(IRQ_EXIT_OFFSET);
 	if (!in_interrupt() && local_softirq_pending())
 		invoke_softirq();

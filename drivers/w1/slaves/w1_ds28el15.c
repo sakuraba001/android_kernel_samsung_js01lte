@@ -97,9 +97,6 @@ static char special_values[2];
 static char rom_no[8];
 
 int verification = -1, id = 2, color;
-#ifdef CONFIG_SEC_H_PROJECT
-extern int verified;
-#endif
 
 #define READ_EOP_BYTE(seg) (32-seg*4)
 
@@ -1064,6 +1061,7 @@ int w1_ds28el15_read_authverify(struct w1_slave *sl, int page_num, uchar *challe
 	// have device compute mac
 	pbyte = anon ? 0xE0 : 0x00;
 	pbyte = pbyte | page_num;
+
 	while (i < RETRY_LIMIT) {
 		rslt = w1_ds28el15_compute_read_pageMAC(sl, pbyte, mac);
 		if (rslt == 0)
@@ -1507,10 +1505,11 @@ int w1_ds28el15_verifymac(struct w1_slave *sl)
 	{
 		manid[0] = buf[3];
 		manid[1] = buf[2];
-	} else {
+	}
+
+	else {
 		pr_info("%s : read_status error\n", __func__);
 		rt = -1;
-		goto success;
 	}
 
 	// if you want to use random value, insert code here.
@@ -1573,10 +1572,8 @@ static int w1_ds28el15_setup_device(struct w1_slave *sl)
 		manid[0] = buf[3];
 		manid[1] = buf[2];
 	}
-	else{
+	else
 		rt = -1;
-		goto end;
-	}
 	printk(KERN_ERR "result : %d\n",rslt);
 
 	printk(KERN_ERR "Read-Authenticate with unique secret\n");
@@ -1587,7 +1584,6 @@ static int w1_ds28el15_setup_device(struct w1_slave *sl)
 
 	printk(KERN_ERR "DS28EL15 Setup Example: %s\n",(rt) ? "FAIL" : "SUCCESS");
 	printk(KERN_ERR "--------------------------------------------------\n");
-end:
 	return rt;
 
 }
@@ -1860,13 +1856,8 @@ static int w1_ds28el15_add_slave(struct w1_slave *sl)
 			printk(KERN_ERR "w1_ds28el15_verifymac\n");
 		}
 	}
-#ifdef CONFIG_SEC_H_PROJECT
-	pr_info("%s:verified(%d)", __func__, verified);
-	if(!verified)
-#else
-	if(!verification)
-#endif
-		w1_ds28el15_update_slave_info(sl);
+
+	w1_ds28el15_update_slave_info(sl);
 
 	printk(KERN_ERR "w1_ds28el15_add_slave end, skip_setup=%d, err=%d\n", skip_setup, err);
 	return err;

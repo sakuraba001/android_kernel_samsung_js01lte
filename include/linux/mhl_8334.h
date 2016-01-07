@@ -137,8 +137,7 @@ struct mhl_tx_ctrl {
 	uint8_t chip_rev_id;
 	int mhl_mode;
 	struct completion rgnd_done;
-	void (*notify_usb_online)(void *ctx, int online);
-	void *notify_ctx;
+	void (*notify_usb_online)(int online);
 	struct usb_ext_notification *mhl_info;
 	bool disc_enabled;
 	struct power_supply mhl_psy;

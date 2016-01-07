@@ -117,7 +117,7 @@ static bool mtv319_power_on(void)
 
 		RTV_GUARD_INIT;
 
-		if (rtvTDMB_Initialize(tdmb_get_if_handle()) != RTV_SUCCESS) {
+		if (rtvTDMB_Initialize() != RTV_SUCCESS) {
 			tdmb_control_gpio(false);
 			return false;
 		} else {

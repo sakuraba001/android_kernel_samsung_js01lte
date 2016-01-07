@@ -32,7 +32,7 @@
 extern "C" {
 #endif
 
-extern int bbm_hostif_select(HANDLE hDevice, u8 hostif, u32 param);
+extern int bbm_hostif_select(HANDLE hDevice, u8 hostif);
 extern int bbm_hostif_deselect(HANDLE hDevice);
 extern int bbm_hostif_get(HANDLE hDevice, u8 *hostif);
 

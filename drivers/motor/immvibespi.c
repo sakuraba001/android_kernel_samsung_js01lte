@@ -61,11 +61,10 @@ int32_t vibe_set_pwm_freq(int nForce)
 				2 << HWIO_GP_MODE_VAL_SHFT); //Mode Select 10
 	//M value
 	HWIO_OUTM(GP_M_REG, HWIO_GP_MD_REG_M_VAL_BMSK,
-		g_nlra_gp_clk_m << HWIO_GP_MD_REG_M_VAL_SHFT);
+	 	g_nlra_gp_clk_m << HWIO_GP_MD_REG_M_VAL_SHFT);
 
 #if defined(CONFIG_MACH_LT03EUR) || defined(CONFIG_MACH_LT03SKT)\
-	|| defined(CONFIG_MACH_LT03KTT)	|| defined(CONFIG_MACH_LT03LGT) || defined(CONFIG_MACH_PICASSO_LTE)
-
+	|| defined(CONFIG_MACH_LT03KTT)	|| defined(CONFIG_MACH_LT03LGT)
 	if (nForce > 0){
 		g_nforce_32 = g_nlra_gp_clk_n - (((nForce * g_nlra_gp_clk_pwm_mul) >> 8));
 		if(g_nforce_32 < motor_min_strength)
@@ -153,9 +152,8 @@ static int32_t ImmVibeSPI_ForceOut_AmpDisable(u_int8_t nActuatorIndex)
 		printk(KERN_DEBUG "tspdrv: %s\n", __func__);
 #if defined(CONFIG_MOTOR_DRV_MAX77803)
 		max77803_vibtonz_en(0);
-#elif defined(CONFIG_MOTOR_DRV_MAX77804K)
-		max77804k_vibtonz_en(0);
-#elif defined(CONFIG_MOTOR_DRV_DRV2603)
+#endif
+#if defined(CONFIG_MOTOR_DRV_DRV2603)
 		drv2603_gpio_en(0);
 #endif
 	}
@@ -177,8 +175,7 @@ static int32_t ImmVibeSPI_ForceOut_AmpEnable(u_int8_t nActuatorIndex)
 				gpio_set_value(vibrator_drvdata.vib_pwm_gpio, \
 					VIBRATION_ON);
 			} else {	//AP PWM
-#if defined(CONFIG_MACH_HLTEDCM) || defined(CONFIG_MACH_HLTEKDI) || \
-	defined(CONFIG_MACH_JS01LTEDCM) || defined(CONFIG_MACH_JS01LTESBM)
+#if defined(CONFIG_MACH_HLTEDCM) || defined(CONFIG_MACH_HLTEKDI) || defined(CONFIG_MACH_JS01LTEDCM)
 				gpio_tlmm_config(GPIO_CFG(vibrator_drvdata.vib_pwm_gpio,\
 					2, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, \
 					GPIO_CFG_2MA), GPIO_CFG_ENABLE);
@@ -196,9 +193,8 @@ static int32_t ImmVibeSPI_ForceOut_AmpEnable(u_int8_t nActuatorIndex)
 		printk(KERN_DEBUG "tspdrv: %s\n", __func__);
 #if defined(CONFIG_MOTOR_DRV_MAX77803)
 		max77803_vibtonz_en(1);
-#elif defined(CONFIG_MOTOR_DRV_MAX77804K)
-		max77804k_vibtonz_en(1);
-#elif defined(CONFIG_MOTOR_DRV_DRV2603)
+#endif
+#if defined(CONFIG_MOTOR_DRV_DRV2603)
 		drv2603_gpio_en(1);
 #endif
 	}
@@ -280,8 +276,7 @@ int vib_config_pwm_device(void)
 	int ret = 0;
 	if(vibrator_drvdata.pwm_dev == NULL){
 	//u32	pwm_period_us, duty_us;
-#if defined(CONFIG_MACH_HLTEDCM) || defined(CONFIG_MACH_HLTEKDI) || \
-	defined(CONFIG_MACH_JS01LTEDCM) || defined(CONFIG_MACH_JS01LTESBM)
+#if defined(CONFIG_MACH_HLTEDCM) || defined(CONFIG_MACH_HLTEKDI) || defined(CONFIG_MACH_JS01LTEDCM)
 	vibrator_drvdata.pwm_dev = pwm_request(0,"lpg_3"); // 0 index for LPG3 channel. 
 #else
 	vibrator_drvdata.pwm_dev = pwm_request(0,"lpg_1"); // 0 index for LPG1 channel. 
@@ -321,9 +316,6 @@ int vib_config_pwm_device(void)
 /*
 ** Called by the real-time loop to set PWM duty cycle
 */
-#ifdef CONFIG_TACTILE_ASSIST
-static bool g_bOutputDataBufferEmpty = 1;
-#endif
 static int32_t ImmVibeSPI_ForceOut_SetSamples(u_int8_t nActuatorIndex,
 						u_int16_t nOutputSignalBitDepth,
 						u_int16_t nBufferSizeInBytes,
@@ -332,16 +324,6 @@ static int32_t ImmVibeSPI_ForceOut_SetSamples(u_int8_t nActuatorIndex,
 	int8_t nforce;
 	static int8_t pre_nforce;
 	int ret;
-
-#ifdef CONFIG_TACTILE_ASSIST
-	if (g_bOutputDataBufferEmpty) {
-		nActuatorIndex = 0;
-		nOutputSignalBitDepth = 8;
-		nBufferSizeInBytes = 1;
-		pForceOutputBuffer[0] = 0;
-	}
-#endif
-
 	switch (nOutputSignalBitDepth) {
 	case 8:
 		/* pForceOutputBuffer is expected to contain 1 byte */

@@ -15,6 +15,7 @@
 
 #include <linux/switch.h>
 #include "mdss_hdmi_util.h"
+#include "mdss_hdmi_edid.h"
 
 enum hdmi_tx_io_type {
 	HDMI_TX_CORE_IO,
@@ -36,9 +37,6 @@ struct hdmi_tx_platform_data {
 	bool primary;
 	struct dss_io_data io[HDMI_TX_MAX_IO];
 	struct dss_module_power power_data[HDMI_TX_MAX_PM];
-#if defined (CONFIG_VIDEO_MHL_V2)
-	bool drm_workaround;
-#endif
 };
 
 struct hdmi_audio {
@@ -60,8 +58,9 @@ struct hdmi_tx_ctrl {
 	struct kobject *kobj;
 	struct switch_dev sdev;
 	struct switch_dev audio_sdev;
+	struct switch_dev hdmi_audio_switch;
+
 	struct workqueue_struct *workq;
-	spinlock_t hpd_state_lock;
 
 	uint32_t video_resolution;
 
@@ -72,30 +71,27 @@ struct hdmi_tx_ctrl {
 	u32 hpd_off_pending;
 	u32 hpd_feature_on;
 	u32 hpd_initialized;
-	u32 vote_hdmi_core_on;
 	u8  timing_gen_on;
 	u32 mhl_max_pclk;
 	u8  mhl_hpd_on;
 	struct completion hpd_done;
 	struct work_struct hpd_int_work;
-
+	struct delayed_work hpd_set_work;
 	struct work_struct power_off_work;
 
 	bool hdcp_feature_on;
+	bool mhl_connect_status;
 	u32 present_hdcp;
-	u8 spd_vendor_name[9];
-	u8 spd_product_description[17];
+
+	u8 spd_vendor_name[8];
+	u8 spd_product_description[16];
 
 	struct hdmi_tx_ddc_ctrl ddc_ctrl;
-
-	void (*hdmi_tx_hpd_done) (void *data);
-	void *downstream_data;
 
 	void *feature_data[HDMI_TX_FEAT_MAX];
 };
 
-#if defined (CONFIG_VIDEO_MHL_V2) || defined (CONFIG_VIDEO_MHL_SII8246)
 void mhl_hpd_handler(bool state);
 int hdmi_hpd_status(void);
-#endif
+
 #endif /* __MDSS_HDMI_TX_H__ */

@@ -93,6 +93,7 @@
 /*-------------------------------------------------------------------------*/
 
 #define MTPG_BULK_BUFFER_SIZE	16384
+#define MTPG_BULK_BUFFER_SIZE_DEVICETOPC	16384  //2013.09.10. 64KB -> 16KB for order allocation failure issue in lowmemory zone
 #define MTPG_INTR_BUFFER_SIZE	28
 
 /* number of rx and tx requests to allocate */
@@ -730,8 +731,8 @@ static ssize_t mtpg_write(struct file *fp, const char __user *buf,
 		}
 
 		if (req != 0) {
-			if (count > MTPG_BULK_BUFFER_SIZE)
-				xfer = MTPG_BULK_BUFFER_SIZE;
+			if (count > MTPG_BULK_BUFFER_SIZE_DEVICETOPC)
+				xfer = MTPG_BULK_BUFFER_SIZE_DEVICETOPC;
 			else
 				xfer = count;
 
@@ -871,8 +872,8 @@ static void read_send_work(struct work_struct *work)
 			break;
 		}
 
-		if (count > MTPG_BULK_BUFFER_SIZE)
-			xfer = MTPG_BULK_BUFFER_SIZE;
+		if (count > MTPG_BULK_BUFFER_SIZE_DEVICETOPC)
+			xfer = MTPG_BULK_BUFFER_SIZE_DEVICETOPC;
 		else
 			xfer = count;
 
@@ -930,6 +931,11 @@ static long  mtpg_ioctl(struct file *fd, unsigned int code, unsigned long arg)
 	char buf[USB_PTPREQUEST_GETSTATUS_SIZE+1] = {0};
 
 	cdev = dev->cdev;
+	if(dev->online == 0 || dev->error == 1) {
+	    printk(KERN_ERR "ioctl is calling when device is disable or not online\n");
+		return -EAGAIN;
+	}
+	
 	if (!cdev) {
 		printk(KERN_ERR "usb: %s cdev not ready\n", __func__);
 		return -EAGAIN;
@@ -1330,7 +1336,7 @@ mtpg_function_bind(struct usb_configuration *c, struct usb_function *f)
 	}
 
 	for (i = 0; i < MTPG_MTPG_TX_REQ_MAX; i++) {
-		req = mtpg_request_new(mtpg->bulk_in, MTPG_BULK_BUFFER_SIZE);
+		req = mtpg_request_new(mtpg->bulk_in, MTPG_BULK_BUFFER_SIZE_DEVICETOPC);
 		if (!req)
 			goto out;
 		req->complete = mtpg_complete_in;

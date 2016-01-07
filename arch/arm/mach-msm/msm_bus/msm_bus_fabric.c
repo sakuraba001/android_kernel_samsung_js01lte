@@ -24,7 +24,7 @@
 
 enum {
 	SLAVE_NODE,
-	MASTER_NODE,
+	THRESH_NODE,
 	CLK_NODE,
 };
 
@@ -70,6 +70,9 @@ static int msm_bus_fabric_add_node(struct msm_bus_fabric *fabric,
 	if (IS_SLAVE(info->node_info->priv_id))
 		radix_tree_tag_set(&fabric->fab_tree, info->node_info->priv_id,
 			SLAVE_NODE);
+	else if(info->node_info->mode_thresh)
+		radix_tree_tag_set(&fabric->fab_tree, info->node_info->priv_id,
+			THRESH_NODE);
 
 	for (ctx = 0; ctx < NUM_CTX; ctx++) {
 		if (info->node_info->slaveclk[ctx]) {
@@ -364,7 +367,7 @@ void msm_bus_fabric_update_bw(struct msm_bus_fabric_device *fabdev,
 {
 	struct msm_bus_fabric *fabric = to_msm_bus_fabric(fabdev);
 	void *sel_cdata;
-	long rounded_rate, cur_rate;
+	long rounded_rate;
 
 	sel_cdata = fabric->cdata[ctx];
 
@@ -379,20 +382,16 @@ void msm_bus_fabric_update_bw(struct msm_bus_fabric_device *fabdev,
 	}
 
 	/* Enable clocks before accessing QoS registers */
-	if (fabric->info.nodeclk[DUAL_CTX].clk) {
+	if (fabric->info.nodeclk[DUAL_CTX].clk)
 		if (fabric->info.nodeclk[DUAL_CTX].rate == 0) {
-			cur_rate = clk_get_rate(
-					fabric->info.nodeclk[DUAL_CTX].clk);
-			rounded_rate = clk_round_rate(
-					fabric->info.nodeclk[DUAL_CTX].clk,
-					cur_rate ? cur_rate : 1);
+			rounded_rate = clk_round_rate(fabric->
+				info.nodeclk[DUAL_CTX].clk, 1);
 		if (clk_set_rate(fabric->info.nodeclk[DUAL_CTX].clk,
 				rounded_rate))
 			MSM_BUS_ERR("Error: clk: en: Node: %d rate: %ld",
 				fabric->fabdev.id, rounded_rate);
 
 		clk_prepare_enable(fabric->info.nodeclk[DUAL_CTX].clk);
-		}
 	}
 
 	if (info->iface_clk.clk)
@@ -518,26 +517,22 @@ static void msm_bus_fabric_config_master(
 	struct msm_bus_inode_info *info, uint64_t req_clk, uint64_t req_bw)
 {
 	struct msm_bus_fabric *fabric = to_msm_bus_fabric(fabdev);
-	long rounded_rate, cur_rate;
+	long rounded_rate;
 
 	if (fabdev->hw_algo.config_master == NULL)
 		return;
 
 	/* Enable clocks before accessing QoS registers */
-	if (fabric->info.nodeclk[DUAL_CTX].clk) {
+	if (fabric->info.nodeclk[DUAL_CTX].clk)
 		if (fabric->info.nodeclk[DUAL_CTX].rate == 0) {
-			cur_rate = clk_get_rate(
-					fabric->info.nodeclk[DUAL_CTX].clk);
-			rounded_rate = clk_round_rate(
-					fabric->info.nodeclk[DUAL_CTX].clk,
-					cur_rate ? cur_rate : 1);
+			rounded_rate = clk_round_rate(fabric->
+				info.nodeclk[DUAL_CTX].clk, 1);
 		if (clk_set_rate(fabric->info.nodeclk[DUAL_CTX].clk,
 				rounded_rate))
 			MSM_BUS_ERR("Error: clk: en: Node: %d rate: %ld",
 				fabric->fabdev.id, rounded_rate);
 
 		clk_prepare_enable(fabric->info.nodeclk[DUAL_CTX].clk);
-		}
 	}
 
 	if (info->iface_clk.clk)
@@ -557,14 +552,21 @@ static void msm_bus_fabric_config_master(
 	}
 }
 
+void msm_bus_fabric_use_thresh(struct msm_bus_fabric_device *fabdev,
+	struct msm_bus_inode_info *info)
+{
+	struct msm_bus_fabric *fabric = to_msm_bus_fabric(fabdev);
+	msm_bus_bimc_use_thresh(fabric->pdata, info);
+}
 /**
  * msm_bus_fabric_hw_commit() - Commit the arbitration data to Hardware.
  * @fabric: Fabric for which the data should be committed
  * */
 static int msm_bus_fabric_hw_commit(struct msm_bus_fabric_device *fabdev)
 {
-	int status = 0;
+	int status = 0, i;
 	struct msm_bus_fabric *fabric = to_msm_bus_fabric(fabdev);
+	struct msm_bus_inode_info *info;
 
 	/*
 	 * For a non-zero bandwidth request, clocks should be enabled before
@@ -589,6 +591,19 @@ static int msm_bus_fabric_hw_commit(struct msm_bus_fabric_device *fabdev)
 
 	fabric->arb_dirty = false;
 skip_arb:
+	if (fabric->fabdev.id != 0)
+		goto skip_thresh;
+
+	for (i = 1; i < 3; i++) {
+		info = fabdev->algo->find_node(fabdev, i);
+		if (!info)
+			MSM_BUS_ERR("Error: Info not found for id: %u", i);
+		else if (info->thresh_flag)
+			MSM_BUS_DBG("AXI: Threshold for: %d, mode: %d\n",
+			info->node_info->id, info->node_info->mode);
+			msm_bus_fabric_use_thresh(fabdev, info);
+	}
+skip_thresh:
 	/*
 	 * If the bandwidth request is 0 for a fabric, the clocks
 	 * should be disabled after arbitration data is committed.
@@ -774,8 +789,8 @@ static int __devinit msm_bus_fabric_probe(struct platform_device *pdev)
 		pdata = msm_bus_of_get_fab_data(pdev);
 		if (IS_ERR(pdata) || ZERO_OR_NULL_PTR(pdata)) {
 			pr_err("Null platform data\n");
-			kfree(fabric->info.node_info);
-			kfree(fabric);
+                        kfree(fabric->info.node_info);
+                        kfree(fabric);
 			return PTR_ERR(pdata);
 		}
 		msm_bus_board_init(pdata);

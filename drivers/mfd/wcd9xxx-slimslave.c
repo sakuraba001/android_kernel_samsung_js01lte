@@ -9,6 +9,11 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
+ 
+#ifdef CONFIG_SEC_LOCALE_KOR_H
+#define DEBUG
+#endif
+
 #include <linux/slab.h>
 #include <linux/mutex.h>
 #include <linux/mfd/wcd9xxx/wcd9xxx-slimslave.h>

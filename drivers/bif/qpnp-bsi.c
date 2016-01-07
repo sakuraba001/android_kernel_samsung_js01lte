@@ -56,7 +56,6 @@ struct qpnp_bsi_chip {
 	atomic_t		irq_flag[QPNP_BSI_IRQ_COUNT];
 	int			batt_present_irq;
 	enum qpnp_vadc_channels	batt_id_adc_channel;
-	struct qpnp_vadc_chip	*vadc_dev;
 };
 
 #define QPNP_BSI_DRIVER_NAME	"qcom,qpnp-bsi"
@@ -170,7 +169,7 @@ static const struct qpnp_bsi_tau qpnp_bsi_tau_period = {
 #define QPNP_BSI_DEFAULT_VID_REF_UV	1800000
 
 /* These have units of tau_bif. */
-#define QPNP_BSI_MAX_TRANSMIT_CYCLES	46
+#define QPNP_BSI_MAX_TRANSMIT_CYCLES	36
 #define QPNP_BSI_MIN_RECEIVE_CYCLES	24
 #define QPNP_BSI_MAX_BUS_QUERY_CYCLES	17
 
@@ -544,6 +543,12 @@ static int qpnp_bsi_bus_transaction(struct bif_ctrl_dev *bdev, int transaction,
 	struct qpnp_bsi_chip *chip = bdev_get_drvdata(bdev);
 	int rc;
 
+	rc = qpnp_bsi_clear_bsi_error(chip);
+	if (rc)
+		return rc;
+
+	qpnp_bsi_clear_irq_flags(chip);
+
 	qpnp_bsi_set_com_mode(chip, QPNP_BSI_COM_MODE_IRQ);
 
 	rc = qpnp_bsi_set_bus_state(bdev, BIF_BUS_STATE_ACTIVE);
@@ -556,12 +561,6 @@ static int qpnp_bsi_bus_transaction(struct bif_ctrl_dev *bdev, int transaction,
 	rc = qpnp_bsi_rx_tx_config(chip, QPNP_BSI_RX_TX_STATE_RX_OFF_TX_DATA);
 	if (rc)
 		return rc;
-
-	rc = qpnp_bsi_clear_bsi_error(chip);
-	if (rc)
-		return rc;
-
-	qpnp_bsi_clear_irq_flags(chip);
 
 	rc = qpnp_bsi_issue_transaction_wait_for_tx(chip, transaction, data);
 	if (rc)
@@ -578,6 +577,12 @@ static int qpnp_bsi_bus_transaction_query(struct bif_ctrl_dev *bdev,
 	struct qpnp_bsi_chip *chip = bdev_get_drvdata(bdev);
 	int rc, timeout;
 
+	rc = qpnp_bsi_clear_bsi_error(chip);
+	if (rc)
+		return rc;
+
+	qpnp_bsi_clear_irq_flags(chip);
+
 	qpnp_bsi_set_com_mode(chip, QPNP_BSI_COM_MODE_IRQ);
 
 	rc = qpnp_bsi_set_bus_state(bdev, BIF_BUS_STATE_ACTIVE);
@@ -590,12 +595,6 @@ static int qpnp_bsi_bus_transaction_query(struct bif_ctrl_dev *bdev,
 	rc = qpnp_bsi_rx_tx_config(chip, QPNP_BSI_RX_TX_STATE_RX_INT_TX_DATA);
 	if (rc)
 		return rc;
-
-	rc = qpnp_bsi_clear_bsi_error(chip);
-	if (rc)
-		return rc;
-
-	qpnp_bsi_clear_irq_flags(chip);
 
 	rc = qpnp_bsi_issue_transaction_wait_for_tx(chip, transaction, data);
 	if (rc)
@@ -624,6 +623,12 @@ static int qpnp_bsi_bus_transaction_read(struct bif_ctrl_dev *bdev,
 	int rc, timeout;
 	u8 buf[3];
 
+	rc = qpnp_bsi_clear_bsi_error(chip);
+	if (rc)
+		return rc;
+
+	qpnp_bsi_clear_irq_flags(chip);
+
 	qpnp_bsi_set_com_mode(chip, QPNP_BSI_COM_MODE_IRQ);
 
 	rc = qpnp_bsi_set_bus_state(bdev, BIF_BUS_STATE_ACTIVE);
@@ -636,12 +641,6 @@ static int qpnp_bsi_bus_transaction_read(struct bif_ctrl_dev *bdev,
 	rc = qpnp_bsi_rx_tx_config(chip, QPNP_BSI_RX_TX_STATE_RX_DATA_TX_DATA);
 	if (rc)
 		return rc;
-
-	rc = qpnp_bsi_clear_bsi_error(chip);
-	if (rc)
-		return rc;
-
-	qpnp_bsi_clear_irq_flags(chip);
 
 	rc = qpnp_bsi_issue_transaction_wait_for_tx(chip, transaction, data);
 	if (rc)
@@ -826,10 +825,10 @@ static int qpnp_bsi_send_burst_length(struct qpnp_bsi_chip *chip, int burst_len)
 	/*
 	 * Send burst read length bus commands according to the following:
 	 *
-	 * 1                     --> No RBE or RBL
-	 * 2  - 15  = x          --> RBLx
-	 * 16 - 255 = 16 * y + x --> RBEy and RBLx (RBL0 not sent)
-	 * 256                   --> RBL0
+	 * 256                --> RBL0
+	 * 0-255 = 16 * y + x --> RBEy and RBLx
+	 *		RBE0 does not need to be sent
+	 *		RBL0 does not need to be sent
 	 */
 	if (burst_len == 256) {
 		rc = qpnp_bsi_issue_transaction(chip, BIF_TRANS_BC,
@@ -851,7 +850,7 @@ static int qpnp_bsi_send_burst_length(struct qpnp_bsi_chip *chip, int burst_len)
 			return rc;
 	}
 
-	if (burst_len % 16 && burst_len > 1) {
+	if (burst_len % 16) {
 		rc = qpnp_bsi_issue_transaction(chip, BIF_TRANS_BC,
 					BIF_CMD_RBL + (burst_len % 16));
 		if (rc)
@@ -906,6 +905,12 @@ static int qpnp_bsi_read_slave_registers(struct bif_ctrl_dev *bdev, u16 addr,
 	int rc, rc2, i, burst_len;
 	u8 buf[3];
 
+	rc = qpnp_bsi_clear_bsi_error(chip);
+	if (rc)
+		return rc;
+
+	qpnp_bsi_clear_irq_flags(chip);
+
 	qpnp_bsi_set_com_mode(chip, QPNP_BSI_COM_MODE_POLL);
 
 	rc = qpnp_bsi_set_bus_state(bdev, BIF_BUS_STATE_ACTIVE);
@@ -918,12 +923,6 @@ static int qpnp_bsi_read_slave_registers(struct bif_ctrl_dev *bdev, u16 addr,
 	rc = qpnp_bsi_rx_tx_config(chip, QPNP_BSI_RX_TX_STATE_RX_DATA_TX_DATA);
 	if (rc)
 		return rc;
-
-	rc = qpnp_bsi_clear_bsi_error(chip);
-	if (rc)
-		return rc;
-
-	qpnp_bsi_clear_irq_flags(chip);
 
 	while (len > 0) {
 		burst_len = min(len, 256);
@@ -1001,6 +1000,12 @@ static int qpnp_bsi_write_slave_registers(struct bif_ctrl_dev *bdev, u16 addr,
 	unsigned long flags;
 	int rc, rc2, i;
 
+	rc = qpnp_bsi_clear_bsi_error(chip);
+	if (rc)
+		return rc;
+
+	qpnp_bsi_clear_irq_flags(chip);
+
 	qpnp_bsi_set_com_mode(chip, QPNP_BSI_COM_MODE_POLL);
 
 	rc = qpnp_bsi_set_bus_state(bdev, BIF_BUS_STATE_ACTIVE);
@@ -1013,12 +1018,6 @@ static int qpnp_bsi_write_slave_registers(struct bif_ctrl_dev *bdev, u16 addr,
 	rc = qpnp_bsi_rx_tx_config(chip, QPNP_BSI_RX_TX_STATE_RX_OFF_TX_DATA);
 	if (rc)
 		return rc;
-
-	rc = qpnp_bsi_clear_bsi_error(chip);
-	if (rc)
-		return rc;
-
-	qpnp_bsi_clear_irq_flags(chip);
 
 	rc = qpnp_bsi_issue_transaction(chip, BIF_TRANS_ERA, addr >> 8);
 	if (rc)
@@ -1075,6 +1074,12 @@ static int qpnp_bsi_bus_set_interrupt_mode(struct bif_ctrl_dev *bdev)
 	struct qpnp_bsi_chip *chip = bdev_get_drvdata(bdev);
 	int rc;
 
+	rc = qpnp_bsi_clear_bsi_error(chip);
+	if (rc)
+		return rc;
+
+	qpnp_bsi_clear_irq_flags(chip);
+
 	qpnp_bsi_set_com_mode(chip, QPNP_BSI_COM_MODE_IRQ);
 
 	/*
@@ -1098,12 +1103,6 @@ static int qpnp_bsi_bus_set_interrupt_mode(struct bif_ctrl_dev *bdev)
 	 * properly.
 	 */
 	chip->state = BIF_BUS_STATE_INTERRUPT;
-
-	rc = qpnp_bsi_clear_bsi_error(chip);
-	if (rc)
-		return rc;
-
-	qpnp_bsi_clear_irq_flags(chip);
 
 	/* Send EINT bus command. */
 	rc = qpnp_bsi_issue_transaction_wait_for_tx(chip, BIF_TRANS_BC,
@@ -1162,7 +1161,6 @@ static int qpnp_bsi_bus_set_active_mode(struct bif_ctrl_dev *bdev,
 			+ QPNP_BSI_POWER_UP_LOW_DELAY_US);
 		break;
 	case BIF_BUS_STATE_POWER_DOWN:
-	case BIF_BUS_STATE_MASTER_DISABLED:
 		msleep(QPNP_BSI_MAX_SLAVE_POWER_UP_DELAY_MS);
 		break;
 	}
@@ -1181,34 +1179,13 @@ static int qpnp_bsi_set_bus_state(struct bif_ctrl_dev *bdev, int state)
 {
 	struct qpnp_bsi_chip *chip = bdev_get_drvdata(bdev);
 	int rc = 0;
-	u8 reg;
 
 	if (state == chip->state)
 		return 0;
 
-	if (chip->state == BIF_BUS_STATE_MASTER_DISABLED) {
-		/*
-		 * Enable the BSI peripheral when transitioning from a disabled
-		 * bus state to any of the active bus states so that BIF
-		 * transactions can take place.
-		 */
-		reg = QPNP_BSI_ENABLE;
-		rc = qpnp_bsi_write(chip, QPNP_BSI_REG_ENABLE, &reg, 1);
-		if (rc) {
-			dev_err(&chip->spmi_dev->dev, "%s: qpnp_bsi_write() failed, rc=%d\n",
-				__func__, rc);
-			return rc;
-		}
-	}
-
 	switch (state) {
 	case BIF_BUS_STATE_MASTER_DISABLED:
-		/* Disable the BSI peripheral. */
-		reg = QPNP_BSI_DISABLE;
-		rc = qpnp_bsi_write(chip, QPNP_BSI_REG_ENABLE, &reg, 1);
-		if (rc)
-			dev_err(&chip->spmi_dev->dev, "%s: qpnp_bsi_write() failed, rc=%d\n",
-				__func__, rc);
+		pr_info("master disable not yet supported.\n");
 		break;
 	case BIF_BUS_STATE_POWER_DOWN:
 		rc = qpnp_bsi_bus_transaction(bdev, BIF_TRANS_BC, BIF_CMD_PDWN);
@@ -1366,8 +1343,7 @@ static int qpnp_bsi_get_battery_rid(struct bif_ctrl_dev *bdev)
 		return -ENXIO;
 	}
 
-	rc = qpnp_vadc_read(chip->vadc_dev, chip->batt_id_adc_channel,
-								&adc_result);
+	rc = qpnp_vadc_read(chip->batt_id_adc_channel, &adc_result);
 	if (!rc) {
 		vid_uV = adc_result.physical;
 
@@ -1646,7 +1622,7 @@ static int __devinit qpnp_bsi_probe(struct spmi_device *spmi)
 	struct device *dev = &spmi->dev;
 	struct qpnp_bsi_chip *chip;
 	int rc;
-	u8 type[2];
+	u8 type[2], reg;
 
 	if (!spmi->dev.of_node) {
 		dev_err(dev, "%s: device node missing\n", __func__);
@@ -1677,7 +1653,7 @@ static int __devinit qpnp_bsi_probe(struct spmi_device *spmi)
 
 	chip->spmi_dev		= spmi;
 	chip->bdesc.ops		= &qpnp_bsi_ops;
-	chip->state		= BIF_BUS_STATE_MASTER_DISABLED;
+	chip->state		= BIF_BUS_STATE_POWER_DOWN;
 	chip->com_mode		= QPNP_BSI_COM_MODE_IRQ;
 
 	rc = qpnp_bsi_read(chip, QPNP_BSI_REG_TYPE, type, 2);
@@ -1696,11 +1672,8 @@ static int __devinit qpnp_bsi_probe(struct spmi_device *spmi)
 
 	/* Ensure that ADC channel is available if it was specified. */
 	if (chip->batt_id_adc_channel < ADC_MAX_NUM) {
-		chip->vadc_dev = qpnp_get_vadc(dev, "bsi");
-		if (IS_ERR(chip->vadc_dev)) {
-			rc = PTR_ERR(chip->vadc_dev);
-			if (rc != -EPROBE_DEFER)
-				pr_err("missing vadc property, rc=%d\n", rc);
+		rc = qpnp_vadc_is_ready();
+		if (rc) {
 			/* Probe retry, do not print an error message */
 			goto cleanup_irqs;
 		}
@@ -1709,6 +1682,15 @@ static int __devinit qpnp_bsi_probe(struct spmi_device *spmi)
 	rc = qpnp_bsi_set_tau_bif(chip, chip->bdesc.bus_clock_min_ns);
 	if (rc) {
 		dev_err(dev, "%s: qpnp_bsi_set_tau_bif() failed, rc=%d\n",
+			__func__, rc);
+		goto cleanup_irqs;
+	}
+
+	/* Enable the BSI module. */
+	reg = QPNP_BSI_ENABLE;
+	rc = qpnp_bsi_write(chip, QPNP_BSI_REG_ENABLE, &reg, 1);
+	if (rc) {
+		dev_err(dev, "%s: qpnp_bsi_write() failed, rc=%d\n",
 			__func__, rc);
 		goto cleanup_irqs;
 	}

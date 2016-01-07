@@ -116,7 +116,7 @@ static int __devinit of_i2c_gpio_probe(struct platform_device *pdev,
 		of_property_read_bool(np, "i2c-gpio,scl-output-only");
 
 	of_property_read_u32(np, "cell-index", &pdev->id);
-	
+
 	return 0;
 }
 

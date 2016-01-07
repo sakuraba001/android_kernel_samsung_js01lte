@@ -10,7 +10,7 @@
  */
 #include <linux/kernel.h>
 #include <asm/unaligned.h>
-//#include <mach/cpufreq.h>
+#include <mach/cpufreq.h>
 #include <linux/input/mt.h>
 #include <linux/of_gpio.h>
 #include <linux/regulator/consumer.h>
@@ -35,12 +35,9 @@
 #include "mdss_panel.h"
 #include "mdss_mdp.h"
 #include "mdss_edp.h"
-
 #if defined(CONFIG_SEC_LT03_PROJECT)
 #include "n1_power_save.h"
-#elif defined(CONFIG_SEC_PICASSO_PROJECT)
-#include "picasso_power_save.h"
-#else ////defined(CONFIG_SEC_VIENNA_PROJECT) || defined(CONFIG_SEC_V2_PROJECT)
+#else
 #include "v1_power_save.h"
 #endif
 
@@ -56,7 +53,7 @@
 #include <linux/lcd.h>
 #endif
 
-#if defined(CONFIG_SEC_LT03_PROJECT) || defined(CONFIG_SEC_PICASSO_PROJECT)
+#if defined(CONFIG_SEC_LT03_PROJECT)
 #define LOWEST_PWM_DUTY 10
 #else
 #define LOWEST_PWM_DUTY 20
@@ -87,22 +84,6 @@ static struct class *tcon_class;
 static struct edp_eeprom_info *global_pinfo;
 
 extern int get_edp_power_state(void);
-
-static void eeprom_request_gpio_slave(struct edp_eeprom_platform_data *pdata)
-{
-	pr_info("%s gpio_scl : %d , gpio_sda : %d", __func__, pdata->gpio_scl, pdata->gpio_sda);
-
-	gpio_tlmm_config(GPIO_CFG(pdata->gpio_scl, 0, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA), 1);
-	gpio_tlmm_config(GPIO_CFG(pdata->gpio_sda, 0, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA), 1);
-}
-
-static void eeprom_request_gpio_master(struct edp_eeprom_platform_data *pdata)
-{
-	pr_info("%s gpio_scl : %d , gpio_sda : %d", __func__, pdata->gpio_scl, pdata->gpio_sda);
-
-	gpio_tlmm_config(GPIO_CFG(pdata->gpio_scl, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA), 1);
-	gpio_tlmm_config(GPIO_CFG(pdata->gpio_sda, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA), 1);
-}
 
 static int eeprom_i2c_read(struct i2c_client *client,
 		u16 reg, u8 *val, unsigned int len)
@@ -162,33 +143,7 @@ static int eeprom_i2c_write(struct i2c_client *client,
 
 	return err;
 }
-void tcon_i2c_slave_change(void)
-{
-	unsigned char data[3];
 
-	/* i2c slave change */
-	data[0] = 0x03;
-	data[1] = 0x13;
-	data[2] = 0xBB;
-	aux_tx(0x491, data, 3);
-
-	data[0] = 0x03;
-	data[1] = 0x14;
-	data[2] = 0xBB;
-	aux_tx(0x491, data, 3);
-
-	if (global_pinfo)
-		eeprom_request_gpio_master(global_pinfo->pdata);
-	else
-		pr_info("%s global_pinfo is NULL", __func__);
-
-#if defined(CONFIG_EDP_TCON_MDNIE)
-	/* TO enable MDNIE*/
-	data[0] = 0x08;
-	aux_tx(0x720, data, 1);
-	update_mdnie_register();
-#endif
-}
 static void tcon_init_setting(void)
 {
 	u16 i2c_addr[4];
@@ -196,8 +151,8 @@ static void tcon_init_setting(void)
 	unsigned char data[3];
 
 	/* i2c slave change */
-	data[0] = 0x03;
-	data[1] = 0x13;
+	data[0] = 0x03; 
+	data[1] = 0x13; 
 	data[2] = 0xBB;
 	aux_tx(0x491, data, 3);
 
@@ -211,7 +166,7 @@ static void tcon_init_setting(void)
 	aux_tx(0x720, data, 1);
 
 	/* TCON SETTING FOR ESD RECOVERY*/
-	data[0] = 0x81;
+	data[0] = 0x81; 
 	data[1] = 0x68;
 	data[2] = 0x04;
 	aux_tx(0x491, data, sizeof(data));
@@ -220,9 +175,6 @@ static void tcon_init_setting(void)
 		pr_info("%s global_pinfo is NULL", __func__);
 		return ;
 	}
-
-	eeprom_request_gpio_master(global_pinfo->pdata);
-
 	/* low revision panel needs update display resolution */
 	i2c_addr[0] = 0xCB2; i2c_data[0] = 0x0;
 	i2c_addr[1] = 0xCB3; i2c_data[1] = 0x0A;
@@ -327,19 +279,20 @@ static void sending_tune_cmd(struct edp_eeprom_info *info, char *src, int len)
 		while(*(src+data_pos++) != 0x0A) ;
 		if(*(src + data_pos) == '0') {
 			//Addr
-			mdni_addr[cmd_pos] = char_to_dec(*(src + data_pos),*(src + data_pos + 1))<<8 | char_to_dec(*(src + data_pos + 2),*(src + data_pos + 3));
+			mdni_addr[cmd_pos] = char_to_dec(*(src + data_pos),*(src + data_pos + 1))<<8 | char_to_dec(*(src + data_pos + 2),*(src + data_pos + 3)); 
 			data_pos += 5;
-			if((*(src + data_pos) == '0') && (*(src + data_pos + 1) == 'x'))
+			if((*(src + data_pos) == '0') && (*(src + data_pos + 1) == 'x')) 
 				mdni_tuning_val[cmd_pos] = char_to_dec(*(src + data_pos+2),*(src + data_pos + 3));
 			data_pos  += 4;
 			cmd_pos += 1;
-		}
+		} 
+			
 	}
 
 	printk(KERN_INFO "\n");
 	for (data_pos = 0; data_pos < MDNIE_TUNE_SIZE ; data_pos++)
 		printk(KERN_INFO "0x%04x,0x%02x  \n", mdni_addr[data_pos],mdni_tuning_val[data_pos]);
-
+	
 	printk(KERN_INFO "\n");
 
 	//Send Tune Commands
@@ -368,9 +321,9 @@ static void sending_tcon_tuen_cmd(struct edp_eeprom_info *info, char *src, int l
 	for (data_pos = 0; data_pos < len;) {
 		if(*(src + data_pos) == '0') {
 			//Addr
-			tcon_addr[cmd_pos] = char_to_dec(*(src + data_pos),*(src + data_pos + 1))<<8 | char_to_dec(*(src + data_pos + 2),*(src + data_pos + 3));
+			tcon_addr[cmd_pos] = char_to_dec(*(src + data_pos),*(src + data_pos + 1))<<8 | char_to_dec(*(src + data_pos + 2),*(src + data_pos + 3)); 
 			data_pos += 5;
-			if((*(src + data_pos) == '0') && (*(src + data_pos + 1) == 'x'))
+			if((*(src + data_pos) == '0') && (*(src + data_pos + 1) == 'x')) 
 				tcon_tuning_val[cmd_pos] = char_to_dec(*(src + data_pos+2),*(src + data_pos + 3));
 			data_pos  += 4;
 			cmd_pos += 1;
@@ -521,19 +474,19 @@ int tcon_tune_value(struct edp_eeprom_info *pinfo)
 		mutex_unlock(&edp_power_state_chagne);
 		return -EINVAL;
 	}
-
+	
 	pr_info("%s [set tcon] : mode : %d, br : %d, lux : %d power_save_mode : %d", __func__,
 		pdata->mode, pdata->auto_br, pdata->lux, pdata->power_save_mode);
 
 	if (pdata->power_save_mode) {
 		if (pdata->mode == 1 || pdata->mode == 2 || pdata->mode == 3)
-			tune_value = power_save_tune_value[1][1][1]; /*TCON_VIDEO*/
+			tune_value = v1_tune_value[1][1][1]; /*TCON_VIDEO*/
 		else if (pdata->mode == 8)
-			tune_value = power_save_tune_value[1][1][8]; /*TCON_BROWSER*/
+			tune_value = v1_tune_value[1][1][8]; /*TCON_BROWSER*/
 		else
-			tune_value = power_save_tune_value[1][1][0]; /*TCON_POWER_SAVE*/
+			tune_value = v1_tune_value[1][1][0]; /*TCON_POWER_SAVE*/
 	} else
-        	tune_value = power_save_tune_value[pdata->auto_br][pdata->lux][pdata->mode];
+        	tune_value = v1_tune_value[pdata->auto_br][pdata->lux][pdata->mode];
 
 	if (!tune_value) {
 		pr_err("%s tcon value is null", __func__);
@@ -555,6 +508,7 @@ int tcon_tune_value(struct edp_eeprom_info *pinfo)
 	}
 #endif
 	mutex_unlock(&edp_power_state_chagne);
+	
 	tcon_pwm_duty(0, 0);
 
 	return ret;
@@ -571,7 +525,7 @@ void restore_set_tcon(void)
 	}
 }
 
-void tcon_under_lowest_percentage_duty(void)
+void tcon_under_lowest_percentage_duty(void) 
 {
 	u16 i2c_addr[3];
 	u8 i2c_data[3];
@@ -619,8 +573,8 @@ void tcon_pwm_duty(int pwm_duty, int updata_from_backlight)
 
 static ssize_t disp_lcdtype_show(struct device *dev,
 			struct device_attribute *attr, char *buf)
-{
-#if defined(CONFIG_MACH_VIENNA_LTE) || defined(CONFIG_MACH_V2LTEEUR)
+{	
+#if defined(CONFIG_MACH_VIENNAEUR)
 	snprintf(buf, 30, "INH_LSL122DL01\n");
 #else // CONFIG_SEC_LT03_PROJECT
 	snprintf(buf, 30, "INH_LSL101DL01\n");
@@ -773,6 +727,7 @@ static ssize_t store_black_test(struct device *dev,
 			    const char *buf, size_t count)
 {
 	int value;
+	
 	u16 i2c_addr;
 	u8 i2c_data;
 
@@ -829,11 +784,11 @@ int config_i2c_lane(int enable)
 	}
 
 	if (enable) {
-		gpio_request(global_pinfo->pdata->gpio_scl, "edp_scl");
-		gpio_request(global_pinfo->pdata->gpio_sda, "edp_sda");
+		gpio_tlmm_config(GPIO_CFG(global_pinfo->pdata->gpio_scl, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA), 1);
+		gpio_tlmm_config(GPIO_CFG(global_pinfo->pdata->gpio_sda, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA), 1);
 	} else {
-		gpio_free(global_pinfo->pdata->gpio_scl);
-		gpio_free(global_pinfo->pdata->gpio_sda);
+		gpio_tlmm_config(GPIO_CFG(global_pinfo->pdata->gpio_scl, 0, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA), 1);
+		gpio_tlmm_config(GPIO_CFG(global_pinfo->pdata->gpio_sda, 0, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA), 1);
 	}
 
 	return 0;
@@ -888,6 +843,12 @@ static const struct attribute_group sysfs_group = {
 	.attrs = sysfs_attributes,
 };
 
+static void eeprom_request_gpio(struct edp_eeprom_platform_data *pdata)
+{
+	gpio_tlmm_config(GPIO_CFG(pdata->gpio_scl, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA), 1);
+	gpio_tlmm_config(GPIO_CFG(pdata->gpio_sda, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA), 1);
+}
+
 static int edp_eeprom_parse_dt(struct device *dev,
 			struct edp_eeprom_platform_data *pdata)
 {
@@ -938,12 +899,11 @@ static int __devinit edp_eeprom_probe(struct i2c_client *client,
 	} else
 		pdata = client->dev.platform_data;
 
-	eeprom_request_gpio_slave(pdata);
+	eeprom_request_gpio(pdata);
 
 	global_pinfo = info = kzalloc(sizeof(*info), GFP_KERNEL);
 	if (!info) {
 		dev_info(&client->dev, "%s: fail to memory allocation.\n", __func__);
-		goto return_pdata_free;
 	}
 
 	info->client = client;
@@ -959,7 +919,7 @@ static int __devinit edp_eeprom_probe(struct i2c_client *client,
 		ret = PTR_ERR(lcd_device);
 		printk(KERN_ERR "lcd : failed to register device\n");
 		return ret;
-	}
+	}	
 
 	ret = sysfs_create_file(&lcd_device->dev.kobj,
 					&dev_attr_lcd_type.attr);
@@ -1008,7 +968,7 @@ static int __devinit edp_eeprom_probe(struct i2c_client *client,
 
 	if (IS_ERR(pdata->dev)) {
 		dev_err(&client->dev, "Failed to create device for TCON\n");
- 		goto return_class_remove;
+ 		goto return_mem_free;
 	}
 
 	ret = sysfs_create_group(&pdata->dev->kobj, &sysfs_group);
@@ -1021,16 +981,11 @@ static int __devinit edp_eeprom_probe(struct i2c_client *client,
 	return error;
 
 return_sysfs_remove:
-	device_destroy(tcon_class, 0);
-
-return_class_remove:
-	class_destroy(tcon_class);
+	sysfs_remove_group(&client->dev.kobj, &sysfs_group);
 
 return_mem_free:
-	kfree(info);
-
-return_pdata_free:
 	kfree(pdata);
+	kfree(info);
 
 	return ret;
 }

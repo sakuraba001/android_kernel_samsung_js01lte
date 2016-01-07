@@ -43,7 +43,6 @@ int q6audio_get_port_index(u16 port_id)
 	case VOICE_RECORD_RX: return IDX_VOICE_RECORD_RX;
 	case VOICE_RECORD_TX: return IDX_VOICE_RECORD_TX;
 	case VOICE_PLAYBACK_TX: return IDX_VOICE_PLAYBACK_TX;
-	case VOICE2_PLAYBACK_TX: return IDX_VOICE2_PLAYBACK_TX;
 	case SLIMBUS_0_RX: return IDX_SLIMBUS_0_RX;
 	case SLIMBUS_0_TX: return IDX_SLIMBUS_0_TX;
 	case SLIMBUS_1_RX: return IDX_SLIMBUS_1_RX;
@@ -75,6 +74,8 @@ int q6audio_get_port_index(u16 port_id)
 		return IDX_AFE_PORT_ID_TERTIARY_MI2S_RX;
 	case AFE_PORT_ID_TERTIARY_MI2S_TX:
 		return IDX_AFE_PORT_ID_TERTIARY_MI2S_TX;
+	case GLOBAL_CFG:
+		return IDX_GLOBAL_CFG;
 
 	default: return -EINVAL;
 	}
@@ -104,7 +105,6 @@ int q6audio_get_port_id(u16 port_id)
 	case VOICE_RECORD_RX: return AFE_PORT_ID_VOICE_RECORD_RX;
 	case VOICE_RECORD_TX: return AFE_PORT_ID_VOICE_RECORD_TX;
 	case VOICE_PLAYBACK_TX: return AFE_PORT_ID_VOICE_PLAYBACK_TX;
-	case VOICE2_PLAYBACK_TX: return AFE_PORT_ID_VOICE2_PLAYBACK_TX;
 	case SLIMBUS_0_RX: return AFE_PORT_ID_SLIMBUS_MULTI_CHAN_0_RX;
 	case SLIMBUS_0_TX: return AFE_PORT_ID_SLIMBUS_MULTI_CHAN_0_TX;
 	case SLIMBUS_1_RX: return AFE_PORT_ID_SLIMBUS_MULTI_CHAN_1_RX;
@@ -136,6 +136,7 @@ int q6audio_get_port_id(u16 port_id)
 			     return AFE_PORT_ID_TERTIARY_MI2S_RX;
 	case AFE_PORT_ID_TERTIARY_MI2S_TX:
 			     return AFE_PORT_ID_TERTIARY_MI2S_TX;
+	case GLOBAL_CFG: return GLOBAL_CFG;
 	default:
 		pr_warn("%s: Invalid port_id %d\n", __func__, port_id);
 		return -EINVAL;
@@ -215,7 +216,6 @@ int q6audio_validate_port(u16 port_id)
 	case VOICE_RECORD_RX:
 	case VOICE_RECORD_TX:
 	case VOICE_PLAYBACK_TX:
-	case VOICE2_PLAYBACK_TX:
 	case SLIMBUS_0_RX:
 	case SLIMBUS_0_TX:
 	case SLIMBUS_1_RX:
@@ -237,10 +237,7 @@ int q6audio_validate_port(u16 port_id)
 	case AFE_PORT_ID_QUATERNARY_MI2S_TX:
 	case AFE_PORT_ID_SECONDARY_MI2S_RX:
 	case AFE_PORT_ID_SECONDARY_MI2S_TX:
-#ifdef CONFIG_SND_SOC_MAX98504
-	case AFE_PORT_ID_TERTIARY_MI2S_RX:
-	case AFE_PORT_ID_TERTIARY_MI2S_TX:
-#endif
+	case GLOBAL_CFG:
 	{
 		ret = 0;
 		break;

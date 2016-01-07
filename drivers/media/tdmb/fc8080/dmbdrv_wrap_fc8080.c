@@ -28,15 +28,14 @@
 #include "fci_types.h"
 #include "bbm.h"
 #include "fci_oal.h"
-#include "fc8080_demux.h"
+#include "fc8080_regs.h"
 #include "fic.h"
 #include "fci_tun.h"
-#include "fc8080_regs.h"
 #include "tdmb.h"
 
 struct sub_channel_info_type dmb_subchannel_info;
 struct sub_channel_info_type dab_subchannel_info;
-struct sub_channel_info_type dat_subchannel_info;
+
 
 static u32 saved_ber = 3000;
 static u32 dmb_initialize;
@@ -80,7 +79,7 @@ static int viterbi_rt_ber_read(unsigned int *ber)
 	if (dmp_ber_rxd_bits)
 		*ber = (dmp_ber_err_bits * 10000) /	 dmp_ber_rxd_bits;
 	else
-		*ber = 3000;
+		*ber = 10000;
 
 	print_log(NULL, "BER : %d \n", *ber);
 	return BBM_OK;
@@ -107,33 +106,12 @@ static int get_signal_level(u32 ber, u8 *level)
 	return BBM_OK;
 }
 
-void dmb_drv_channel_deselect_all(void)
-{
-	bbm_com_video_deselect(NULL, 0, 0, 0);
-	bbm_com_audio_deselect(NULL, 0, 1);
-	bbm_com_data_deselect(NULL, 0, 2);
-
-	ms_wait(100);
-
-#ifdef CONFIG_TDMB_TSIF
-	fc8080_demux_deselect_video(current_subchannel_id, 0);
-	fc8080_demux_deselect_channel(current_subchannel_id, 0);
-#endif
-}
-
-#ifdef CONFIG_TDMB_TSIF
-void dmb_drv_isr(u8 *data, u32 length)
-{
-	fc8080_demux(data, length);
-}
-#else
 void dmb_drv_isr()
 {
 	bbm_com_isr(NULL);
 }
-#endif
 
-unsigned char dmb_drv_init(unsigned long param)
+unsigned char dmb_drv_init(void)
 {
 #ifdef FEATURE_INTERFACE_TEST_MODE
 	int i;
@@ -144,13 +122,10 @@ unsigned char dmb_drv_init(unsigned long param)
 #endif
 
 #ifdef CONFIG_TDMB_SPI
-	if (bbm_com_hostif_select(NULL, BBM_SPI, param))
+	if (bbm_com_hostif_select(NULL, BBM_SPI))
 		return TDMB_FAIL;
 #elif defined(CONFIG_TDMB_EBI)
-	if (bbm_com_hostif_select(NULL, BBM_PPI, param))
-		return TDMB_FAIL;
-#elif defined(CONFIG_TDMB_TSIF)
-	if (bbm_com_hostif_select(NULL, BBM_I2C, param))
+	if (bbm_com_hostif_select(NULL, BBM_PPI))
 		return TDMB_FAIL;
 #endif
 
@@ -160,15 +135,8 @@ unsigned char dmb_drv_init(unsigned long param)
 		return TDMB_FAIL;
 	}
 
-#ifdef CONFIG_TDMB_TSIF
-	fc8080_demux_fic_callback_register(
-		(u32)NULL, tdmb_interrupt_fic_callback);
-	fc8080_demux_msc_callback_register(
-		(u32)NULL, tdmb_interrupt_msc_callback);
-#else
 	bbm_com_fic_callback_register(0, tdmb_interrupt_fic_callback);
 	bbm_com_msc_callback_register(0, tdmb_interrupt_msc_callback);
-#endif
 
 	bbm_com_init(NULL);
 	bbm_com_tuner_select(NULL, FC8080_TUNER, BAND3_TYPE);
@@ -215,7 +183,11 @@ unsigned char dmb_drv_deinit(void)
 {
 	dmb_initialize = 0;
 
-	dmb_drv_channel_deselect_all();
+	bbm_com_video_deselect(NULL, 0, 0, 0);
+	bbm_com_audio_deselect(NULL, 0, 2);
+	bbm_com_data_deselect(NULL, 0, 3);
+
+	ms_wait(100);
 
 	bbm_com_deinit(NULL);
 
@@ -226,38 +198,6 @@ unsigned char dmb_drv_deinit(void)
 
 	return TDMB_SUCCESS;
 }
-
-#ifdef FIC_USE_I2C
-void dmb_drv_get_fic(void)
-{
-	u8 i;
-	u8 lmode;
-	u16 mfIntStatus = 0;
-	u8 buf[FIC_BUF_LENGTH / 2];
-
-	bbm_com_read(NULL, BBM_TSO_SELREG, &lmode);
-	bbm_com_write(NULL, BBM_TSO_SELREG, lmode &= ~0x40);
-	bbm_com_word_write(NULL, BBM_BUF_ENABLE, 0x0100);
-	for (i = 0; i < 24; i++) {
-		bbm_com_word_read(NULL, BBM_BUF_STATUS, &mfIntStatus);
-		if (mfIntStatus & 0x0100) {
-			bbm_com_word_write(NULL, BBM_BUF_STATUS, mfIntStatus);
-
-			bbm_com_data(NULL, BBM_FIC_I2C_RD
-				, &buf[0], FIC_BUF_LENGTH / 2);
-
-			fic_decoder_put((struct fic *)&buf[0]
-				, FIC_BUF_LENGTH / 2);
-			print_log(NULL, "fic_decoder_put 0x%x \n", buf[0]);
-
-		}
-		ms_wait(50);
-	}
-
-	bbm_com_word_write(NULL, BBM_BUF_ENABLE, 0x0000);
-	bbm_com_write(NULL, BBM_TSO_SELREG, lmode);
-}
-#endif
 
 unsigned char dmb_drv_scan_ch(unsigned long frequency)
 {
@@ -276,27 +216,21 @@ unsigned char dmb_drv_scan_ch(unsigned long frequency)
 		return TDMB_FAIL;
 	}
 
-#ifdef FIC_USE_I2C
-	dmb_drv_get_fic();
-#else
 	bbm_com_word_write(NULL, BBM_BUF_ENABLE, 0x0100);
 
 	/* wait 1.2 sec for gathering fic information */
 	ms_wait(1200);
 
 	bbm_com_word_write(NULL, BBM_BUF_ENABLE, 0x0000);
-#endif
 
 	esb = fic_decoder_get_ensemble_info(0);
 	if (esb->flag != 99) {
-		print_log(NULL, "ESB ERROR \n");
 		fic_decoder_subchannel_info_clean();
 		return TDMB_FAIL;
 	}
 
 	if (strnlen(esb->label, sizeof(esb->label)) <= 0) {
 		fic_decoder_subchannel_info_clean();
-		print_log(NULL, "label ERROR \n");
 		return TDMB_FAIL;
 	}
 
@@ -346,28 +280,6 @@ int dmb_drv_get_dab_sub_ch_cnt()
 
 	return n;
 }
-
-int dmb_drv_get_dat_sub_ch_cnt(void)
-{
-	struct service_info_t *svc_info;
-	int i, n;
-
-	if (!dmb_initialize)
-		return 0;
-
-	n = 0;
-	for (i = 0; i < MAX_SVC_NUM; i++) {
-		svc_info = fic_decoder_get_service_info_list(i);
-
-		if ((svc_info->flag & 0x07) == 0x07) {
-			if (svc_info->tmid == 0x03)
-				n++;
-		}
-	}
-
-	return n;
-}
-
 
 char *dmb_drv_get_ensemble_label()
 {
@@ -428,33 +340,6 @@ char *dmb_drv_get_sub_ch_dab_label(int subchannel_count)
 		if ((svc_info->flag & 0x07) == 0x07) {
 			if ((svc_info->tmid == 0x00)
 				&& (svc_info->ascty == 0x00)) {
-				if (n == subchannel_count) {
-					label = (char *) svc_info->label;
-					break;
-				}
-				n++;
-			}
-		}
-	}
-
-	return label;
-}
-
-char *dmb_drv_get_sub_ch_dat_label(int subchannel_count)
-{
-	int i, n;
-	struct service_info_t *svc_info;
-	char *label = NULL;
-
-	if (!dmb_initialize)
-		return NULL;
-
-	n = 0;
-	for (i = 0; i < MAX_SVC_NUM; i++) {
-		svc_info = fic_decoder_get_service_info_list(i);
-
-		if ((svc_info->flag & 0x07) == 0x07) {
-			if (svc_info->tmid == 0x03) {
 				if (n == subchannel_count) {
 					label = (char *) svc_info->label;
 					break;
@@ -589,78 +474,6 @@ struct sub_channel_info_type *dmb_drv_get_fic_dab(int subchannel_count)
 	return &dab_subchannel_info;
 }
 
-struct sub_channel_info_type *dmb_drv_get_fic_dat(int subchannel_count)
-{
-	int i, n, j;
-	struct esbinfo_t *esb;
-	struct service_info_t *svc_info;
-	u8 num_of_user_appl;
-	struct scInfo_t  *pScInfo;
-
-	if (!dmb_initialize)
-		return NULL;
-
-	memset((void *)&dat_subchannel_info, 0, sizeof(dat_subchannel_info));
-
-	n = 0;
-	for (i = 0; i < MAX_SVC_NUM; i++) {
-		svc_info = fic_decoder_get_service_info_list(i);
-
-		if ((svc_info->flag & 0x07) == 0x07) {
-			if (svc_info->tmid == 0x03) {
-				if (n == subchannel_count) {
-					dat_subchannel_info.ucSubchID =
-						svc_info->sub_channel_id;
-					dat_subchannel_info.uiStartAddress = 0;
-					dat_subchannel_info.ucTMId
-						= svc_info->tmid;
-					pScInfo = get_sc_info(svc_info->scid);
-					dat_subchannel_info.ucServiceType =
-						pScInfo->dscty;
-					dat_subchannel_info.ulServiceID =
-						svc_info->sid;
-					dat_subchannel_info.scids =
-						svc_info->scids;
-
-					num_of_user_appl =
-						svc_info->num_of_user_appl;
-					dat_subchannel_info.num_of_user_appl
-						= num_of_user_appl;
-					for (j = 0; j < num_of_user_appl; j++) {
-						dat_subchannel_info.
-							user_appl_type[j]
-						= svc_info->user_appl_type[j];
-						dat_subchannel_info.
-							user_appl_length[j]
-						= svc_info->user_appl_length[j];
-						memcpy(
-						&dat_subchannel_info.
-						user_appl_data[j][0]
-						, &svc_info->
-							user_appl_data[j][0]
-						, dat_subchannel_info.
-						user_appl_length[j]);
-					}
-
-					esb = fic_decoder_get_ensemble_info(0);
-					if (esb->flag == 99)
-						dat_subchannel_info.uiEnsembleID
-						= esb->eid;
-					else
-						dat_subchannel_info.uiEnsembleID
-						= 0;
-					dat_subchannel_info.ecc	= esb->ecc;
-
-					break;
-				}
-				n++;
-			}
-		}
-	}
-
-	return &dat_subchannel_info;
-}
-
 #ifdef FEATURE_FC8080_DEBUG
 void dmb_drv_check_overrun(u8 reset)
 {
@@ -699,7 +512,9 @@ unsigned long frequency
 	current_service_type = sevice_type;
 	current_subchannel_id = subchannel;
 
-	dmb_drv_channel_deselect_all();
+	bbm_com_video_deselect(NULL, 0, 0, 0);
+	bbm_com_audio_deselect(NULL, 0, 2);
+	bbm_com_data_deselect(NULL, 0, 3);
 
 	if (bbm_com_tuner_set_freq(NULL, frequency) != BBM_OK)
 		return TDMB_FAIL;
@@ -707,18 +522,9 @@ unsigned long frequency
 	if (sevice_type == 0x18)
 		bbm_com_video_select(NULL, subchannel, 0, 0);
 	else if (sevice_type == 0x00)
-		bbm_com_audio_select(NULL, subchannel, 1);
+		bbm_com_audio_select(NULL, subchannel, 2);
 	else
-		bbm_com_data_select(NULL, subchannel, 2);
-
-#ifdef CONFIG_TDMB_TSIF
-	if (sevice_type == 0x18)
-		fc8080_demux_select_video(subchannel, 0);
-	else if (sevice_type == 0x00)
-		fc8080_demux_select_channel(subchannel, 1);
-	else
-		fc8080_demux_select_channel(subchannel, 2);
-#endif
+		bbm_com_data_select(NULL, subchannel, 3);
 
 #ifdef FEATURE_FC8080_DEBUG
 	if (sevice_type == 0x18)
@@ -743,7 +549,9 @@ unsigned long frequency
 	current_service_type = sevice_type;
 	current_subchannel_id = subchannel;
 
-	dmb_drv_channel_deselect_all();
+	bbm_com_video_deselect(NULL, 0, 0, 0);
+	bbm_com_audio_deselect(NULL, 0, 2);
+	bbm_com_data_deselect(NULL, 0, 3);
 
 	if (bbm_com_tuner_set_freq(NULL, frequency) != BBM_OK)
 		return TDMB_FAIL;
@@ -754,9 +562,9 @@ unsigned long frequency
 	if (sevice_type == 0x18)
 		bbm_com_video_select(NULL, subchannel, 0, 0);
 	else if (sevice_type == 0x00)
-		bbm_com_audio_select(NULL, subchannel, 1);
+		bbm_com_audio_select(NULL, subchannel, 2);
 	else
-		bbm_com_data_select(NULL, subchannel, 2);
+		bbm_com_data_select(NULL, subchannel, 3);
 
 #ifdef FEATURE_FC8080_DEBUG
 	if (sevice_type == 0x18)

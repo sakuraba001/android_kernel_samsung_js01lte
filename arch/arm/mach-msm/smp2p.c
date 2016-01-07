@@ -53,9 +53,6 @@ struct msm_smp2p_out {
  * @smem_edge_out: Pointer to outbound smem item.
  * @smem_edge_state: State of the outbound edge.
  * @ops_ptr: Pointer to internal version-specific SMEM item access functions.
- *
- * @feature_ssr_ack_enabled: SSR ACK Support Enabled
- * @restart_ack: Current cached state of the local ack bit
  */
 struct smp2p_out_list_item {
 	spinlock_t out_item_lock_lha1;
@@ -64,14 +61,11 @@ struct smp2p_out_list_item {
 	struct smp2p_smem __iomem *smem_edge_out;
 	enum msm_smp2p_edge_state smem_edge_state;
 	struct smp2p_version_if *ops_ptr;
-
-	bool feature_ssr_ack_enabled;
-	bool restart_ack;
 };
 static struct smp2p_out_list_item out_list[SMP2P_NUM_PROCS];
 
 static void *log_ctx;
-static int smp2p_debug_mask = MSM_SMP2P_INFO | MSM_SMP2P_DEBUG;
+static int smp2p_debug_mask = MSM_SMP2P_INFO;
 module_param_named(debug_mask, smp2p_debug_mask,
 		   int, S_IRUGO | S_IWUSR | S_IWGRP);
 
@@ -121,7 +115,6 @@ static struct smp2p_in_list_item in_list[SMP2P_NUM_PROCS];
  *
  * @is_supported: True if this version is supported by SMP2P
  * @negotiate_features: Returns (sub)set of supported features
- * @negotiation_complete:  Called when negotiation has been completed
  * @find_entry: Finds existing / next empty entry
  * @create_entry: Creates a new entry
  * @read_entry: Reads the value of an entry
@@ -135,7 +128,6 @@ struct smp2p_version_if {
 	/* common functions */
 	bool is_supported;
 	uint32_t (*negotiate_features)(uint32_t features);
-	void (*negotiation_complete)(struct smp2p_out_list_item *);
 	void (*find_entry)(struct smp2p_smem __iomem *item,
 			uint32_t entries_total,	char *name,
 			uint32_t **entry_ptr, int *empty_spot);
@@ -156,7 +148,6 @@ static void smp2p_send_interrupt(int remote_pid);
 
 /* v0 (uninitialized SMEM item) interface functions */
 static uint32_t smp2p_negotiate_features_v0(uint32_t features);
-static void smp2p_negotiation_complete_v0(struct smp2p_out_list_item *out_item);
 static void smp2p_find_entry_v0(struct smp2p_smem __iomem *item,
 		uint32_t entries_total, char *name, uint32_t **entry_ptr,
 		int *empty_spot);
@@ -169,7 +160,6 @@ static struct smp2p_smem __iomem *smp2p_in_validate_size_v0(int remote_pid,
 
 /* v1 interface functions */
 static uint32_t smp2p_negotiate_features_v1(uint32_t features);
-static void smp2p_negotiation_complete_v1(struct smp2p_out_list_item *out_item);
 static void smp2p_find_entry_v1(struct smp2p_smem __iomem *item,
 		uint32_t entries_total, char *name, uint32_t **entry_ptr,
 		int *empty_spot);
@@ -184,7 +174,6 @@ static struct smp2p_smem __iomem *smp2p_in_validate_size_v1(int remote_pid,
 static struct smp2p_version_if version_if[] = {
 	[0] = {
 		.negotiate_features = smp2p_negotiate_features_v0,
-		.negotiation_complete = smp2p_negotiation_complete_v0,
 		.find_entry = smp2p_find_entry_v0,
 		.create_entry = smp2p_out_create_v0,
 		.read_entry = smp2p_out_read_v0,
@@ -195,7 +184,6 @@ static struct smp2p_version_if version_if[] = {
 	[1] = {
 		.is_supported = true,
 		.negotiate_features = smp2p_negotiate_features_v1,
-		.negotiation_complete = smp2p_negotiation_complete_v1,
 		.find_entry = smp2p_find_entry_v1,
 		.create_entry = smp2p_out_create_v1,
 		.read_entry = smp2p_out_read_v1,
@@ -391,7 +379,7 @@ static void *smp2p_get_remote_smem_item(int remote_pid,
 	struct smp2p_out_list_item *out_item)
 {
 	void *item_ptr = NULL;
-	unsigned size = 0;
+	unsigned size;
 
 	if (!out_item)
 		return item_ptr;
@@ -411,76 +399,15 @@ static void *smp2p_get_remote_smem_item(int remote_pid,
 }
 
 /**
- * smp2p_ssr_ack_needed - Returns true if SSR ACK required
- *
- * @rpid: Remote processor ID
- *
- * Must be called with out_item_lock_lha1 and in_item_lock_lhb1 locked.
- */
-static bool smp2p_ssr_ack_needed(uint32_t rpid)
-{
-	bool ssr_done;
-
-	if (!out_list[rpid].feature_ssr_ack_enabled)
-		return false;
-
-	ssr_done = SMP2P_GET_RESTART_DONE(in_list[rpid].smem_edge_in->flags);
-	if (ssr_done != out_list[rpid].restart_ack)
-		return true;
-
-	return false;
-}
-
-/**
- * smp2p_do_ssr_ack - Handles SSR ACK
- *
- * @rpid: Remote processor ID
- *
- * Must be called with out_item_lock_lha1 and in_item_lock_lhb1 locked.
- */
-static void smp2p_do_ssr_ack(uint32_t rpid)
-{
-	bool ack;
-
-	if (!smp2p_ssr_ack_needed(rpid))
-		return;
-
-	ack = !out_list[rpid].restart_ack;
-	SMP2P_INFO("%s: ssr ack pid %d: %d -> %d\n", __func__, rpid,
-			out_list[rpid].restart_ack, ack);
-	out_list[rpid].restart_ack = ack;
-	SMP2P_SET_RESTART_ACK(out_list[rpid].smem_edge_out->flags, ack);
-	smp2p_send_interrupt(rpid);
-}
-
-/**
- * smp2p_negotiate_features_v1 - Initial feature negotiation.
+ * smp2p_negotiate_features_v0 - Initial feature negotiation.
  *
  * @features: Inbound feature set.
  * @returns: Supported features (will be a same/subset of @features).
  */
 static uint32_t smp2p_negotiate_features_v1(uint32_t features)
 {
-	return SMP2P_FEATURE_SSR_ACK;
-}
-
-/**
- * smp2p_negotiation_complete_v1 - Negotiation completed
- *
- * @out_item:   Pointer to the output item structure
- *
- * Can be used to do final configuration based upon the negotiated feature set.
- *
- * Must be called with out_item_lock_lha1 locked.
- */
-static void smp2p_negotiation_complete_v1(struct smp2p_out_list_item *out_item)
-{
-	uint32_t features;
-
-	features = SMP2P_GET_FEATURES(out_item->smem_edge_out->feature_version);
-
-	if (features & SMP2P_FEATURE_SSR_ACK)
-		out_item->feature_ssr_ack_enabled = true;
+	/* no supported features */
+	return 0;
 }
 
 /**
@@ -780,20 +707,6 @@ static uint32_t smp2p_negotiate_features_v0(uint32_t features)
 }
 
 /**
- * smp2p_negotiation_complete_v0 - Negotiation completed
- *
- * @out_item:   Pointer to the output item structure
- *
- * Can be used to do final configuration based upon the negotiated feature set.
- */
-static void smp2p_negotiation_complete_v0(struct smp2p_out_list_item *out_item)
-{
-	SMP2P_ERR("%s: invalid negotiation complete for v0 pid %d\n",
-		__func__,
-		SMP2P_GET_REMOTE_PID(out_item->smem_edge_out->rem_loc_proc_id));
-}
-
-/**
  * smp2p_find_entry_v0 - Stub function.
  *
  * @item: Pointer to the smem item.
@@ -972,7 +885,7 @@ void smp2p_init_header(struct smp2p_smem __iomem *header_ptr,
 	SMP2P_SET_FEATURES(header_ptr->feature_version, features);
 	SMP2P_SET_ENT_TOTAL(header_ptr->valid_total_ent, SMP2P_MAX_ENTRY);
 	SMP2P_SET_ENT_VALID(header_ptr->valid_total_ent, 0);
-	header_ptr->flags = 0;
+	header_ptr->reserved = 0;
 
 	/* ensure that all fields are valid before version is written */
 	wmb();
@@ -1079,9 +992,8 @@ static int smp2p_do_negotiation(int remote_pid,
 		struct msm_smp2p_out *pos;
 
 		/* negotiation complete */
-		out_item->ops_ptr = &version_if[l_version];
-		out_item->ops_ptr->negotiation_complete(out_item);
 		out_item->smem_edge_state = SMP2P_EDGE_STATE_OPENED;
+		out_item->ops_ptr = &version_if[l_version];
 		SMP2P_INFO(
 			"%s: negotiation complete pid %d: State %d->%d F0x%08x\n",
 			__func__, remote_pid, prev_state,
@@ -1329,7 +1241,7 @@ int msm_smp2p_in_read(int remote_pid, const char *name, uint32_t *data)
 {
 	unsigned long flags;
 	struct smp2p_out_list_item *out_item;
-	uint32_t *entry_ptr = NULL;
+	uint32_t *entry_ptr;
 
 	if (remote_pid >= SMP2P_NUM_PROCS)
 		return -EINVAL;
@@ -1616,41 +1528,9 @@ static irqreturn_t smp2p_interrupt_handler(int irq, void *data)
 		smp2p_do_negotiation(remote_pid, &out_list[remote_pid]);
 
 	if (out_list[remote_pid].smem_edge_state == SMP2P_EDGE_STATE_OPENED) {
-		bool do_restart_ack;
-
-		/*
-		 * Follow double-check pattern for restart ack since:
-		 * 1) we must notify clients of the X->0 transition
-		 *    that is part of the restart
-		 * 2) lock cannot be held during the
-		 *    smp2p_in_edge_notify() call because clients may do
-		 *    re-entrant calls into our APIs.
-		 *
-		 * smp2p_do_ssr_ack() will only do the ack if it is
-		 * necessary to handle the race condition exposed by
-		 * unlocking the spinlocks.
-		 */
-		spin_lock(&in_list[remote_pid].in_item_lock_lhb1);
-		do_restart_ack = smp2p_ssr_ack_needed(remote_pid);
-		spin_unlock(&in_list[remote_pid].in_item_lock_lhb1);
 		spin_unlock_irqrestore(&out_list[remote_pid].out_item_lock_lha1,
 			flags);
-
 		smp2p_in_edge_notify(remote_pid);
-
-		if (do_restart_ack) {
-			spin_lock_irqsave(
-				&out_list[remote_pid].out_item_lock_lha1,
-				flags);
-			spin_lock(&in_list[remote_pid].in_item_lock_lhb1);
-
-			smp2p_do_ssr_ack(remote_pid);
-
-			spin_unlock(&in_list[remote_pid].in_item_lock_lhb1);
-			spin_unlock_irqrestore(
-				&out_list[remote_pid].out_item_lock_lha1,
-				flags);
-		}
 	} else {
 		spin_unlock_irqrestore(&out_list[remote_pid].out_item_lock_lha1,
 			flags);
@@ -1685,8 +1565,6 @@ int smp2p_reset_mock_edge(void)
 	out_list[rpid].smem_edge_out = NULL;
 	out_list[rpid].ops_ptr = &version_if[0];
 	out_list[rpid].smem_edge_state = SMP2P_EDGE_STATE_CLOSED;
-	out_list[rpid].feature_ssr_ack_enabled = false;
-	out_list[rpid].restart_ack = false;
 
 	in_list[rpid].smem_edge_in = NULL;
 	in_list[rpid].item_size = 0;
@@ -1722,7 +1600,7 @@ void msm_smp2p_interrupt_handler(int remote_pid)
 static int __devinit msm_smp2p_probe(struct platform_device *pdev)
 {
 	struct resource *r;
-	void *irq_out_ptr;
+	void *irq_out_ptr = NULL;
 	char *key;
 	uint32_t edge;
 	int ret;
@@ -1788,6 +1666,8 @@ static int __devinit msm_smp2p_probe(struct platform_device *pdev)
 missing_key:
 	SMP2P_ERR("%s: missing '%s' for edge %d\n", __func__, key, edge);
 fail:
+	if (irq_out_ptr)
+		iounmap(irq_out_ptr);
 	return -ENODEV;
 }
 
@@ -1821,8 +1701,6 @@ static int __init msm_smp2p_init(void)
 		out_list[i].smem_edge_out = NULL;
 		out_list[i].smem_edge_state = SMP2P_EDGE_STATE_CLOSED;
 		out_list[i].ops_ptr = &version_if[0];
-		out_list[i].feature_ssr_ack_enabled = false;
-		out_list[i].restart_ack = false;
 
 		spin_lock_init(&in_list[i].in_item_lock_lhb1);
 		INIT_LIST_HEAD(&in_list[i].list);

@@ -219,9 +219,6 @@ static DEVICE_ATTR(slideCount, S_IRUGO | S_IWUSR | S_IWGRP,\
 			slideCount_show, slideCount_store);
 #endif
 
-/*
- * For external CP download
- */
 #ifdef CONFIG_GSM_MODEM_SPRD6500
 static ssize_t update_cp_bin_show
 	(struct device *dev, struct device_attribute *attr, char *buf)
@@ -247,7 +244,6 @@ static ssize_t update_cp_bin_store
 static DEVICE_ATTR(update_cp_bin, S_IRUGO | S_IWUSR | S_IWGRP,\
 			update_cp_bin_show, update_cp_bin_store);
 #endif
-
 
 struct device *sec_misc_dev;
 

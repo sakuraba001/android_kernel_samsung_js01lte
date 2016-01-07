@@ -1244,7 +1244,7 @@ static int create_devices(void)
 	}
 	mc_dev_user = MKDEV(MAJOR(mc_dev_admin), 1);
 
-	MCDRV_DBG_VERBOSE(mcd, "%s: dev %d", "mobicore", MAJOR(mc_dev_region));
+	//MCDRV_DBG_VERBOSE(mcd, "%s: dev %d", "mobicore", MAJOR(mc_dev_region));
 
 	/* First the ADMIN node */
 	ret = cdev_add(&mc_admin_cdev,  mc_dev_admin, 1);

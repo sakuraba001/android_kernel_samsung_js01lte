@@ -59,7 +59,17 @@ static void dpm_drv_timeout(unsigned long data);
 struct dpm_drv_wd_data {
 	struct device *dev;
 	struct task_struct *tsk;
+#ifdef CONFIG_SEC_PM
+	struct timer_list timer;
+#endif
 };
+
+#ifdef CONFIG_SEC_PM
+#define DPM_TIMEOUT 12
+
+static void dpm_wd_set(struct dpm_drv_wd_data *wd, struct device *dev);
+static void dpm_wd_clear(struct dpm_drv_wd_data *wd);
+#endif
 
 static int async_error;
 
@@ -571,9 +581,16 @@ static int device_resume(struct device *dev, pm_message_t state, bool async)
 	pm_callback_t callback = NULL;
 	char *info = NULL;
 	int error = 0;
+#ifdef CONFIG_SEC_PM
+	struct dpm_drv_wd_data data;
+#endif
 
 	TRACE_DEVICE(dev);
 	TRACE_RESUME(0);
+
+#ifdef CONFIG_SEC_PM
+	dpm_wd_set(&data, dev);
+#endif
 
 	dpm_wait(dev->parent, async);
 	device_lock(dev);
@@ -638,6 +655,10 @@ static int device_resume(struct device *dev, pm_message_t state, bool async)
 	device_unlock(dev);
 	complete_all(&dev->power.completion);
 
+#ifdef CONFIG_SEC_PM
+	dpm_wd_clear(&data);
+#endif
+
 	TRACE_RESUME(error);
 
 	return error;
@@ -683,6 +704,39 @@ static void dpm_drv_timeout(unsigned long data)
 
 	BUG();
 }
+
+#ifdef CONFIG_SEC_PM
+/**
+ * dpm_wd_set - Enable pm watchdog for given device.
+ * @wd: Watchdog. Must be allocated on the stack.
+ * @dev: Device to handle.
+ */
+static void dpm_wd_set(struct dpm_drv_wd_data *wd, struct device *dev)
+{
+	struct timer_list *timer = &wd->timer;
+
+	wd->dev = dev;
+	wd->tsk = get_current();
+
+	init_timer_on_stack(timer);
+	timer->expires = jiffies + HZ * DPM_TIMEOUT;
+	timer->function = dpm_drv_timeout;
+	timer->data = (unsigned long)wd;
+	add_timer(timer);
+}
+
+/**
+ * dpm_wd_clear - Disable pm watchdog.
+ * @wd: Watchdog to disable.
+ */
+static void dpm_wd_clear(struct dpm_drv_wd_data *wd)
+{
+	struct timer_list *timer = &wd->timer;
+
+	del_timer_sync(timer);
+	destroy_timer_on_stack(timer);
+}
+#endif
 
 /**
  * dpm_resume - Execute "resume" callbacks for non-sysdev devices.
@@ -1063,7 +1117,9 @@ static int __device_suspend(struct device *dev, pm_message_t state, bool async)
 	pm_callback_t callback = NULL;
 	char *info = NULL;
 	int error = 0;
+#ifndef CONFIG_SEC_PM
 	struct timer_list timer;
+#endif
 	struct dpm_drv_wd_data data;
 
 	dpm_wait_for_children(dev, async);
@@ -1082,9 +1138,13 @@ static int __device_suspend(struct device *dev, pm_message_t state, bool async)
 
 	if (pm_wakeup_pending()) {
 		async_error = -EBUSY;
+		printk(KERN_ERR "async_error %s %s\n", dev_name(dev), pm_verb(state.event) );
 		goto Complete;
 	}
 
+#ifdef CONFIG_SEC_PM
+	dpm_wd_set(&data, dev);
+#else
 	data.dev = dev;
 	data.tsk = get_current();
 	init_timer_on_stack(&timer);
@@ -1092,6 +1152,7 @@ static int __device_suspend(struct device *dev, pm_message_t state, bool async)
 	timer.function = dpm_drv_timeout;
 	timer.data = (unsigned long)&data;
 	add_timer(&timer);
+#endif
 
 	device_lock(dev);
 
@@ -1148,8 +1209,12 @@ static int __device_suspend(struct device *dev, pm_message_t state, bool async)
 
 	device_unlock(dev);
 
+#ifdef CONFIG_SEC_PM
+	dpm_wd_clear(&data);
+#else
 	del_timer_sync(&timer);
 	destroy_timer_on_stack(&timer);
+#endif
 
  Complete:
 	complete_all(&dev->power.completion);

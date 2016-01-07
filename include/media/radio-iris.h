@@ -626,10 +626,7 @@ enum radio_state_t {
 	FM_RECV,
 	FM_TRANS,
 	FM_RESET,
-	FM_CALIB,
-	FM_TURNING_OFF,
-	FM_RECV_TURNING_ON,
-	FM_TRANS_TURNING_ON,
+	FM_CALIB
 };
 
 enum emphasis_type {

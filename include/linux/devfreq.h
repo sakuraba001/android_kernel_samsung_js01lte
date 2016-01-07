@@ -52,23 +52,6 @@ struct devfreq_dev_status {
  */
 #define DEVFREQ_FLAG_LEAST_UPPER_BOUND		0x1
 
-#define DEVFREQ_FLAG_FAST_HINT	0x2
-#define DEVFREQ_FLAG_SLOW_HINT	0x4
-
-/**
- * struct devfreq_governor_data - mapping to per device governor data
- * @name:		The name of the governor.
- * @data:		Private data for the governor.
- *
- * Devices may pass in an array of this structure to allow governors
- * to get the correct data pointer when they are enabled after
- * the devfreq_add_device() call.
- */
-struct devfreq_governor_data {
-	const char *name;
-	void *data;
-};
-
 /**
  * struct devfreq_dev_profile - Devfreq's user device profile
  * @initial_freq:	The operating frequency when devfreq_add_device() is
@@ -92,11 +75,6 @@ struct devfreq_governor_data {
  *			this is the time to unregister it.
  * @freq_table:	Optional list of frequencies to support statistics.
  * @max_state:	The size of freq_table.
- * @governor_data:	Optional array of private data for governors.
- *			This is used to set devfreq->data correctly
- *			when a governor is enabled via sysfs or other
- *			mechanisms after the devfreq_add_device() call.
- * @num_governor_data:  Number of elements in governor_data.
  */
 struct devfreq_dev_profile {
 	unsigned long initial_freq;
@@ -110,8 +88,6 @@ struct devfreq_dev_profile {
 
 	unsigned int *freq_table;
 	unsigned int max_state;
-	const struct devfreq_governor_data *governor_data;
-	unsigned int num_governor_data;
 };
 
 /**
@@ -135,8 +111,7 @@ struct devfreq_governor {
 	struct list_head node;
 
 	const char name[DEVFREQ_NAME_LEN];
-	int (*get_target_freq)(struct devfreq *this, unsigned long *freq,
-				u32 *flag);
+	int (*get_target_freq)(struct devfreq *this, unsigned long *freq);
 	int (*event_handler)(struct devfreq *devfreq,
 				unsigned int event, void *data);
 };

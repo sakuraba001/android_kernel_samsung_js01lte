@@ -22,7 +22,6 @@ struct platform_device;
 
 struct q6v5_data {
 	void __iomem *reg_base;
-	void __iomem *rmb_base;
 	void __iomem *cxrail_bhs;  /* External BHS register */
 	struct clk *xo;		   /* XO clock source */
 	struct clk *ahb_clk;	   /* PIL access to registers */
@@ -38,8 +37,15 @@ struct q6v5_data {
 	struct regulator *vreg_pll;
 	bool is_booted;
 	struct pil_desc desc;
-	bool self_auth;
 };
+
+#if defined(CONFIG_NFC_FELICA) && defined(CONFIG_SEC_LOCALE_JPN)
+struct pil_mss_wait
+{
+	wait_queue_head_t cp_wait_q;
+	int cp_start;
+};
+#endif
 
 int pil_q6v5_make_proxy_votes(struct pil_desc *pil);
 void pil_q6v5_remove_proxy_votes(struct pil_desc *pil);

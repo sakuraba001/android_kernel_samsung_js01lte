@@ -150,6 +150,11 @@ int gqti_ctrl_connect(struct grmnet *gr)
 
 	port = ctrl_port;
 
+	if (!port) {
+		pr_err("%s: port is null\n", __func__);
+		return -ENODEV;
+	}
+
 	spin_lock_irqsave(&port->lock, flags);
 	port->port_usb = gr;
 	gr->send_encap_cmd = grmnet_ctrl_qti_send_cpkt_tomodem;
@@ -175,6 +180,11 @@ void gqti_ctrl_disconnect(struct grmnet *gr)
 
 	if (!gr) {
 		pr_err("%s: grmnet port is null\n", __func__);
+		return;
+	}
+
+	if (!port) {
+		pr_err("%s: port is null\n", __func__);
 		return;
 	}
 

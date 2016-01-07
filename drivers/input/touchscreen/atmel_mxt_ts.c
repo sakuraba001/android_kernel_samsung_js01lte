@@ -393,12 +393,10 @@ struct mxt_data {
 	bool update_cfg;
 	const char *fw_name;
 	bool no_force_update;
-	bool lpm_support;
-	bool dev_sleep;
-
 #if defined(CONFIG_SECURE_TOUCH)
 	atomic_t st_enabled;
 	atomic_t st_pending_irqs;
+	struct completion st_completion;
 	struct completion st_powerdown;
 #endif
 };
@@ -1001,16 +999,11 @@ static void mxt_handle_touch_suppression(struct mxt_data *data, u8 status)
 }
 
 #if defined(CONFIG_SECURE_TOUCH)
-static void mxt_secure_touch_notify(struct mxt_data *data)
-{
-	sysfs_notify(&data->client->dev.kobj, NULL, "secure_touch");
-}
-
 static irqreturn_t mxt_filter_interrupt(struct mxt_data *data)
 {
 	if (atomic_read(&data->st_enabled)) {
 		if (atomic_cmpxchg(&data->st_pending_irqs, 0, 1) == 0)
-			mxt_secure_touch_notify(data);
+			complete(&data->st_completion);
 		return IRQ_HANDLED;
 	}
 	return IRQ_NONE;
@@ -1727,7 +1720,7 @@ static int mxt_load_fw(struct device *dev, const char *fn)
 	}
 
 	ret = request_firmware(&fw, fn, dev);
-	if (ret < 0 || !fw) {
+	if (ret < 0) {
 		dev_err(dev, "Unable to open firmware %s\n", fn);
 		goto free_frame;
 	}
@@ -2000,9 +1993,9 @@ static ssize_t mxt_secure_touch_enable_store(struct device *dev,
 		if (atomic_read(&data->st_enabled) == 0)
 			break;
 
-		pm_runtime_put(data->client->adapter->dev.parent);
+		pm_runtime_put(&data->client->adapter->dev);
 		atomic_set(&data->st_enabled, 0);
-		mxt_secure_touch_notify(data);
+		complete(&data->st_completion);
 		mxt_interrupt(data->client->irq, data);
 		complete(&data->st_powerdown);
 		break;
@@ -2017,10 +2010,10 @@ static ssize_t mxt_secure_touch_enable_store(struct device *dev,
 			err = -EIO;
 			break;
 		}
+		INIT_COMPLETION(data->st_completion);
 		INIT_COMPLETION(data->st_powerdown);
-		atomic_set(&data->st_enabled, 1);
-		synchronize_irq(data->client->irq);
 		atomic_set(&data->st_pending_irqs, 0);
+		atomic_set(&data->st_enabled, 1);
 		break;
 	default:
 		dev_err(&data->client->dev, "unsupported value: %lu\n", value);
@@ -2035,18 +2028,20 @@ static ssize_t mxt_secure_touch_show(struct device *dev,
 				    struct device_attribute *attr, char *buf)
 {
 	struct mxt_data *data = dev_get_drvdata(dev);
-	int val = 0;
+	int err;
 
 	if (atomic_read(&data->st_enabled) == 0)
 		return -EBADF;
 
-	if (atomic_cmpxchg(&data->st_pending_irqs, -1, 0) == -1)
+	err = wait_for_completion_interruptible(&data->st_completion);
+
+	if (err)
+		return err;
+
+	if (atomic_cmpxchg(&data->st_pending_irqs, 1, 0) != 1)
 		return -EINVAL;
 
-	if (atomic_cmpxchg(&data->st_pending_irqs, 1, 0) == 1)
-		val = 1;
-
-	return scnprintf(buf, PAGE_SIZE, "%u", val);
+	return scnprintf(buf, PAGE_SIZE, "%u", 1);
 }
 
 static DEVICE_ATTR(secure_touch_enable, 0666, mxt_secure_touch_enable_show,
@@ -2075,17 +2070,15 @@ static const struct attribute_group mxt_attr_group = {
 
 
 #if defined(CONFIG_SECURE_TOUCH)
-static void mxt_secure_touch_stop(struct mxt_data *data, int blocking)
+static void mxt_secure_touch_stop(struct mxt_data *data)
 {
 	if (atomic_read(&data->st_enabled)) {
-		atomic_set(&data->st_pending_irqs, -1);
-		mxt_secure_touch_notify(data);
-		if (blocking)
-			wait_for_completion_interruptible(&data->st_powerdown);
+		complete(&data->st_completion);
+		wait_for_completion_interruptible(&data->st_powerdown);
 	}
 }
 #else
-static void mxt_secure_touch_stop(struct mxt_data *data, int blocking)
+static void mxt_secure_touch_stop(struct mxt_data *data)
 {
 }
 #endif
@@ -2093,7 +2086,7 @@ static void mxt_secure_touch_stop(struct mxt_data *data, int blocking)
 static int mxt_start(struct mxt_data *data)
 {
 	int error;
-	mxt_secure_touch_stop(data, 1);
+	mxt_secure_touch_stop(data);
 
 	/* restore the old power state values and reenable touch */
 	error = __mxt_write_reg(data->client, data->t7_start_addr,
@@ -2111,7 +2104,7 @@ static int mxt_stop(struct mxt_data *data)
 {
 	int error;
 	u8 t7_data[T7_DATA_SIZE] = {0};
-	mxt_secure_touch_stop(data, 1);
+	mxt_secure_touch_stop(data);
 
 	error = __mxt_write_reg(data->client, data->t7_start_addr,
 				T7_DATA_SIZE, t7_data);
@@ -2243,7 +2236,6 @@ power_off:
 		reg_set_optimum_mode_check(data->vcc_i2c, 0);
 		regulator_disable(data->vcc_i2c);
 	}
-
 	msleep(50);
 	return 0;
 }
@@ -2443,14 +2435,8 @@ static int mxt_suspend(struct device *dev)
 	struct input_dev *input_dev = data->input_dev;
 	int error;
 
-	if (data->dev_sleep) {
-		dev_dbg(dev, "Device already in sleep\n");
-		return 0;
-	}
-
-	disable_irq(data->irq);
-
 	mutex_lock(&input_dev->mutex);
+
 	if (input_dev->users) {
 		error = mxt_stop(data);
 		if (error < 0) {
@@ -2458,27 +2444,18 @@ static int mxt_suspend(struct device *dev)
 			mutex_unlock(&input_dev->mutex);
 			return error;
 		}
+
 	}
 
 	mutex_unlock(&input_dev->mutex);
-	mxt_release_all(data);
 
 	/* put regulators in low power mode */
-	if (data->lpm_support) {
-		error = mxt_regulator_lpm(data, true);
-		if (error < 0) {
-			dev_err(dev, "failed to enter low power mode\n");
-			return error;
-		}
-	} else {
-		error = mxt_power_on(data, false);
-		if (error < 0) {
-			dev_err(dev, "failed to disable regulators\n");
-			return error;
-		}
+	error = mxt_regulator_lpm(data, true);
+	if (error < 0) {
+		dev_err(dev, "failed to enter low power mode\n");
+		return error;
 	}
 
-	data->dev_sleep = true;
 	return 0;
 }
 
@@ -2489,29 +2466,12 @@ static int mxt_resume(struct device *dev)
 	struct input_dev *input_dev = data->input_dev;
 	int error;
 
-	if (!data->dev_sleep) {
-		dev_dbg(dev, "Device already in resume\n");
-		return 0;
+	/* put regulators in high power mode */
+	error = mxt_regulator_lpm(data, false);
+	if (error < 0) {
+		dev_err(dev, "failed to enter high power mode\n");
+		return error;
 	}
-
-	/* put regulators back in active power mode */
-	if (data->lpm_support) {
-		error = mxt_regulator_lpm(data, false);
-		if (error < 0) {
-			dev_err(dev, "failed to enter high power mode\n");
-			return error;
-		}
-	} else {
-		error = mxt_power_on(data, true);
-		if (error < 0) {
-			dev_err(dev, "failed to enable regulators\n");
-			return error;
-		}
-		mxt_power_on_delay(data);
-	}
-
-	mxt_write_object(data, MXT_GEN_COMMAND_T6, MXT_COMMAND_RESET, 1);
-	mxt_reset_delay(data);
 
 	mutex_lock(&input_dev->mutex);
 
@@ -2526,7 +2486,7 @@ static int mxt_resume(struct device *dev)
 
 	/* calibrate */
 	if (data->pdata->need_calibration) {
-		mxt_secure_touch_stop(data, 1);
+		mxt_secure_touch_stop(data);
 		error = mxt_write_object(data, MXT_GEN_COMMAND_T6,
 					MXT_COMMAND_CALIBRATE, 1);
 		if (error < 0)
@@ -2535,9 +2495,6 @@ static int mxt_resume(struct device *dev)
 
 	mutex_unlock(&input_dev->mutex);
 
-	enable_irq(data->irq);
-
-	data->dev_sleep = false;
 	return 0;
 }
 
@@ -2715,9 +2672,6 @@ static int mxt_parse_dt(struct device *dev, struct mxt_platform_data *pdata)
 	pdata->no_force_update = of_property_read_bool(np,
 						"atmel,no-force-update");
 
-	pdata->no_lpm_support = of_property_read_bool(np,
-					"atmel,no-lpm-support");
-
 	/* reset, irq gpio info */
 	pdata->reset_gpio = of_get_named_gpio_flags(np, "atmel,reset-gpio",
 				0, &pdata->reset_gpio_flags);
@@ -2839,14 +2793,13 @@ static int fb_notifier_callback(struct notifier_block *self,
 	struct mxt_data *mxt_dev_data =
 		container_of(self, struct mxt_data, fb_notif);
 
-	if (evdata && evdata->data && mxt_dev_data && mxt_dev_data->client) {
-		if (event == FB_EVENT_BLANK) {
-			blank = evdata->data;
-			if (*blank == FB_BLANK_UNBLANK)
-				mxt_resume(&mxt_dev_data->client->dev);
-			else if (*blank == FB_BLANK_POWERDOWN)
-				mxt_suspend(&mxt_dev_data->client->dev);
-		}
+	if (evdata && evdata->data && event == FB_EVENT_BLANK && mxt_dev_data &&
+			mxt_dev_data->client) {
+		blank = evdata->data;
+		if (*blank == FB_BLANK_UNBLANK)
+			mxt_resume(&mxt_dev_data->client->dev);
+		else if (*blank == FB_BLANK_POWERDOWN)
+			mxt_suspend(&mxt_dev_data->client->dev);
 	}
 
 	return 0;
@@ -2871,6 +2824,7 @@ static void mxt_late_resume(struct early_suspend *h)
 #if defined(CONFIG_SECURE_TOUCH)
 static void __devinit mxt_secure_touch_init(struct mxt_data *data)
 {
+	init_completion(&data->st_completion);
 	init_completion(&data->st_powerdown);
 }
 #else
@@ -2923,8 +2877,6 @@ static int __devinit mxt_probe(struct i2c_client *client,
 	data->input_dev = input_dev;
 	data->pdata = pdata;
 	data->no_force_update = pdata->no_force_update;
-	data->lpm_support = !pdata->no_lpm_support;
-	data->dev_sleep = false;
 
 	__set_bit(EV_ABS, input_dev->evbit);
 	__set_bit(EV_KEY, input_dev->evbit);
@@ -2971,32 +2923,13 @@ static int __devinit mxt_probe(struct i2c_client *client,
 		goto err_free_mem;
 	}
 
-	if (gpio_is_valid(pdata->reset_gpio)) {
-		/* configure touchscreen reset out gpio */
-		error = gpio_request(pdata->reset_gpio, "mxt_reset_gpio");
-		if (error) {
-			dev_err(&client->dev, "unable to request gpio [%d]\n",
-						pdata->reset_gpio);
-			goto err_regulator_on;
-		}
-
-		error = gpio_direction_output(pdata->reset_gpio, 0);
-		if (error) {
-			dev_err(&client->dev,
-				"unable to set direction for gpio [%d]\n",
-				pdata->reset_gpio);
-			goto err_reset_gpio_req;
-		}
-		mxt_reset_delay(data);
-	}
-
 	if (pdata->power_on)
 		error = pdata->power_on(true);
 	else
 		error = mxt_power_on(data, true);
 	if (error) {
 		dev_err(&client->dev, "Failed to power on hardware\n");
-		goto err_reset_gpio_req;
+		goto err_regulator_on;
 	}
 
 	if (gpio_is_valid(pdata->irq_gpio)) {
@@ -3021,12 +2954,20 @@ static int __devinit mxt_probe(struct i2c_client *client,
 	}
 
 	if (gpio_is_valid(pdata->reset_gpio)) {
+		/* configure touchscreen reset out gpio */
+		error = gpio_request(pdata->reset_gpio, "mxt_reset_gpio");
+		if (error) {
+			dev_err(&client->dev, "unable to request gpio [%d]\n",
+						pdata->reset_gpio);
+			goto err_irq_gpio_req;
+		}
+
 		error = gpio_direction_output(pdata->reset_gpio, 1);
 		if (error) {
 			dev_err(&client->dev,
 				"unable to set direction for gpio [%d]\n",
 				pdata->reset_gpio);
-				goto err_irq_gpio_req;
+			goto err_reset_gpio_req;
 		}
 	}
 
@@ -3041,7 +2982,7 @@ static int __devinit mxt_probe(struct i2c_client *client,
 
 	error = mxt_initialize(data);
 	if (error)
-		goto err_irq_gpio_req;
+		goto err_reset_gpio_req;
 
 	error = request_threaded_irq(client->irq, NULL, mxt_interrupt,
 			pdata->irqflags, client->dev.driver->name, data);
@@ -3095,6 +3036,9 @@ err_free_irq:
 	free_irq(client->irq, data);
 err_free_object:
 	kfree(data->object_table);
+err_reset_gpio_req:
+	if (gpio_is_valid(pdata->reset_gpio))
+		gpio_free(pdata->reset_gpio);
 err_irq_gpio_req:
 	if (gpio_is_valid(pdata->irq_gpio))
 		gpio_free(pdata->irq_gpio);
@@ -3103,9 +3047,6 @@ err_power_on:
 		pdata->power_on(false);
 	else
 		mxt_power_on(data, false);
-err_reset_gpio_req:
-	if (gpio_is_valid(pdata->reset_gpio))
-		gpio_free(pdata->reset_gpio);
 err_regulator_on:
 	if (pdata->init_hw)
 		pdata->init_hw(false);

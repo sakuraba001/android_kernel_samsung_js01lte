@@ -66,7 +66,7 @@ int bbm_hostif_get(HANDLE hDevice, u8 *hostif)
 	return BBM_OK;
 }
 
-int bbm_hostif_select(HANDLE hDevice, u8 hostif, u32 param)
+int bbm_hostif_select(HANDLE hDevice, u8 hostif)
 {
 	hostif_type = hostif;
 
@@ -145,7 +145,7 @@ int bbm_hostif_select(HANDLE hDevice, u8 hostif, u32 param)
 		return BBM_E_HOSTIF_SELECT;
 	}
 
-	if (ifport.init(hDevice, (param & 0xffff), ((param >> 16) & 0xffff)))
+	if (ifport.init(hDevice, 0, 0))
 		return BBM_E_HOSTIF_INIT;
 
 	return BBM_OK;

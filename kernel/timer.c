@@ -1116,11 +1116,11 @@ static void call_timer_fn(struct timer_list *timer, void (*fn)(unsigned long),
 	lock_map_acquire(&lockdep_map);
 
 	trace_timer_expire_entry(timer);
-#ifdef CONFIG_SEC_DEBUG
+#if CONFIG_SEC_DEBUG
 	secdbg_msg("timer %pS entry", fn);
 #endif
 	fn(data);
-#ifdef CONFIG_SEC_DEBUG
+#if CONFIG_SEC_DEBUG
 	secdbg_msg("timer %pS exit", fn);
 #endif
 	trace_timer_expire_exit(timer);
@@ -1693,7 +1693,6 @@ static int __cpuinit init_timers_cpu(int cpu)
 	} else {
 		base = per_cpu(tvec_bases, cpu);
 	}
-
 
 	for (j = 0; j < TVN_SIZE; j++) {
 		INIT_LIST_HEAD(base->tv5.vec + j);

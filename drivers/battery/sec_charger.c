@@ -333,57 +333,6 @@ ssize_t sec_chg_store_attrs(struct device *dev,
 	return ret;
 }
 
-#ifdef CONFIG_OF
-static int smb358_parse_dt(struct sec_charger_info *charger)
-{
-	struct device_node *np = of_find_node_by_name(NULL, "charger");
-	sec_battery_platform_data_t *pdata = charger->pdata;
-	int ret = 0;
-	int i, len;
-	const u32 *p;
-
-	if (np == NULL) {
-		pr_err("%s np NULL\n", __func__);
-	} else {
-		ret = of_property_read_u32(np, "battery,chg_float_voltage",
-					&pdata->chg_float_voltage);
-		ret = of_property_read_u32(np, "battery,ovp_uvlo_check_type",
-					&pdata->ovp_uvlo_check_type);
-		ret = of_property_read_u32(np, "battery,full_check_type",
-					&pdata->full_check_type);
-
-		p = of_get_property(np, "battery,input_current_limit", &len);
-		len = len / sizeof(u32);
-		pdata->charging_current = kzalloc(sizeof(sec_charging_current_t) * len,
-						  GFP_KERNEL);
-
-		for(i = 0; i < len; i++)
-			pdata->charging_current[i].input_current_limit = be32_to_cpup(((__be32 *)p) + i);
-
-		p = of_get_property(np, "battery,fast_charging_current", &len);
-		len = len / sizeof(u32);
-		for(i = 0; i < len; i++)
-			pdata->charging_current[i].fast_charging_current = be32_to_cpup(((__be32 *)p) + i);
-
-		p = of_get_property(np, "battery,full_check_current_1st", &len);
-		len = len / sizeof(u32);
-		for(i = 0; i < len; i++)
-			pdata->charging_current[i].full_check_current_1st = be32_to_cpup(((__be32 *)p) + i);
-
-		p = of_get_property(np, "battery,full_check_current_2nd", &len);
-		len = len / sizeof(u32);
-		for(i = 0; i < len; i++)
-			pdata->charging_current[i].full_check_current_2nd = be32_to_cpup(((__be32 *)p) + i);
-	}
-	return ret;
-}
-#else
-static int smb358_parse_dt(struct max77803_charger_data *charger)
-{
-	return 0;
-}
-#endif
-
 static int __devinit sec_charger_probe(
 						struct i2c_client *client,
 						const struct i2c_device_id *id)
@@ -393,7 +342,7 @@ static int __devinit sec_charger_probe(
 	struct sec_charger_info *charger;
 	int ret = 0;
 
-	dev_info(&client->dev,
+	dev_dbg(&client->dev,
 		"%s: SEC Charger Driver Loading\n", __func__);
 
 	if (!i2c_check_functionality(adapter, I2C_FUNC_SMBUS_BYTE))
@@ -405,13 +354,7 @@ static int __devinit sec_charger_probe(
 
 	charger->client = client;
 	if (client->dev.of_node) {
-		void * pdata = kzalloc(sizeof(sec_battery_platform_data_t), GFP_KERNEL);
-		if (!pdata)
-			goto err_free1;
-		charger->pdata = pdata;
-		if (smb358_parse_dt(charger))
-			dev_err(&client->dev,
-				"%s : Failed to get charger int\n", __func__);
+		charger->pdata = &sec_battery_pdata;
 	} else
 		charger->pdata = client->dev.platform_data;
 
@@ -481,8 +424,6 @@ err_req_irq:
 err_supply_unreg:
 	power_supply_unregister(&charger->psy_chg);
 err_free:
-	kfree(charger->pdata);
-err_free1:
 	kfree(charger);
 
 	return ret;
@@ -515,9 +456,6 @@ static int sec_charger_resume(struct i2c_client *client)
 
 static void sec_charger_shutdown(struct i2c_client *client)
 {
-#if defined(CONFIG_CHARGER_BQ24260)
-	sec_hal_chg_shutdown(client);
-#endif
 }
 
 static const struct i2c_device_id sec_charger_id[] = {

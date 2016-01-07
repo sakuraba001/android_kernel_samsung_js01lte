@@ -24,7 +24,7 @@
 #include "wacom_i2c_coord_table.h"
 #endif
 
-#if defined(CONFIG_USE_INPUTLOCATION_FOR_ENG)
+#if !defined(CONFIG_SAMSUNG_PRODUCT_SHIP)
 #define CONFIG_SAMSUNG_KERNEL_DEBUG_USER
 #endif
 
@@ -360,7 +360,7 @@ int wacom_i2c_query(struct wacom_i2c *wac_i2c)
 	u8 buf;
 	u8 data[COM_QUERY_NUM] = {0, };
 	int i = 0;
-	const int query_limit = 3;
+	int query_limit = 5;
 
 	buf = COM_QUERY;
 
@@ -385,12 +385,7 @@ int wacom_i2c_query(struct wacom_i2c *wac_i2c)
 		dev_info(&wac_i2c->client->dev,
 				"%s: %dth ret of wacom query=%d\n",
 				__func__, i, ret);
-		if (COM_QUERY_NUM != ret) {
-			dev_info(&wac_i2c->client->dev,
-			"%s: epen:failed to read i2c(%d)\n",
-			__func__, ret);
-			continue;
-		}
+		if (COM_QUERY_NUM == ret) {
 			if (0x0f == data[0]) {
 				wac_feature->fw_ic_version =
 					((u16) data[7] << 8) + (u16) data[8];
@@ -404,6 +399,7 @@ int wacom_i2c_query(struct wacom_i2c *wac_i2c)
 				       wac_feature->fw_ic_version);
 			}
 		}
+	}
 	wac_feature->x_max = wac_i2c->wac_pdata->max_x;
 	wac_feature->y_max = wac_i2c->wac_pdata->max_y;
 
@@ -441,7 +437,7 @@ int wacom_i2c_query(struct wacom_i2c *wac_i2c)
 			data[3], data[4], data[5], data[6],
 			data[7], data[8]);
 
-	if ((i == query_limit) && (ret < 0)) {
+	if ((i == 10) && (ret < 0)) {
 		dev_info(&wac_i2c->client->dev,
 				"%s: failed\n", __func__);
 		wac_i2c->query_status = false;
@@ -847,16 +843,9 @@ static bool wacom_i2c_coord_range(struct wacom_i2c *wac_i2c, s16 *x, s16 *y)
 }
 
 #ifdef WACOM_USE_SOFTKEY
-#if defined(CONFIG_SEC_VIENNA_PROJECT)
-static int keycode[] = {
-	KEY_RECENT, KEY_BACK,
-};
-#else
 static int keycode[] = {
 	KEY_MENU, KEY_BACK,
 };
-#endif
-
 void wacom_i2c_softkey(struct wacom_i2c *wac_i2c, s16 key, s16 pressed)
 {
 	
@@ -1030,7 +1019,8 @@ int wacom_i2c_coord(struct wacom_i2c *wac_i2c)
 #endif
 
 #ifdef WACOM_IMPORT_FW_ALGO
-#if defined(CONFIG_SEC_VIENNA_PROJECT) || defined(CONFIG_SEC_LT03_PROJECT)
+#if defined(CONFIG_SEC_VIENNA_PROJECT) || defined(CONFIG_MACH_LT03EUR) \
+    || defined(CONFIG_MACH_LT03SKT) || defined(CONFIG_MACH_LT03KTT) || defined(CONFIG_MACH_LT03LGT)
 		x = x - origin_offset[0];
 		y = y - origin_offset[1];
 #else
@@ -1113,7 +1103,7 @@ int wacom_i2c_coord(struct wacom_i2c *wac_i2c)
 				       "%s: is pressed(%d,%d,%d)(0x%x)\n",
 				       __func__, x, y, pressure, wac_i2c->tool);
 #else
-				dev_info(&wac_i2c->client->dev,
+				dev_dbg(&wac_i2c->client->dev,
 						"%s: pressed\n",
 						__func__);
 #endif
@@ -1128,7 +1118,7 @@ int wacom_i2c_coord(struct wacom_i2c *wac_i2c)
 				       "%s: is released(%d,%d,%d)(0x%x)\n",
 				       __func__, x, y, pressure, wac_i2c->tool);
 #else
-				dev_info(&wac_i2c->client->dev,
+				dev_dbg(&wac_i2c->client->dev,
 						"%s: released\n",
 						__func__);
 #endif

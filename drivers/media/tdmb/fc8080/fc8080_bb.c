@@ -36,6 +36,9 @@
 #define FLOCK_MAX_TIME  300
 #define DLOCK_MAX_TIME  500
 
+static u8 active_video;
+static u8 active_non_video;
+
 static s32 fc8080_set_xtal(HANDLE handle)
 {
 #if (FC8080_FREQ_XTAL == 24576)
@@ -272,39 +275,19 @@ s32 fc8080_init(HANDLE handle)
 	fc8080_reset(handle);
 	fc8080_set_xtal(handle);
 
-	bbm_write(handle, BBM_LDO_VCTRL, 0x35);
+	bbm_write(handle, BBM_LDO_VCTRL, 0x33);
 	bbm_write(handle, BBM_XTAL_CCTRL, 0x14);
 	bbm_write(handle, BBM_RF_XTAL_EN, 0x0f);
-	bbm_write(handle, BBM_ADC_OPMODE, 0x67);
+	bbm_write(handle, BBM_RFRST_HIGH_HOLD, 0x01);
+	bbm_write(handle, BBM_ADC_OPMODE, 0x47);
 
-	/*bbm_write(handle, BBM_FIC_CFG_CRC16, 0x03);*/
+	bbm_write(handle, BBM_FIC_CFG_CRC16, 0x07);
 	bbm_word_write(handle, BBM_OFDM_DET_MAX_THRESHOLD, 0x0a00);
 	bbm_write(handle, BBM_FTOFFSET_RANGE, 0x20);
 	bbm_write(handle, BBM_AGC530_EN, 0x53);
-	bbm_write(handle, BBM_BLOCK_AVG_SIZE_LOCK, 0x49);
 	bbm_word_write(handle, BBM_GAIN_CONSTANT, 0x0303);
 	bbm_write(handle, BBM_DET_CNT_BOUND, 0x60);
-	bbm_write(handle, BBM_UNLOCK_DETECT_EN, 0x00);
-
-	bbm_write(handle, BBM_DCE_CTRL, 0x27);
-	bbm_write(handle, BBM_PGA_GAIN_MAX, 0x18);
-	bbm_write(handle, BBM_PGA_GAIN_MIN, 0xe8);
-
-#if (FC8080_FREQ_XTAL == 24000)
-	bbm_write(handle, BBM_SYNC_MTH, 0x43);
-#else
-	bbm_write(handle, BBM_SYNC_MTH, 0xc3);
-#endif
-
-#if (FC8080_FREQ_XTAL == 16384) || (FC8080_FREQ_XTAL == 24576)
-	bbm_write(handle, BBM_SFSYNC_ON, 0x00);
-#else
-	bbm_write(handle, BBM_SFSYNC_ON, 0x01);
-#endif
-
-	bbm_write(handle, BBM_RESYNC_EN, 0x01);
-	bbm_write(handle, BBM_RESYNC_AUTO_CONDITION_EN, 0x00);
-	bbm_write(handle, BBM_MSC_CFG_SPD, 0xff);
+	bbm_write(handle, BBM_RESYNC_EN, 0x0f);
 
 #if defined(POWER_SAVE_MODE)
 	bbm_write(handle, BBM_PS0_RF_ENABLE, 0x06);
@@ -316,7 +299,6 @@ s32 fc8080_init(HANDLE handle)
 	bbm_write(handle, BBM_PS1_ADC_ENABLE, 0x05);
 	bbm_write(handle, BBM_PS2_BB_ENABLE, 0x05);
 #endif
-	bbm_write(handle, BBM_PS1_ADC_ADD_SHIFT, 0x71);
 
 	bbm_word_write(handle, BBM_BUF_FIC_START, FIC_BUF_START);
 	bbm_word_write(handle, BBM_BUF_FIC_END,   FIC_BUF_END);
@@ -330,17 +312,22 @@ s32 fc8080_init(HANDLE handle)
 	bbm_word_write(handle, BBM_BUF_CH2_START, CH2_BUF_START);
 	bbm_word_write(handle, BBM_BUF_CH2_END,   CH2_BUF_END);
 	bbm_word_write(handle, BBM_BUF_CH2_THR,   CH2_BUF_THR);
+	bbm_word_write(handle, BBM_BUF_CH3_START, CH3_BUF_START);
+	bbm_word_write(handle, BBM_BUF_CH3_END,   CH3_BUF_END);
+	bbm_word_write(handle, BBM_BUF_CH3_THR,   CH3_BUF_THR);
 
-	bbm_word_write(handle, BBM_BUF_INT, 0x0107);
+	bbm_word_write(handle, BBM_BUF_INT, 0x010f);
 	bbm_word_write(handle, BBM_BUF_ENABLE, 0x0000);
 
 #ifdef FC8080_I2C
-	bbm_write(handle, BBM_TSO_CLKDIV, 0x01);
-	bbm_write(handle, BBM_TSO_SELREG, 0xc4);
+	bbm_write(handle, BBM_TSO_SELREG, 0xc0);
 #else
 	bbm_write(handle, BBM_MD_INT_EN, BBM_MF_INT);
 	bbm_write(handle, BBM_MD_INT_STATUS, BBM_MF_INT);
 #endif
+
+	active_video = 0;
+	active_non_video = 0;
 
 	return BBM_OK;
 }
@@ -366,24 +353,18 @@ s32 fc8080_channel_select(HANDLE handle, u8 subch_id, u8 buf_id)
 
 s32 fc8080_video_select(HANDLE handle, u8 subch_id, u8 buf_id, u8 cdi_id)
 {
-	u16 fec_en = 0;
+	u8 resync_condition;
 
-	if (cdi_id == 0) {
-		bbm_write(handle, BBM_FEC_RST, 0x1c);
-		bbm_write(handle, BBM_FEC_RST, 0x00);
-	}
-
-	bbm_word_read(handle, BBM_MSC_CFG_SCH0, &fec_en);
-
-	if ((fec_en & 0x00ff) && (fec_en & 0xff00) && cdi_id == 0) {
-		bbm_write(handle, BBM_FEC_ON, 0x00);
-		bbm_write(handle, BBM_MSC_CFG_SCH0 + cdi_id, 0x00);
-		bbm_write(handle, BBM_MSC_CFG_SCH0 + cdi_id, fec_en & 0x00ff);
-		bbm_write(handle, BBM_FEC_ON, 0x01);
-	}
+	active_video |= (1 << buf_id);
+	resync_condition = (active_video ? 1 : 0) | (active_non_video ? 2 : 0);
 
 	if (fc8080_channel_select(handle, subch_id, buf_id) != BBM_OK)
 		return BBM_NOK;
+
+	bbm_write(handle, BBM_RESYNC_CONDITION_INFO, resync_condition);
+
+	if (cdi_id == 0)
+		bbm_write(handle, BBM_FEC_ON, 0x01);
 
 	bbm_write(handle, BBM_MSC_CFG_SCH0 + cdi_id, 0x40 | subch_id);
 	bbm_write(handle, BBM_BUF_CH0_SUBID + buf_id, 0x40 | subch_id);
@@ -393,9 +374,15 @@ s32 fc8080_video_select(HANDLE handle, u8 subch_id, u8 buf_id, u8 cdi_id)
 
 s32 fc8080_audio_select(HANDLE handle, u8 subch_id, u8 buf_id)
 {
+	u8 resync_condition;
+
+	active_non_video |= (1 << buf_id);
+	resync_condition = (active_video ? 1 : 0) | (active_non_video ? 2 : 0);
+
 	if (fc8080_channel_select(handle, subch_id, buf_id) != BBM_OK)
 		return BBM_NOK;
 
+	bbm_write(handle, BBM_RESYNC_CONDITION_INFO, resync_condition);
 	bbm_write(handle, BBM_BUF_CH0_SUBID + buf_id, 0x40 | subch_id);
 
 	return BBM_OK;
@@ -403,9 +390,15 @@ s32 fc8080_audio_select(HANDLE handle, u8 subch_id, u8 buf_id)
 
 s32 fc8080_data_select(HANDLE handle, u8 subch_id, u8 buf_id)
 {
+	u8 resync_condition;
+
+	active_non_video |= (1 << buf_id);
+	resync_condition = (active_video ? 1 : 0) | (active_non_video ? 2 : 0);
+
 	if (fc8080_channel_select(handle, subch_id, buf_id) != BBM_OK)
 		return BBM_NOK;
 
+	bbm_write(handle, BBM_RESYNC_CONDITION_INFO, resync_condition);
 	bbm_write(handle, BBM_BUF_CH0_SUBID + buf_id, 0x40 | subch_id);
 
 	return BBM_OK;
@@ -417,6 +410,7 @@ s32 fc8080_channel_deselect(HANDLE handle, u8 subch_id, u8 buf_id)
 
 	bbm_read(handle, BBM_BUF_ENABLE, &buf_en);
 	bbm_write(handle, BBM_BUF_ENABLE, buf_en & (~(1 << buf_id)));
+
 	bbm_write(handle, BBM_SCH0_SET_IDI + buf_id, 0);
 
 	return BBM_OK;
@@ -424,42 +418,55 @@ s32 fc8080_channel_deselect(HANDLE handle, u8 subch_id, u8 buf_id)
 
 s32 fc8080_video_deselect(HANDLE handle, u8 subch_id, u8 buf_id, u8 cdi_id)
 {
-	u16 fec_en = 0;
-	u8 buf_en = 0;
+	u8 resync_condition;
 
-	bbm_write(handle, BBM_BUF_CH0_SUBID + buf_id, 0x00);
-	bbm_word_read(handle, BBM_MSC_CFG_SCH0, &fec_en);
-
-	if (!((fec_en & 0xff00) && (fec_en & 0x00ff) && cdi_id == 0))
-		bbm_write(handle, BBM_MSC_CFG_SCH0 + cdi_id, 0x00);
+	if (cdi_id == 0)
+		bbm_write(handle, BBM_FEC_ON, 0x00);
 
 	if (fc8080_channel_deselect(handle, subch_id, buf_id) != BBM_OK)
 		return BBM_NOK;
 
-	bbm_read(handle, BBM_BUF_CH0_SUBID, &buf_en);
+	bbm_write(handle, BBM_BUF_CH0_SUBID + buf_id, 0x00);
+	bbm_write(handle, BBM_MSC_CFG_SCH0 + cdi_id, 0x00);
 
-	if (buf_en == 0 && (fec_en & 0xff00) && cdi_id == 1)
-		bbm_write(handle, BBM_MSC_CFG_SCH0, 0x00);
+	active_video &= ~(1 << buf_id);
+	resync_condition = (active_video ? 1 : 0) | (active_non_video ? 2 : 0);
+
+	bbm_write(handle, BBM_RESYNC_CONDITION_INFO, resync_condition);
 
 	return BBM_OK;
 }
 
 s32 fc8080_audio_deselect(HANDLE handle, u8 subch_id, u8 buf_id)
 {
+	u8 resync_condition;
+
 	if (fc8080_channel_deselect(handle, subch_id, buf_id) != BBM_OK)
 		return BBM_NOK;
 
 	bbm_write(handle, BBM_BUF_CH0_SUBID + buf_id, 0);
+
+	active_non_video &= ~(1 << buf_id);
+	resync_condition = (active_video ? 1 : 0) | (active_non_video ? 2 : 0);
+
+	bbm_write(handle, BBM_RESYNC_CONDITION_INFO, resync_condition);
 
 	return BBM_OK;
 }
 
 s32 fc8080_data_deselect(HANDLE handle, u8 subch_id, u8 buf_id)
 {
+	u8 resync_condition;
+
 	if (fc8080_channel_deselect(handle, subch_id, buf_id) != BBM_OK)
 		return BBM_NOK;
 
 	bbm_write(handle, BBM_BUF_CH0_SUBID + buf_id, 0);
+
+	active_non_video &= ~(1 << buf_id);
+	resync_condition = (active_video ? 1 : 0) | (active_non_video ? 2 : 0);
+
+	bbm_write(handle, BBM_RESYNC_CONDITION_INFO, resync_condition);
 
 	return BBM_OK;
 }
@@ -487,17 +494,11 @@ s32 fc8080_scan_status(HANDLE handle)
 				break;
 		}
 
-		if (i == slock_cnt) {
-			printk(KERN_DEBUG "TDMB :status(0x%x) s(%d)\n",
-				status, slock_cnt);
+		if (i == slock_cnt)
 			return BBM_NOK;
-		}
 
-		if ((status & 0x02) == 0x00) {
-			printk(KERN_DEBUG "TDMB %s : status(0x%x)\n",
-				__func__, status);
+		if ((status & 0x02) == 0x00)
 			return BBM_NOK;
-		}
 
 		/* FRS */
 		for (i += 1; i < flock_cnt; i++) {
@@ -509,12 +510,8 @@ s32 fc8080_scan_status(HANDLE handle)
 				break;
 		}
 
-		if (i == flock_cnt) {
-			printk(KERN_DEBUG "TDMB %s : flock_cnt(0x%x)\n"
-						, __func__
-						, flock_cnt);
+		if (i == flock_cnt)
 			return BBM_NOK;
-		}
 
 		/* Digital Lock */
 		for (i += 1; i < dlock_cnt; i++) {
@@ -522,11 +519,8 @@ s32 fc8080_scan_status(HANDLE handle)
 
 			bbm_read(handle, BBM_SYNC_STAT, &sync_status);
 
-			if (sync_status & 0x20) {
-				printk(KERN_DEBUG "TDMB :sync_status(0x%x)\n",
-					sync_status);
+			if (sync_status & 0x20)
 				return BBM_OK;
-		}
 		}
 	} else {
 		dlock_cnt = DLOCK_MAX_TIME / LOCK_TIME_TICK;
@@ -535,16 +529,10 @@ s32 fc8080_scan_status(HANDLE handle)
 			ms_wait(LOCK_TIME_TICK);
 
 			bbm_read(handle, BBM_SYNC_STAT, &sync_status);
-			if (sync_status & 0x20) {
-				printk(KERN_DEBUG "TDMB :sync_status(0x%x)\n",
-					sync_status);
+			if (sync_status & 0x20)
 				return BBM_OK;
 		}
 	}
-	}
-
-	printk(KERN_DEBUG "TDMB %s : res(0x%x)\n"
-						, __func__, res);
 
 	return res;
 }

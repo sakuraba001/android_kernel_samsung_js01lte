@@ -17,18 +17,10 @@
 #include <linux/errno.h>
 #include <linux/err.h>
 #include <linux/init.h>
-#include <linux/delay.h>
 
 #include <asm/cacheflush.h>
 
 #include <mach/scm.h>
-
-#include <linux/thread_info.h>
-#include <linux/sched.h>
-#include <linux/string.h>
-#ifdef CONFIG_ARCH_MSM8226
-#include <linux/smp.h>
-#endif
 
 #define SCM_ENOMEM		-5
 #define SCM_EOPNOTSUPP		-4
@@ -36,13 +28,9 @@
 #define SCM_EINVAL_ARG		-2
 #define SCM_ERROR		-1
 #define SCM_INTERRUPTED		1
-#define SCM_EBUSY		-55
 
 static DEFINE_MUTEX(scm_lock);
 
-#define SCM_BUF_LEN(__cmd_size, __resp_size)	\
-	(sizeof(struct scm_command) + sizeof(struct scm_response) + \
-		__cmd_size + __resp_size)
 /**
  * struct scm_command - one SCM command buffer
  * @len: total available memory for command and response
@@ -88,6 +76,42 @@ struct scm_response {
 };
 
 /**
+ * alloc_scm_command() - Allocate an SCM command
+ * @cmd_size: size of the command buffer
+ * @resp_size: size of the response buffer
+ *
+ * Allocate an SCM command, including enough room for the command
+ * and response headers as well as the command and response buffers.
+ *
+ * Returns a valid &scm_command on success or %NULL if the allocation fails.
+ */
+static struct scm_command *alloc_scm_command(size_t cmd_size, size_t resp_size)
+{
+	struct scm_command *cmd;
+	size_t len = sizeof(*cmd) + sizeof(struct scm_response) + cmd_size +
+		resp_size;
+
+	cmd = kzalloc(PAGE_ALIGN(len), GFP_KERNEL);
+	if (cmd) {
+		cmd->len = len;
+		cmd->buf_offset = offsetof(struct scm_command, buf);
+		cmd->resp_hdr_offset = cmd->buf_offset + cmd_size;
+	}
+	return cmd;
+}
+
+/**
+ * free_scm_command() - Free an SCM command
+ * @cmd: command to free
+ *
+ * Free an SCM command.
+ */
+static inline void free_scm_command(struct scm_command *cmd)
+{
+	kfree(cmd);
+}
+
+/**
  * scm_command_to_response() - Get a pointer to a scm_response
  * @cmd: command
  *
@@ -123,8 +147,6 @@ static inline void *scm_get_response_buffer(const struct scm_response *rsp)
 
 static int scm_remap_error(int err)
 {
-	if (err != SCM_EBUSY)
-		pr_err("scm_call failed with error code %d\n", err);
 	switch (err) {
 	case SCM_ERROR:
 		return -EIO;
@@ -135,8 +157,6 @@ static int scm_remap_error(int err)
 		return -EOPNOTSUPP;
 	case SCM_ENOMEM:
 		return -ENOMEM;
-	case SCM_EBUSY:
-		return -EBUSY;
 	}
 	return -EINVAL;
 }
@@ -165,47 +185,18 @@ static u32 smc(u32 cmd_addr)
 	return r0;
 }
 
-#ifdef CONFIG_ARCH_MSM8226
-static void __wrap_flush_cache_all(void* vp)
-{
-	flush_cache_all();
-}
-#endif
-
 static int __scm_call(const struct scm_command *cmd)
 {
-	int flush_all_need;
-	int call_from_ss_daemon;
 	int ret;
 	u32 cmd_addr = virt_to_phys(cmd);
 
 	/*
-	 * in case of QSEE command
+	 * Flush the entire cache here so callers don't have to remember
+	 * to flush the cache when passing physical addresses to the secure
+	 * side in the buffer.
 	 */
-	flush_all_need = ((cmd->id & 0x0003FC00) == (252 << 10));
-
-	/*
-	 * in case of secure_storage_daemon
-	*/
-	call_from_ss_daemon = (strncmp(current_thread_info()->task->comm, "secure_storage_daemon", TASK_COMM_LEN - 1) == 0);
-
-	/*
-	 * Flush the command buffer so that the secure world sees
-	 * the correct data.
-	 */
-	__cpuc_flush_dcache_area((void *)cmd, cmd->len);
-	outer_flush_range(cmd_addr, cmd_addr + cmd->len);
-
-	if (flush_all_need && call_from_ss_daemon) {
-		flush_cache_all();
-
-#ifdef CONFIG_ARCH_MSM8226
-		smp_call_function((void (*)(void *))__wrap_flush_cache_all, NULL, 1);
-#endif
-
-		outer_flush_all();
-	}
-
+	flush_cache_all();
+	outer_flush_all();
 	ret = smc(cmd_addr);
 	if (ret < 0)
 		ret = scm_remap_error(ret);
@@ -233,48 +224,39 @@ static void scm_inv_range(unsigned long start, unsigned long end)
 }
 
 /**
- * scm_call_common() - Send an SCM command
+ * scm_call() - Send an SCM command
  * @svc_id: service identifier
  * @cmd_id: command identifier
  * @cmd_buf: command buffer
  * @cmd_len: length of the command buffer
  * @resp_buf: response buffer
  * @resp_len: length of the response buffer
- * @scm_buf: internal scm structure used for passing data
- * @scm_buf_len: length of the internal scm structure
  *
- * Core function to scm call. Initializes the given cmd structure with
- * appropriate values and makes the actual scm call. Validation of cmd
- * pointer and length must occur in the calling function.
- *
- * Returns the appropriate error code from the scm call
+ * Sends a command to the SCM and waits for the command to finish processing.
  */
-
-static int scm_call_common(u32 svc_id, u32 cmd_id, const void *cmd_buf,
-				size_t cmd_len, void *resp_buf, size_t resp_len,
-				struct scm_command *scm_buf,
-				size_t scm_buf_length)
+int scm_call(u32 svc_id, u32 cmd_id, const void *cmd_buf, size_t cmd_len,
+		void *resp_buf, size_t resp_len)
 {
 	int ret;
+	struct scm_command *cmd;
 	struct scm_response *rsp;
 	unsigned long start, end;
 
-	scm_buf->len = scm_buf_length;
-	scm_buf->buf_offset = offsetof(struct scm_command, buf);
-	scm_buf->resp_hdr_offset = scm_buf->buf_offset + cmd_len;
-	scm_buf->id = (svc_id << 10) | cmd_id;
+	cmd = alloc_scm_command(cmd_len, resp_len);
+	if (!cmd)
+		return -ENOMEM;
 
+	cmd->id = (svc_id << 10) | cmd_id;
 	if (cmd_buf)
-		memcpy(scm_get_command_buffer(scm_buf), cmd_buf, cmd_len);
+		memcpy(scm_get_command_buffer(cmd), cmd_buf, cmd_len);
 
 	mutex_lock(&scm_lock);
-	ret = __scm_call(scm_buf);
+	ret = __scm_call(cmd);
 	mutex_unlock(&scm_lock);
-
 	if (ret)
-		return ret;
+		goto out;
 
-	rsp = scm_command_to_response(scm_buf);
+	rsp = scm_command_to_response(cmd);
 	start = (unsigned long)rsp;
 
 	do {
@@ -286,89 +268,8 @@ static int scm_call_common(u32 svc_id, u32 cmd_id, const void *cmd_buf,
 
 	if (resp_buf)
 		memcpy(resp_buf, scm_get_response_buffer(rsp), resp_len);
-
-	return ret;
-}
-
-/**
- * scm_call_noalloc - Send an SCM command
- *
- * Same as scm_call except clients pass in a buffer (@scm_buf) to be used for
- * scm internal structures. The buffer should be allocated with
- * DEFINE_SCM_BUFFER to account for the proper alignment and size.
- */
-int scm_call_noalloc(u32 svc_id, u32 cmd_id, const void *cmd_buf,
-		size_t cmd_len, void *resp_buf, size_t resp_len,
-		void *scm_buf, size_t scm_buf_len)
-{
-	int ret;
-	size_t len = SCM_BUF_LEN(cmd_len, resp_len);
-
-	if (cmd_len > scm_buf_len || resp_len > scm_buf_len ||
-	    len > scm_buf_len)
-		return -EINVAL;
-
-	if (!IS_ALIGNED((unsigned long)scm_buf, PAGE_SIZE))
-		return -EINVAL;
-
-	memset(scm_buf, 0, scm_buf_len);
-
-	ret = scm_call_common(svc_id, cmd_id, cmd_buf, cmd_len, resp_buf,
-				resp_len, scm_buf, len);
-	return ret;
-
-}
-
-/**
- * scm_call() - Send an SCM command
- * @svc_id: service identifier
- * @cmd_id: command identifier
- * @cmd_buf: command buffer
- * @cmd_len: length of the command buffer
- * @resp_buf: response buffer
- * @resp_len: length of the response buffer
- *
- * Sends a command to the SCM and waits for the command to finish processing.
- *
- * A note on cache maintenance:
- * Note that any buffers that are expected to be accessed by the secure world
- * must be flushed before invoking scm_call and invalidated in the cache
- * immediately after scm_call returns. Cache maintenance on the command and
- * response buffers is taken care of by scm_call; however, callers are
- * responsible for any other cached buffers passed over to the secure world.
- */
-
-#define SCM_EBUSY_WAIT_MS	30
-#define SCM_EBUSY_MAX_RETRY	400
-
-int scm_call(u32 svc_id, u32 cmd_id, const void *cmd_buf, size_t cmd_len,
-		void *resp_buf, size_t resp_len)
-{
-	struct scm_command *cmd;
-	int ret, retry_count = 0;
-	size_t len = SCM_BUF_LEN(cmd_len, resp_len);
-
-	if (cmd_len > len || resp_len > len)
-		return -EINVAL;
-
-	cmd = kzalloc(PAGE_ALIGN(len), GFP_KERNEL);
-	if (!cmd)
-		return -ENOMEM;
-
-	do {
-		memset(cmd, 0x0, PAGE_ALIGN(len));
-		ret = scm_call_common(svc_id, cmd_id, cmd_buf, cmd_len, resp_buf,
-				resp_len, cmd, len);
-
-		if (ret == -EBUSY)
-			msleep(SCM_EBUSY_WAIT_MS);
-
-	} while (ret == -EBUSY && (retry_count++ < SCM_EBUSY_MAX_RETRY));
-
-	if (ret == -EBUSY)
-		panic("scm_call timeout with SCM_EBUSY, retry_count = %d, delay = %d ms", retry_count, SCM_EBUSY_WAIT_MS);
-
-	kfree(cmd);
+out:
+	free_scm_command(cmd);
 	return ret;
 }
 EXPORT_SYMBOL(scm_call);

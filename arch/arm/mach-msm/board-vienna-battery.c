@@ -62,12 +62,14 @@
 #define GPIO_IF_CON_SENSE_18		76
 /*#define GPIO_TA_INT					29*/
 
+#ifndef CONFIG_OF
 #define MSM_FUELGAUGE_I2C_BUS_ID	19
+#endif
 
 static unsigned int sec_bat_recovery_mode;
 static sec_charging_current_t charging_current_table[] = {
 	{2000,	2000,	300,	40*60},
-	{0,	0,	0,	0},
+	{500,	0,	0,	0},
 	{500,	500,	300,	40*60},
 	{2000,	2000,	300,	40*60},
 	{500,	500,	300,	40*60},
@@ -101,7 +103,7 @@ static int sec_bat_adc_ap_read(unsigned int channel)
 
 	switch (channel) {
 	case SEC_BAT_ADC_CHANNEL_TEMP:
-		rc = qpnp_vadc_read(NULL, LR_MUX5_PU2_AMUX_THM2, &results);
+		rc = qpnp_vadc_read(LR_MUX5_PU2_AMUX_THM2, &results);
 		if (rc) {
 			pr_err("%s: Unable to read batt temperature rc=%d\n",
 				__func__, rc);
@@ -169,14 +171,11 @@ extern int mhl_connection_state(void);
 static void sec_bat_initial_check(void)
 {
 	union power_supply_propval value;
-	int cable_type = 0;
 
-	cable_type = msm8974_get_cable_type();
+	msm8974_get_cable_type();
 
-	value.intval = cable_type;
-
-	if (POWER_SUPPLY_TYPE_BATTERY <= cable_type) {
-		value.intval = cable_type<<ONLINE_TYPE_MAIN_SHIFT;
+	if (POWER_SUPPLY_TYPE_BATTERY < current_cable_type) {
+		value.intval = current_cable_type<<ONLINE_TYPE_MAIN_SHIFT;
 		psy_do_property("battery", set,
 				POWER_SUPPLY_PROP_ONLINE, value);
 	}
@@ -184,17 +183,10 @@ static void sec_bat_initial_check(void)
 	if (ta_int_gpio == 0) {
 		pr_err("%s: ta_int_gpio is 0 or not assigned yet\n", __func__);
 	} else {
-		if (cable_type == POWER_SUPPLY_TYPE_BATTERY &&
-			!gpio_get_value_cansleep(ta_int_gpio)) {
-#if defined(CONFIG_VIDEO_MHL_V1) || defined(CONFIG_VIDEO_MHL_V2)
-			if (!mhl_connection_state()) {
-				value.intval = POWER_SUPPLY_TYPE_UARTOFF<<ONLINE_TYPE_MAIN_SHIFT;
-				pr_info("%s : VBUS IN\n", __func__);
-			}
-#else
-			value.intval = POWER_SUPPLY_TYPE_UARTOFF<<ONLINE_TYPE_MAIN_SHIFT;
+		if (current_cable_type == POWER_SUPPLY_TYPE_BATTERY &&
+			!gpio_get_value_cansleep(ta_int_gpio) && !mhl_connection_state()) {
 			pr_info("%s : VBUS IN\n", __func__);
-#endif
+			value.intval = POWER_SUPPLY_TYPE_UARTOFF<<ONLINE_TYPE_MAIN_SHIFT;
 		}
 		if (value.intval)
 				psy_do_property("battery", set,
@@ -217,7 +209,8 @@ static bool sec_bat_switch_to_normal(void) {return true; }
 
 static bool sec_bat_is_interrupt_cable_check_possible(int extended_cable_type)
 {
-	return true;
+	return (GET_MAIN_CABLE_TYPE(extended_cable_type) ==
+		POWER_SUPPLY_TYPE_CARDOCK) ? false : true;
 }
 
 int sec_bat_check_cable_callback(void)
@@ -228,12 +221,7 @@ int sec_bat_check_cable_callback(void)
 	if (ta_int_gpio == 0) {
 		pr_err("%s: ta_int_gpio is 0 or not assigned yet(cable_type(%d))\n",
 			__func__, current_cable_type);
-	}
-#if defined(CONFIG_VIDEO_MHL_V1) || defined(CONFIG_VIDEO_MHL_V2)
-	else if (!mhl_connection_state()) {
-#else
-	else {
-#endif
+	} else if (!mhl_connection_state()){
 		if (current_cable_type == POWER_SUPPLY_TYPE_BATTERY &&
 			!gpio_get_value_cansleep(ta_int_gpio)) {
 			pr_info("%s : VBUS IN\n", __func__);
@@ -242,8 +230,7 @@ int sec_bat_check_cable_callback(void)
 			return POWER_SUPPLY_TYPE_UARTOFF;
 		}
 
-		if ((current_cable_type == POWER_SUPPLY_TYPE_UARTOFF ||
-			current_cable_type == POWER_SUPPLY_TYPE_CARDOCK) &&
+		if (current_cable_type == POWER_SUPPLY_TYPE_UARTOFF &&
 			gpio_get_value_cansleep(ta_int_gpio)) {
 			pr_info("%s : VBUS OUT\n", __func__);
 			value.intval = POWER_SUPPLY_TYPE_BATTERY<<ONLINE_TYPE_MAIN_SHIFT;
@@ -473,7 +460,7 @@ static struct battery_data_t samsung_battery_data[] = {
 	/* SDI battery data */
 	{
 		.Capacity = 0x4A8E,
-		.low_battery_comp_voltage = 3500,
+		.low_battery_comp_voltage = 3600,
 		.low_battery_table = {
 			/* range, slope, offset */
 			{-5000,	0,	0},	/* dummy for top limit */
@@ -598,15 +585,15 @@ sec_battery_platform_data_t sec_battery_pdata = {
 
 	.temp_check_type = SEC_BATTERY_TEMP_CHECK_TEMP,
 	.temp_check_count = 1,
-	.temp_high_threshold_event = 700,
+	.temp_high_threshold_event = 600,
 	.temp_high_recovery_event = 420,
 	.temp_low_threshold_event = -50,
 	.temp_low_recovery_event = 0,
-	.temp_high_threshold_normal = 700,
+	.temp_high_threshold_normal = 500,
 	.temp_high_recovery_normal = 420,
 	.temp_low_threshold_normal = -50,
 	.temp_low_recovery_normal = 0,
-	.temp_high_threshold_lpm = 700,
+	.temp_high_threshold_lpm = 500,
 	.temp_high_recovery_lpm = 420,
 	.temp_low_threshold_lpm = -50,
 	.temp_low_recovery_lpm = 0,
@@ -666,6 +653,7 @@ static struct platform_device sec_device_battery = {
 	.dev.platform_data = &sec_battery_pdata,
 };
 
+#ifndef CONFIG_OF
 struct platform_device sec_device_fgchg = {
 	.name = "i2c-gpio",
 	.id = MSM_FUELGAUGE_I2C_BUS_ID,
@@ -684,9 +672,12 @@ static struct i2c_board_info sec_brdinfo_fgchg[] __initdata = {
 		.platform_data	= &sec_battery_pdata,
 	},
 };
+#endif
 
 static struct platform_device *samsung_battery_devices[] __initdata = {
+#ifndef CONFIG_OF
 	&sec_device_fgchg,
+#endif
 	&sec_device_battery,
 };
 
@@ -729,10 +720,12 @@ void __init samsung_init_battery(void)
 		samsung_battery_devices,
 		ARRAY_SIZE(samsung_battery_devices));
 
+#ifndef CONFIG_OF
 	i2c_register_board_info(
 		MSM_FUELGAUGE_I2C_BUS_ID,
 		sec_brdinfo_fgchg,
 		ARRAY_SIZE(sec_brdinfo_fgchg));
+#endif
 }
 
 #endif

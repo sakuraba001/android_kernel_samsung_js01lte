@@ -211,6 +211,11 @@ int mc_pm_clock_initialize(void)
 {
 	int ret = 0;
 
+	MCDRV_DBG(mcd, "parent=%p\n", mcd->parent);
+	MCDRV_DBG(mcd, "p=%p\n", mcd->p);
+	MCDRV_DBG(mcd, "kobj.name=%s\n", mcd->kobj.name);
+	MCDRV_DBG(mcd, "init_name=%s\n", mcd->init_name);
+
 	/* Get core clk */
 	mc_ce_core_clk = clk_get(mcd, "core_clk");
 	if (IS_ERR(mc_ce_core_clk)) {

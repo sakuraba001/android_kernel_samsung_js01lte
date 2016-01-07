@@ -209,10 +209,12 @@ static inline struct page *__page_cache_alloc(gfp_t gfp)
 
 	page = alloc_pages(gfp, 0);
 
+#ifdef CONFIG_CMA
 	if (page && is_cma_pageblock(page)) {
 		__free_page(page);
 		page = alloc_pages(gfp & ~__GFP_MOVABLE, 0);
 	}
+#endif
 
 	return page;
 }
@@ -293,11 +295,6 @@ static inline struct page *read_mapping_page(struct address_space *mapping,
 static inline loff_t page_offset(struct page *page)
 {
 	return ((loff_t)page->index) << PAGE_CACHE_SHIFT;
-}
-
-static inline loff_t page_file_offset(struct page *page)
-{
-	return ((loff_t)page_file_index(page)) << PAGE_CACHE_SHIFT;
 }
 
 extern pgoff_t linear_hugepage_index(struct vm_area_struct *vma,

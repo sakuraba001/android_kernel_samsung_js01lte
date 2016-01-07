@@ -24,7 +24,6 @@
 *******************************************************************************/
 #include <linux/input.h>
 #include <linux/spi/spi.h>
-#include <linux/cache.h>
 
 #include "fci_types.h"
 #include "fc8080_regs.h"
@@ -45,7 +44,7 @@
 #define CHIPID          0
 #define DRIVER_NAME "fc8080_spi"
 
-u32 fc8080_spi;
+struct spi_device *fc8080_spi;
 static u8 tx_data[32] __cacheline_aligned;
 
 static DEFINE_MUTEX(lock);
@@ -114,8 +113,10 @@ static s32 spi_bulkread(HANDLE handle, u16 addr, u8 command, u8 *data,
 	tx_data[2] = (u8) ((command & 0xfc) | CHIPID);
 	tx_data[3] = (u8) (length & 0xff);
 
+	fc8080_spi = tdmb_get_spi_handle();
+
 	res = fc8080_spi_write_then_read(
-		(struct spi_device *)fc8080_spi, &tx_data[0], 4, &data[0], length);
+		fc8080_spi, &tx_data[0], 4, &data[0], length);
 
 	if (res) {
 		print_log(0, "fc8080_spi_bulkread fail : %d\n", res);
@@ -139,8 +140,9 @@ static s32 spi_bulkwrite(HANDLE handle, u16 addr, u8 command, u8 *data,
 	for (i = 0; i < length; i++)
 		tx_data[4+i] = data[i];
 
+	fc8080_spi = tdmb_get_spi_handle();
 	res = fc8080_spi_write_then_read(
-		(struct spi_device *)fc8080_spi, &tx_data[0], length+4, NULL, 0);
+		fc8080_spi, &tx_data[0], length+4, NULL, 0);
 
 	if (res) {
 		print_log(0, "fc8080_spi_bulkwrite fail : %d\n", res);
@@ -160,8 +162,10 @@ static s32 spi_dataread(HANDLE handle, u8 addr, u8 command, u8 *data,
 	tx_data[2] = (u8) ((command & 0xfc) | CHIPID);
 	tx_data[3] = (u8) (length & 0xff);
 
+	fc8080_spi = tdmb_get_spi_handle();
+
 	res = fc8080_spi_write_then_burstread(
-		(struct spi_device *)fc8080_spi, &tx_data[0], 4, &data[0], length);
+		fc8080_spi, &tx_data[0], 4, &data[0], length);
 
 	if (res) {
 		print_log(0, "fc8080_spi_dataread fail : %d\n", res);
@@ -173,12 +177,6 @@ static s32 spi_dataread(HANDLE handle, u8 addr, u8 command, u8 *data,
 
 s32 fc8080_spi_init(HANDLE handle, u16 param1, u16 param2)
 {
-	fc8080_spi = param2;
-	fc8080_spi <<= 16;
-	fc8080_spi |= param1;
-
-	DPRINTK("%s : 0x%p\n", __func__, (struct spi_device *)fc8080_spi);
-
 	return BBM_OK;
 }
 
@@ -312,7 +310,6 @@ s32 fc8080_spi_dataread(HANDLE handle, u16 addr, u8 *data, u32 length)
 
 s32 fc8080_spi_deinit(HANDLE handle)
 {
-	fc8080_spi = 0;
 	return BBM_OK;
 }
 

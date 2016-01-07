@@ -380,6 +380,27 @@ config CLEANCACHE
 
 	  If unsure, say Y to enable cleancache
 
+config MEMORY_HOLE_CARVEOUT
+        bool
+        help
+          MEMORY_HOLE_CARVEOUT is needed to include the msm_mem_hole driver
+          which is needed to enable/disable memblock-remove features for
+          device tree nodes that set compatible="qcom,msm-mem-hole". The
+          corresponding device tree node provides the address and size of
+          the memory corresponding to the hole to be removed using memblock-
+          remove.
+
+config USE_USER_ACCESSIBLE_TIMERS
+	bool "Enables timers accessible from userspace"
+	depends on MMU
+	help
+	  User-accessible timers allow the kernel to map kernel timer
+	  registers to a userspace accessible page, to allow faster
+	  access to time information.  This flag will enable the
+	  interface code in the main kernel.  However, there are
+	  architecture-specific code that will need to be enabled
+	  separately.
+
 config FRONTSWAP
 	bool "Enable frontswap to cache swap pages if tmem is present"
 	depends on SWAP
@@ -399,7 +420,6 @@ config FRONTSWAP
 
 config ZSMALLOC_NEW
 	tristate "Memory allocator for compressed pages"
-	depends on !ZSMALLOC
 	default n
 	help
 	  zsmalloc is a slab-based memory allocator designed to store
@@ -427,6 +447,7 @@ config ZSWAP
 	depends on FRONTSWAP && CRYPTO
 	select CRYPTO_LZO
 	select ZSMALLOC_NEW
+	select ANDROID_LOW_MEMORY_KILLER_ADJUST_TASKSIZE if ANDROID_LOW_MEMORY_KILLER
 	default n
 	help
 	  Zswap is a backend for the frontswap mechanism in the VMM.
@@ -437,48 +458,21 @@ config ZSWAP
 	  swap devices resulting in reduced I/O and faster performance
 	  for many workloads.
 
-config ZSWAP_ENABLE_WRITEBACK
-	bool "Enable writeback"
+config DISABLE_LUMPY_RECLAIM
+	bool "Disable lumpy reclaim"
+	default y
 	depends on ZSWAP
-	default n
 
 config DIRECT_RECLAIM_FILE_PAGES_ONLY
-	bool "Reclaim file pages only on direct reclaim path"
-	depends on ZSWAP
+	bool "Reclaim file pages only"
 	default n
+	depends on ZSWAP
 
-config INCREASE_MAXIMUM_SWAPPINESS
-	bool "Allow swappiness to be set up to 200"
-	depends on ZSWAP
-	default n
-
-config FIX_INACTIVE_RATIO
-	bool "Fix active:inactive anon ratio to 1:1"
-	depends on ZSWAP
-	default n
+config DIRECT_RECLAIM_ALLOW_COMPACTION
+	bool "Allow compaction on direct reclaim path"
+	default y
 
 config TIGHT_PGDAT_BALANCE
-	bool "Set more tight balanced condition to kswapd"
-	depends on ZSWAP
+	bool "Increase balance condition"
 	default n
-
-config MEMORY_HOLE_CARVEOUT
-        bool
-        help
-          MEMORY_HOLE_CARVEOUT is needed to include the msm_mem_hole driver
-          which is needed to enable/disable memblock-remove features for
-          device tree nodes that set compatible="qcom,msm-mem-hole". The
-          corresponding device tree node provides the address and size of
-          the memory corresponding to the hole to be removed using memblock-
-          remove.
-
-config USE_USER_ACCESSIBLE_TIMERS
-	bool "Enables timers accessible from userspace"
-	depends on MMU
-	help
-	  User-accessible timers allow the kernel to map kernel timer
-	  registers to a userspace accessible page, to allow faster
-	  access to time information.  This flag will enable the
-	  interface code in the main kernel.  However, there are
-	  architecture-specific code that will need to be enabled
-	  separately.
+	depends on ZSWAP

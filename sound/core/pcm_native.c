@@ -419,6 +419,7 @@ static int snd_pcm_hw_params(struct snd_pcm_substream *substream,
 	runtime->rate = params_rate(params);
 	runtime->period_size = params_period_size(params);
 	runtime->periods = params_periods(params);
+	printk("=%s==period_size=%d===periods=%d===\n",__func__,(int)runtime->period_size,(int)runtime->periods);
 	runtime->buffer_size = params_buffer_size(params);
 	runtime->info = params->info;
 	runtime->rate_num = params->rate_num;
@@ -448,8 +449,7 @@ static int snd_pcm_hw_params(struct snd_pcm_substream *substream,
 	runtime->silence_threshold = 0;
 	runtime->silence_size = 0;
 	runtime->boundary = runtime->buffer_size;
-	while (runtime->boundary * 2 * runtime->channels <=
-					LONG_MAX - runtime->buffer_size)
+	while (runtime->boundary * 2 <= LONG_MAX - runtime->buffer_size)
 		runtime->boundary *= 2;
 
 	snd_pcm_timer_resolution_change(substream);

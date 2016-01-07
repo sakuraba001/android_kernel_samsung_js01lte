@@ -174,7 +174,6 @@ enum {
 #define MXT_TOUCH_XRANGE_MSB	19
 #define MXT_TOUCH_YRANGE_LSB	20
 #define MXT_TOUCH_YRANGE_MSB	21
-#define MXT_TOUCH_MOVFILTER2	36
 
 /* MXT_TOUCH_KEYARRAY_T15 Field */
 #define MXT_KEYARRY_CTRL	0
@@ -281,17 +280,10 @@ enum {
 #define TSP_INFORM_CHARGER		1
 #define TSP_USE_SHAPETOUCH		1
 #define ENABLE_TOUCH_KEY		1
-#define USE_FOR_SUFACE			1
 #define TSP_BRING_UP
 
 #define TSP_HOVER_WORKAROUND	0
-#define TSP_CHANGE_CONFIG_FOR_INPUT	1
-
-#ifdef CONFIG_SEC_FACTORY
-#define TSP_USE_PALM_FLAG		0
-#else
-#define TSP_USE_PALM_FLAG		1
-#endif
+#define TSP_USE_PALM_FLAG	1
 
 #undef TSP_INIT_COMPLETE
 /* TODO TEMP_HOVER : Need to check and modify
@@ -562,9 +554,6 @@ struct mxt_patch{
 	u8 run_stage;
 	u8 start;
 	u8 finger_cnt;
-	u8 start_stage; //0904
-	u8 skip_test;	//0908
-	u32 stage_timestamp;
 };
 #endif
 
@@ -606,7 +595,6 @@ struct mxt_data {
 	int tkey_dvfs_boost_mode;
 	int tkey_dvfs_freq;
 #endif
-
 #if TSP_USE_ATMELDBG
 	struct atmel_dbg atmeldbg;
 #endif
@@ -632,13 +620,13 @@ struct mxt_data {
 #endif
 #if ENABLE_TOUCH_KEY
 	u16 tsp_keystatus;
+	bool menu_key_pressed;
+	bool menu_key_skipped;
+	bool back_key_pressed;
+	bool back_key_skipped;
 	bool report_dummy_key;
 	bool ignore_menu_key;
 	bool ignore_back_key;
-	bool ignore_menu_key_by_back;
-	bool ignore_back_key_by_menu;
-	bool threshold_cmd_reversed;
-	int setdata;
 #endif
 #ifdef TSP_CHECK_ATCH
 	struct mxt_atch	atch;
@@ -649,12 +637,7 @@ struct mxt_data {
 #if TSP_PATCH
 	struct mxt_patch patch;
 #endif
-#if TSP_CHANGE_CONFIG_FOR_INPUT
-bool is_inputmethod;
-#endif
 };
-
-
 
 /**
  * struct mxt_fw_image - Represents a firmware file.
@@ -721,5 +704,5 @@ extern void mxt_init_dvfs(struct mxt_data *data);
 extern void mxt_tkey_set_dvfs_lock(struct mxt_data *data , int mode);
 extern void mxt_tkey_init_dvfs(struct mxt_data *data);
 #endif
-bool set_threshold(void *device_data);
+
 #endif

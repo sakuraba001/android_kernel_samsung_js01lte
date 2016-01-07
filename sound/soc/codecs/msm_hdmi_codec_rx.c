@@ -37,8 +37,8 @@ static int msm_hdmi_edid_ctl_info(struct snd_kcontrol *kcontrol,
 	codec_data = snd_soc_codec_get_drvdata(codec);
 	rc = codec_data->hdmi_ops.get_audio_edid_blk(codec_data->hdmi_core_pdev,
 						     &edid_blk);
-	uinfo->type = SNDRV_CTL_ELEM_TYPE_BYTES;
 	if (!IS_ERR_VALUE(rc)) {
+		uinfo->type = SNDRV_CTL_ELEM_TYPE_BYTES;
 		uinfo->count = edid_blk.audio_data_blk_size +
 			       edid_blk.spk_alloc_data_blk_size;
 	}
@@ -93,25 +93,12 @@ static int msm_hdmi_audio_codec_rx_dai_hw_params(
 	struct msm_hdmi_audio_codec_rx_data *codec_data =
 			dev_get_drvdata(dai->codec->dev);
 
-	/*refer to HDMI spec CEA-861-E: Table 28 Audio InfoFrame Data Byte 4*/
 	switch (num_channels) {
 	case 2:
 		channel_allocation  = 0;
 		break;
-	case 3:
-		channel_allocation  = 0x02;//default to FL/FR/FC
-		break;
-	case 4:
-		channel_allocation  = 0x06;//default to FL/FR/FC/RC
-		break;
-	case 5:
-		channel_allocation  = 0x0A;//default to FL/FR/FC/RR/RL
-		break;
 	case 6:
 		channel_allocation  = 0x0B;
-		break;
-	case 7:
-		channel_allocation  = 0x12;//default to FL/FR/FC/RL/RR/RRC/RLC
 		break;
 	case 8:
 		channel_allocation  = 0x13;
@@ -121,12 +108,13 @@ static int msm_hdmi_audio_codec_rx_dai_hw_params(
 		return -EINVAL;
 	}
 
-	dev_dbg(dai->dev, "%s() num_ch %u  samplerate %u channel_allocation = %u\n",
+	dev_info(dai->dev, "%s() num_ch %u  samplerate %u channel_allocation = %u\n",
 		__func__, num_channels, params_rate(params),
 		channel_allocation);
 
 	codec_data->hdmi_ops.audio_info_setup(codec_data->hdmi_core_pdev,
-			params_rate(params), num_channels, channel_allocation,
+			params_rate(params),
+			num_channels, channel_allocation,
 			level_shift, down_mix);
 
 	return 0;

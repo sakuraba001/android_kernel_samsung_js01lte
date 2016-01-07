@@ -23,13 +23,6 @@
 	History :
 	----------------------------------------------------------------------
 	20130409 v0p4
-	20130412 v0p5
-	20130415 v0p6
-	20130509 v1p0
-	20130520 v1p1
-	20130524 v1p2
-	20130524 v1p3
-	20131125 v1p4
 *******************************************************************************/
 
 #include "fci_types.h"
@@ -37,6 +30,8 @@
 #include "fci_tun.h"
 #include "fci_hal.h"
 #include "fc8080_regs.h"
+
+static int high_crnt_mode = 1;
 
 static s32 fc8080_write(HANDLE handle, u8 addr, u8 data)
 {
@@ -78,17 +73,57 @@ static s32 fc8080_bb_read(HANDLE handle, u16 addr, u8 *data)
 
 static s32 fc8080_set_filter(HANDLE handle)
 {
-	u8 cal = 0;
-	u32 tcxo = FC8080_FREQ_XTAL * 1000;
-	u32 csfbw = 780000;
-
-	cal = (unsigned int) (tcxo * 78 * 2 / csfbw) / 100;
-
+#if (FC8080_FREQ_XTAL == 16000)
 	fc8080_write(handle, 0x3c, 0x01);
-	fc8080_write(handle, 0x3d, cal);
+	fc8080_write(handle, 0x3d, 0x1e);
 	fc8080_write(handle, 0x3c, 0x00);
+#elif (FC8080_FREQ_XTAL == 16384)
+	fc8080_write(handle, 0x3c, 0x01);
+	fc8080_write(handle, 0x3d, 0x1f);
+	fc8080_write(handle, 0x3c, 0x00);
+#elif (FC8080_FREQ_XTAL == 18000)
+	fc8080_write(handle, 0x3c, 0x01);
+	fc8080_write(handle, 0x3d, 0x22);
+	fc8080_write(handle, 0x3c, 0x00);
+#elif (FC8080_FREQ_XTAL == 19200)
+	fc8080_write(handle, 0x3c, 0x01);
+	fc8080_write(handle, 0x3d, 0x25);
+	fc8080_write(handle, 0x3c, 0x00);
+#elif (FC8080_FREQ_XTAL == 24000)
+	fc8080_write(handle, 0x3c, 0x01);
+	fc8080_write(handle, 0x3d, 0x2e);
+	fc8080_write(handle, 0x3c, 0x00);
+#elif (FC8080_FREQ_XTAL == 24576)
+	fc8080_write(handle, 0x3c, 0x01);
+	fc8080_write(handle, 0x3d, 0x32);
+	fc8080_write(handle, 0x3c, 0x00);
+#elif (FC8080_FREQ_XTAL == 26000)
+	fc8080_write(handle, 0x3c, 0x01);
+	fc8080_write(handle, 0x3d, 0x31);
+	fc8080_write(handle, 0x3c, 0x00);
+#elif (FC8080_FREQ_XTAL == 27000)
+	fc8080_write(handle, 0x3c, 0x01);
+	fc8080_write(handle, 0x3d, 0x33);
+	fc8080_write(handle, 0x3c, 0x00);
+#elif (FC8080_FREQ_XTAL == 27120)
+	fc8080_write(handle, 0x3c, 0x01);
+	fc8080_write(handle, 0x3d, 0x34);
+	fc8080_write(handle, 0x3c, 0x00);
+#elif (FC8080_FREQ_XTAL == 32000)
+	fc8080_write(handle, 0x3c, 0x01);
+	fc8080_write(handle, 0x3d, 0x40);
+	fc8080_write(handle, 0x3c, 0x00);
+#elif (FC8080_FREQ_XTAL == 37400)
+	fc8080_write(handle, 0x3c, 0x01);
+	fc8080_write(handle, 0x3d, 0x47);
+	fc8080_write(handle, 0x3c, 0x00);
+#elif (FC8080_FREQ_XTAL == 38400)
+	fc8080_write(handle, 0x3c, 0x01);
+	fc8080_write(handle, 0x3d, 0x49);
+	fc8080_write(handle, 0x3c, 0x00);
+#endif
 
-	fc8080_write(handle, 0x32, 0x07);
+	fc8080_write(handle, 0x32, 0x01);
 
 	return BBM_OK;
 }
@@ -106,12 +141,12 @@ s32 fc8080_tuner_init(HANDLE handle, u32 band)
 
 	fc8080_set_filter(handle);
 
-	fc8080_write(handle, 0xb3, 0x78);
+	fc8080_write(handle, 0xb3, 0x88);
 
 	fc8080_write(handle, 0x9c, 0x00);
 	fc8080_write(handle, 0x9d, 0x01);
 	fc8080_write(handle, 0x9e, 0x02);
-	fc8080_write(handle, 0x9f, 0x0a);
+	fc8080_write(handle, 0x9f, 0x22);
 	fc8080_write(handle, 0xa0, 0x2a);
 	fc8080_write(handle, 0xa1, 0x32);
 	fc8080_write(handle, 0xa2, 0x52);
@@ -121,7 +156,7 @@ s32 fc8080_tuner_init(HANDLE handle, u32 band)
 	fc8080_write(handle, 0xa6, 0x7f);
 	fc8080_write(handle, 0xa7, 0x9f);
 
-	fc8080_write(handle, 0xa8, 0xc0);
+	fc8080_write(handle, 0xa8, 0x00);
 	fc8080_write(handle, 0xd0, 0x00);
 
 	rfagc_pd1[0] = 0;
@@ -182,22 +217,22 @@ s32 fc8080_tuner_init(HANDLE handle, u32 band)
 	fc8080_write(handle, 0x79, 0x26);
 	fc8080_write(handle, 0x7a, 0x21);
 	fc8080_write(handle, 0x7b, 0xff);
-	fc8080_write(handle, 0x7c, 0x1b);
-	fc8080_write(handle, 0x7d, 0x18);
+	fc8080_write(handle, 0x7c, 0x1a);
+	fc8080_write(handle, 0x7d, 0x16);
 	fc8080_write(handle, 0x84, 0x00);
-	fc8080_write(handle, 0x85, 0x0d);
+	fc8080_write(handle, 0x85, 0x10);
 	fc8080_write(handle, 0x86, 0x00);
 	fc8080_write(handle, 0x87, 0x10);
 	fc8080_write(handle, 0x88, 0x00);
-	fc8080_write(handle, 0x89, 0x0e);
+	fc8080_write(handle, 0x89, 0x10);
 	fc8080_write(handle, 0x8a, 0x00);
-	fc8080_write(handle, 0x8b, 0x0e);
-	fc8080_write(handle, 0x8c, 0x03);
+	fc8080_write(handle, 0x8b, 0x10);
+	fc8080_write(handle, 0x8c, 0x00);
 	fc8080_write(handle, 0x8d, 0x10);
 	fc8080_write(handle, 0x8e, 0x00);
 	fc8080_write(handle, 0x8f, 0x10);
-	fc8080_write(handle, 0x90, 0x04);
-	fc8080_write(handle, 0x91, 0x10);
+	fc8080_write(handle, 0x90, 0x00);
+	fc8080_write(handle, 0x91, 0x0e);
 	fc8080_write(handle, 0x92, 0x00);
 	fc8080_write(handle, 0x93, 0x00);
 	fc8080_write(handle, 0x94, 0x00);
@@ -208,7 +243,7 @@ s32 fc8080_tuner_init(HANDLE handle, u32 band)
 	fc8080_write(handle, 0x99, 0x0e);
 	fc8080_write(handle, 0x9a, 0x00);
 	fc8080_write(handle, 0x9b, 0x0e);
-	fc8080_write(handle, 0x80, 0x3d);
+	fc8080_write(handle, 0x80, 0x29);
 	fc8080_write(handle, 0x81, 0x20);
 	fc8080_write(handle, 0x82, 0x25);
 	fc8080_write(handle, 0x83, 0x0a);
@@ -235,24 +270,17 @@ s32 fc8080_tuner_init(HANDLE handle, u32 band)
 	fc8080_write(handle, 0xd4, 0x6f);
 #endif
 
-	fc8080_write(handle, 0xae, 0x36);
-	fc8080_write(handle, 0xad, 0x8b);
-	fc8080_write(handle, 0x14, 0x63);
-	fc8080_write(handle, 0x15, 0x02);
-	fc8080_write(handle, 0x18, 0x43);
-	fc8080_write(handle, 0x19, 0x21);
-	fc8080_write(handle, 0x27, 0x82);
-	fc8080_write(handle, 0x28, 0x33);
-	fc8080_write(handle, 0x33, 0x43);
-	fc8080_write(handle, 0x34, 0x41);
-	fc8080_write(handle, 0x53, 0x41);
-	fc8080_write(handle, 0x54, 0x01);
-	fc8080_write(handle, 0x66, 0xf6);
+	fc8080_write(handle, 0xae, 0x03);
+	fc8080_write(handle, 0xad, 117);
 
-	fc8080_write(handle, 0xaf, 0x14);
-	fc8080_write(handle, 0xb6, 0x00);
-	fc8080_write(handle, 0xb8, 0xb0);
-	fc8080_write(handle, 0xb9, 0xc4);
+	fc8080_write(handle, 0x14, 0x63);
+	fc8080_write(handle, 0x27, 0x82);
+	fc8080_write(handle, 0x33, 0x43);
+	fc8080_write(handle, 0x18, 0x43);
+	fc8080_write(handle, 0x28, 0x33);
+	fc8080_write(handle, 0x19, 0x21);
+	fc8080_write(handle, 0x15, 0x02);
+	fc8080_write(handle, 0xb3, 0x78);
 
 	return BBM_OK;
 }
@@ -297,15 +325,14 @@ s32 fc8080_set_freq(HANDLE handle, u32 band, u32 freq)
 	fc8080_write(handle, 0x57, (u8) (((k_val) & 0xff)));
 	fc8080_write(handle, 0x58, (n_val) & 0xff);
 
-	if (freq < 207000)
-		fc8080_write(handle, 0x6a, 0x0b);
-	else
-		fc8080_write(handle, 0x6a, 0x03);
-
-	fc8080_write(handle, 0x04, 0x04);
-	fc8080_write(handle, 0x50, 0xf3);
-	fc8080_write(handle, 0x50, 0xff);
-	fc8080_write(handle, 0x04, 0x00);
+	if (freq < 525000)
+		fc8080_write(handle, 0x6a, 0x0e);
+	else if (525000 <= freq && freq < 600000)
+		fc8080_write(handle, 0x6a, 0x0c);
+	else if (600000 <= freq && freq < 700000)
+		fc8080_write(handle, 0x6a, 0x08);
+	else /* 700000 <= freq */
+		fc8080_write(handle, 0x6a, 0x06);
 
 	return BBM_OK;
 }
@@ -317,11 +344,9 @@ s32 fc8080_get_rssi(HANDLE handle, s32 *rssi)
 
 	u8 lna, rfvga, filter, preamp_pga, a1, ext_lna , a2 , a3, k, crntmode1,
 		crntmode0;
-	u8 temp = 0;
 
-	res = fc8080_read(handle, 0xab, &temp);
-	lna = temp & 0x0f;
-	ext_lna = temp >> 7;
+	res = fc8080_read(handle, 0xab, &lna);
+	lna = lna & 0x0f;
 
 	res = fc8080_read(handle, 0xac, &rfvga);
 	rfvga = rfvga & 0x1f;
@@ -338,19 +363,25 @@ s32 fc8080_get_rssi(HANDLE handle, s32 *rssi)
 
 	res = fc8080_read(handle, 0xaf, &a1);
 
-	res = fc8080_read(handle, 0xae, &temp);
-	a2 = temp & 0x0f;
-	a3 = temp >> 4;
+	res = fc8080_read(handle, 0xab, &ext_lna);
+	ext_lna = ext_lna >> 7;
+
+	res = fc8080_read(handle, 0xae, &a2);
+	a2 = a2 & 0x0F;
+
+	res = fc8080_read(handle, 0xae, &a3);
+	a3 = a3 & 0xf0;
+	a3 = a3 >> 4;
 
 	res = fc8080_read(handle, 0xad, &k);
 
-	if (filter < 7) {
+	if (high_crnt_mode == 2) {
 		crntmode1 = 0;
 		crntmode0 = 0;
-	} else if (filter == 7) {
+	} else if (high_crnt_mode == 1) {
 		crntmode1 = 0;
 		crntmode0 = 1;
-	} else {
+	} else /* high_crnt_mode == 0 */ {
 		crntmode1 = 1;
 		crntmode0 = 0;
 	}

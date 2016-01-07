@@ -19,9 +19,6 @@
 
 #include <linux/module.h>
 #include <linux/spi/spi.h>
-#include <linux/of_gpio.h>
-#include <mach/gpiomux.h>
-
 #include "tdmb.h"
 
 struct spi_device *spi_dmb;
@@ -46,7 +43,8 @@ static int tdmbspi_probe(struct spi_device *spi)
 }
 
 static const struct of_device_id tdmb_spi_match_table[] = {
-	{.compatible = "tdmb_spi_comp"},
+	{   .compatible = "tdmb_spi_comp",
+	},
 	{}
 };
 
@@ -65,26 +63,17 @@ static struct spi_driver tdmbspi_driver = {
 	.remove	= __devexit_p(tdmbspi_remove),
 };
 
-static int __init tdmb_spi_init(void)
+int tdmb_init_bus(void)
 {
 	return spi_register_driver(&tdmbspi_driver);
 }
 
-static void __exit tdmb_spi_exit(void)
+void tdmb_exit_bus(void)
 {
 	spi_unregister_driver(&tdmbspi_driver);
 }
 
-unsigned long tdmb_get_if_handle(void)
+struct spi_device *tdmb_get_spi_handle(void)
 {
-	DPRINTK("%s : spi_dmb 0x%p\n", __func__, spi_dmb);
-	return (unsigned long)spi_dmb;
+	return spi_dmb;
 }
-EXPORT_SYMBOL_GPL(tdmb_get_if_handle);
-
-late_initcall(tdmb_spi_init);
-module_exit(tdmb_spi_exit);
-
-MODULE_AUTHOR("Samsung");
-MODULE_DESCRIPTION("TDMB SPI Driver");
-MODULE_LICENSE("GPL v2");

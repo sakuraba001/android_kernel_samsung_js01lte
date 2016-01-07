@@ -37,6 +37,11 @@
 #include "irqs-8092.h"
 #endif
 
+/* temporary IRQ value - taing.sim */
+#define NR_GPIO_IRQS 152
+#define NR_MSM_IRQS 288
+#define NR_MSM_GPIOS NR_GPIO_IRQS
+
 #elif defined(CONFIG_ARCH_MSM8960) || defined(CONFIG_ARCH_APQ8064) || \
 	defined(CONFIG_ARCH_MSM8930)
 

@@ -128,7 +128,7 @@ static int __maybe_unused two = 2;
 static int __maybe_unused three = 3;
 static unsigned long one_ul = 1;
 static int one_hundred = 100;
-#ifdef CONFIG_INCREASE_MAXIMUM_SWAPPINESS
+#ifdef CONFIG_ZSWAP
 extern int max_swappiness;
 #endif
 #ifdef CONFIG_PRINTK
@@ -1012,15 +1012,7 @@ static struct ctl_table kern_table[] = {
 		.maxlen		= sizeof(int),
 		.mode		= 0444,
 		.proc_handler	= proc_dointvec,
-	},
-
-	{
-		.procname	= "cold_boot",
-		.data		= &cold_boot,
-		.maxlen		= sizeof(int),
-		.mode		= 0444,
-		.proc_handler	= proc_dointvec,
-	},
+},
 #endif
 /*
  * NOTE: do not add new entries to this table unless you have read
@@ -1140,7 +1132,7 @@ static struct ctl_table vm_table[] = {
 		.mode		= 0644,
 		.proc_handler	= proc_dointvec_minmax,
 		.extra1		= &zero,
-#ifdef CONFIG_INCREASE_MAXIMUM_SWAPPINESS
+#ifdef CONFIG_ZSWAP
 		.extra2		= &max_swappiness,
 #else
 		.extra2		= &one_hundred,

@@ -53,16 +53,12 @@ int w1_max_slave_ttl = 2;
 static struct w1_master *master_dev = NULL;
 
 extern int w1_ds28el15_verifymac(struct w1_slave *sl);
-extern int id, color, verification;
+extern int id, color;
 #else
 static int w1_timeout = 10;
 int w1_max_slave_count = 10;
 int w1_max_slave_ttl = 10;
-#endif /* CONFIG_W1_SLAVE_DS28E02 */
-
-#ifdef CONFIG_SEC_H_PROJECT
-int verified = -1;
-#endif
+#endif // CONFIG_W1_SLAVE_DS28EL15
 
 module_param_named(timeout, w1_timeout, int, 0);
 module_param_named(max_slave_count, w1_max_slave_count, int, 0);
@@ -70,6 +66,26 @@ module_param_named(slave_ttl, w1_max_slave_ttl, int, 0);
 
 DEFINE_MUTEX(w1_mlock);
 LIST_HEAD(w1_masters);
+
+
+#ifdef CONFIG_W1_SLAVE_DS28EL15
+int fail_cnt = 0;
+
+//-----------------------------------------------------------------
+// Count total security fail
+//
+// int result - result of slave node state
+//
+void w1_ds28el15_fail_count(int result)
+{
+	if (result == 0)
+		fail_cnt = 0;
+	else
+		fail_cnt++;
+
+	if (fail_cnt > 100)	fail_cnt = 5;
+}
+#endif /* CONFIG_W1_SLAVE_DS28EL15 */
 
 static int w1_attach_slave_device(struct w1_master *dev, struct w1_reg_num *rn);
 
@@ -517,18 +533,21 @@ static ssize_t w1_master_attribute_store_remove(struct device *dev,
 
 static ssize_t w1_master_attribute_show_verify_mac(struct device *dev, struct device_attribute *attr, char *buf)
 {
+	struct w1_master *md = dev_to_w1_master(dev);
 	int result = -1;
-#ifdef CONFIG_SEC_H_PROJECT
-	result = verified;
-#else
-#ifdef CONFIG_W1_WORKQUEUE
-	cancel_delayed_work_sync(&w1_gdev->w1_dwork);
-	schedule_delayed_work(&w1_gdev->w1_dwork, 0);
-
-	msleep(10);
-#endif
-	result = verification;
-#endif
+	struct list_head *ent, *n;
+	struct w1_slave *sl = NULL;
+	
+	list_for_each_safe(ent, n, &md->slist) {
+		sl = list_entry(ent, struct w1_slave, w1_slave_entry);
+	}
+	
+	/* verify mac */
+	if(sl)
+		result = w1_ds28el15_verifymac(sl);
+	else
+		pr_info("%s : sysfs call fail\n", __func__);
+	
 	return sprintf(buf, "%d\n", result);
 }
 
@@ -615,7 +634,7 @@ static int w1_uevent(struct device *dev, struct kobj_uevent_env *env)
 #ifdef CONFIG_W1_SLAVE_DS28EL15
 		master_dev = md; //container_of(dev, struct w1_master, dev);
 		printk(KERN_ERR "%s master_dev name = %s\n", __func__, master_dev->name);
-#endif	/* CONFIG_W1_SLAVE_DS28EL15 */
+#endif	// CONFIG_W1_SLAVE_DS28EL15
 	} else if (dev->driver == &w1_slave_driver) {
 		sl = container_of(dev, struct w1_slave, dev);
 		event_owner = "slave";
@@ -660,7 +679,7 @@ void w1_master_search(void)
 	w1_search_process(master_dev, W1_SEARCH);
 }
 EXPORT_SYMBOL(w1_master_search);
-#endif /* CONFIG_W1_SLAVE_DS28EL15 */
+#endif // CONFIG_W1_SLAVE_DS28EL15
 
 static int __w1_attach_slave_device(struct w1_slave *sl)
 {
@@ -907,16 +926,14 @@ void w1_slave_found(struct w1_master *dev, u64 rn)
 	sl = w1_slave_search_device(dev, tmp);
 	if (sl) {
 		set_bit(W1_SLAVE_ACTIVE, (long *)&sl->flags);
-#ifdef CONFIG_SEC_H_PROJECT
-			verified = 0;
-#endif
+		w1_ds28el15_fail_count(0);
 	} else {
 		printk(KERN_ERR "%s : no slave before, id=0x%x\n", __func__, tmp->family);
 		if (rn && tmp->crc == w1_calc_crc8((u8 *)&rn_le, 7)) {
-#ifdef CONFIG_SEC_H_PROJECT
-			verified = 0;
-#endif
 			w1_attach_slave_device(dev, tmp);
+			w1_ds28el15_fail_count(0);
+		} else {
+			w1_ds28el15_fail_count(-1);
 		}
 	}
 
@@ -964,9 +981,7 @@ void w1_search(struct w1_master *dev, u8 search_type, w1_slave_found_callback cb
 		 */
 		if (w1_reset_bus(dev)) {
 			dev_dbg(&dev->dev, "No devices present on the wire.\n");
-#ifdef CONFIG_SEC_H_PROJECT
-			verified = -1;
-#endif
+			w1_ds28el15_fail_count(-1);
 			break;
 		}
 
@@ -1079,22 +1094,6 @@ int w1_process(void *data)
 
 	return 0;
 }
-
-#ifdef CONFIG_W1_WORKQUEUE
-void w1_work(struct work_struct *work)
-{
-	struct w1_master *dev =
-		container_of(work, struct w1_master, w1_dwork.work);
-
-	if (dev->search_count) {
-		mutex_lock(&dev->mutex);
-		w1_search_process(dev, W1_SEARCH);
-		mutex_unlock(&dev->mutex);
-	}
-
-	schedule_delayed_work(&dev->w1_dwork, HZ * 2);
-}
-#endif
 
 static int __init w1_init(void)
 {

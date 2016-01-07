@@ -2,7 +2,7 @@
 # Cypress touchkey configuration
 #
 
-config KEYBOARD_CYPRESS_TOUCHKEY_H
+config KEYBOARD_CYPRESS_TOUCHKEY
 	tristate "Cypress touchkey support"
 	default n
 	help

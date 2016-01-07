@@ -522,7 +522,7 @@ int input_open_device(struct input_handle *handle)
 	if (retval) {
 		dev->users_private--;
 		if (!dev->disabled)
-			dev->users--;
+		dev->users--;
 		if (!--handle->open) {
 			/*
 			 * Make sure we are not delivering any more events
@@ -1656,7 +1656,8 @@ void input_reset_device(struct input_dev *dev)
 		 * Keys that have been pressed at suspend time are unlikely
 		 * to be still pressed when we resume.
 		 */
-		/* spin_lock_irq(&dev->event_lock);
+
+	/*	spin_lock_irq(&dev->event_lock);
 		input_dev_release_keys(dev);
 		spin_unlock_irq(&dev->event_lock); */
 	}

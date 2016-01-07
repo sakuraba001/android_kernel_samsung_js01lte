@@ -424,9 +424,9 @@ ipt_do_table(struct sk_buff *skb,
 	pr_debug("Exiting %s; resetting sp from %u to %u\n",
 		 __func__, *stackptr, origptr);
 	*stackptr = origptr;
- 	xt_write_recseq_end(addend);
+	xt_write_recseq_end(addend);
 	put_reader(&(table->private_lock));
- 	local_bh_enable();
+	local_bh_enable();
 
 #ifdef DEBUG_ALLOW_ALL
 	return NF_ACCEPT;

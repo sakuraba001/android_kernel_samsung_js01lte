@@ -94,7 +94,7 @@ struct cypress_touchkey_info {
 #ifdef CONFIG_LEDS_CLASS
 	struct led_classdev			leds;
 	enum led_brightness			brightness;
-	struct mutex			touchkey_mutex;
+	struct mutex			touchkey_led_mutex;
 	struct mutex			fw_lock;
 	struct workqueue_struct			*led_wq;
 	struct work_struct			led_work;

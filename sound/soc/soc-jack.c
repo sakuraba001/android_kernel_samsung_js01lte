@@ -51,7 +51,6 @@ struct switch_dev android_switch = {
 int snd_soc_jack_new(struct snd_soc_codec *codec, const char *id, int type,
 		     struct snd_soc_jack *jack)
 {
-	mutex_init(&jack->mutex);
 	jack->codec = codec;
 	INIT_LIST_HEAD(&jack->pins);
 	INIT_LIST_HEAD(&jack->jack_zones);
@@ -95,7 +94,7 @@ void snd_soc_jack_report(struct snd_soc_jack *jack, int status, int mask)
 	codec = jack->codec;
 	dapm =  &codec->dapm;
 
-	mutex_lock(&jack->mutex);
+	mutex_lock(&codec->mutex);
 
 	oldstatus = jack->status;
 
@@ -129,7 +128,7 @@ void snd_soc_jack_report(struct snd_soc_jack *jack, int status, int mask)
 	snd_jack_report(jack->jack, jack->status);
 
 out:
-	mutex_unlock(&jack->mutex);
+	mutex_unlock(&codec->mutex);
 }
 EXPORT_SYMBOL_GPL(snd_soc_jack_report);
 

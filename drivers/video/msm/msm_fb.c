@@ -47,7 +47,6 @@
 #ifdef CONFIG_SEC_DEBUG
 #include <mach/sec_debug.h>
 #endif
-
 #define MSM_FB_C
 #include "msm_fb.h"
 #include "mddihosti.h"
@@ -4209,7 +4208,6 @@ struct platform_device *msm_fb_add_device(struct platform_device *pdev)
 				2);
 	}
 #endif
-
 	return this_dev;
 }
 EXPORT_SYMBOL(msm_fb_add_device);
@@ -4243,7 +4241,6 @@ void get_fbinfo(int fb_num, unsigned int *fb_paddr, unsigned int *xres,
 	return;
 }
 #endif
-
 int get_fb_phys_info(unsigned long *start, unsigned long *len, int fb_num,
 	int subsys_id)
 {

@@ -124,7 +124,6 @@ static void initialize_variable(struct ssp_data *data)
 	data->prox_device = NULL;
 	data->light_device = NULL;
 	data->ges_device = NULL;
-	data->step_count_total = 0;
 
 	initialize_function_pointer(data);
 }
@@ -331,13 +330,12 @@ static int ssp_probe(struct i2c_client *client,
 	int iRet = 0;
 	struct ssp_data *data;
 	struct ssp_platform_data *pdata;
-#if 0 // not yet integrated in KK
+
 	if (poweroff_charging == 1 || recovery_mode == 1) {
 		pr_err("[SSP] probe exit : lpm %d recovery %d \n",
 			poweroff_charging, recovery_mode);
 		return -ENODEV;
 	}
-#endif
 
 	data = kzalloc(sizeof(*data), GFP_KERNEL);
 	if (data == NULL) {

@@ -63,11 +63,6 @@ extern int poweroff_charging;
 #define TO_SECS(arr)		(arr[0] | (arr[1] << 8) | (arr[2] << 16) | \
 							(arr[3] << 24))
 
-/* Module parameter to control power-on-alarm */
-static bool poweron_alarm;
-module_param(poweron_alarm, bool, 0644);
-MODULE_PARM_DESC(poweron_alarm, "Enable/Disable power-on alarm");
-
 /* rtc driver internal structure */
 struct qpnp_rtc {
 	u8  rtc_ctrl_reg;
@@ -93,7 +88,6 @@ struct qpnp_rtc {
 #ifdef CONFIG_RTC_AUTO_PWRON_PARAM
 static struct workqueue_struct*	sapa_workq;
 static struct delayed_work		sapa_load_param;
-static struct delayed_work		sapa_reboot_work;
 static struct wake_lock			sapa_wakelock;
 static int kparam_loaded, shutdown_loaded;
 #endif
@@ -456,16 +450,7 @@ rtc_rw_fail:
 }
 
 #ifdef CONFIG_RTC_AUTO_PWRON
-static void sapa_reboot(struct work_struct *work)
-{
-	//machine_restart(NULL);
-	kernel_restart(NULL);
-	//panic("Test panic");
-}
-
 #ifdef CONFIG_RTC_AUTO_PWRON_PARAM
-static struct device *sapa_rtc_dev;
-static int qpnp_rtc0_resetbootalarm(struct device *dev);
 static void sapa_load_kparam(struct work_struct *work)
 {
 	int temp1, temp2, temp3;
@@ -490,8 +475,6 @@ static void sapa_load_kparam(struct work_struct *work)
 		rtc_time_to_tm( pwron_time, &sapa_saved_time.time );
 		print_time("[SAPA] saved_time", &sapa_saved_time.time, pwron_time);
 	}
-	/* Bug fix : USB cable or IRQ is disabled in LPM chg */
-	qpnp_rtc0_resetbootalarm(sapa_rtc_dev);
 }
 #endif
 
@@ -809,7 +792,9 @@ static irqreturn_t qpnp_alarm_trigger(int irq, void *dev_id)
 			wake_lock(&sapa_wakelock);
 			rtc_dd->alarm_irq_flag = true;
 			pr_info("%s [SAPA] Restart since RTC \n",__func__);
-			queue_delayed_work(sapa_workq, &sapa_reboot_work, (1*HZ));
+			//machine_restart(NULL);
+			//kernel_restart(NULL);
+			//panic("Test panic");
 		}
 		else {
 			pr_info("%s [SAPA] not power on alarm.\n", __func__);
@@ -958,7 +943,6 @@ static int __devinit qpnp_rtc_probe(struct spmi_device *spmi)
 	}
 
 #ifdef CONFIG_RTC_AUTO_PWRON_PARAM
-	sapa_rtc_dev = rtc_dd->rtc_dev;
 	sapa_workq = create_singlethread_workqueue("pwron_alarm_resume");
 	if (sapa_workq == NULL) {
 		pr_err("[SAPA] pwron_alarm work creating failed (%d)\n", rc);
@@ -969,6 +953,7 @@ static int __devinit qpnp_rtc_probe(struct spmi_device *spmi)
 #ifdef CONFIG_SEC_PM
 	wake_lock_init(&resume_wakelock, WAKE_LOCK_SUSPEND, "resume_wakelock");
 #endif
+
 	device_init_wakeup(&spmi->dev, 1);
 	enable_irq_wake(rtc_dd->rtc_alarm_irq);
 
@@ -980,8 +965,7 @@ static int __devinit qpnp_rtc_probe(struct spmi_device *spmi)
 	/* To read saved power on alarm time */
 	if ( poweroff_charging ) {
 		INIT_DELAYED_WORK(&sapa_load_param, sapa_load_kparam);
-		INIT_DELAYED_WORK(&sapa_reboot_work, sapa_reboot);
-		queue_delayed_work(sapa_workq, &sapa_load_param, (15*HZ));
+		queue_delayed_work(sapa_workq, &sapa_load_param, (10*HZ));
 	}
 #endif
 	return 0;
@@ -999,12 +983,9 @@ static int qpnp_rtc_auto_pwron_resume(struct device *dev)
 {
 	struct qpnp_rtc *rtc_dd = dev_get_drvdata(dev);
 
-	if(rtc_dd->lpm_mode==1) {
-		pr_info("%s lpm mode, do not disable irq\n",__func__);
-	} else {
-		if (device_may_wakeup(dev))
-			disable_irq_wake(rtc_dd->rtc_alarm_irq);
-	}
+	if (device_may_wakeup(dev))
+		disable_irq_wake(rtc_dd->rtc_alarm_irq);
+
 	sapa_dev_suspend = 0;
 	qpnp_rtc0_resetbootalarm(dev);
 
@@ -1016,12 +997,8 @@ static int qpnp_rtc_auto_pwron_suspend(struct device *dev)
 {
 	struct qpnp_rtc *rtc_dd = dev_get_drvdata(dev);
 
-	if(rtc_dd->lpm_mode==1) {
-		pr_info("%s lpm mode, no need to enable irq\n",__func__);
-	} else {
-		if (device_may_wakeup(dev))
-			enable_irq_wake(rtc_dd->rtc_alarm_irq);
-	}
+	if (device_may_wakeup(dev))
+		enable_irq_wake(rtc_dd->rtc_alarm_irq);
 	sapa_dev_suspend = 1;
 	pr_info("%s\n",__func__);
 	return 0;
@@ -1119,7 +1096,7 @@ static void qpnp_rtc_shutdown(struct spmi_device *spmi)
 	struct qpnp_rtc *rtc_dd = dev_get_drvdata(&spmi->dev);
 	bool rtc_alarm_powerup = rtc_dd->rtc_alarm_powerup;
 
-	if (!rtc_alarm_powerup && !poweron_alarm) {
+	if (!rtc_alarm_powerup) {
 		spin_lock_irqsave(&rtc_dd->alarm_ctrl_lock, irq_flags);
 		dev_dbg(&spmi->dev, "Disabling alarm interrupts\n");
 

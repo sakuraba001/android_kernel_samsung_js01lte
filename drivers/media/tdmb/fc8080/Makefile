@@ -1,11 +1,10 @@
 obj-y += bbm.o
 obj-y += dmbdrv_wrap_fc8080.o
 obj-y += fc8080_bb.o
+obj-y += fc8080_i2c.o
 obj-y += fc8080_isr.o
 obj-$(CONFIG_TDMB_SPI) += fc8080_spi.o
 obj-$(CONFIG_TDMB_EBI) += fc8080_ppi.o
-obj-$(CONFIG_TDMB_I2C) += fc8080_i2c.o
-obj-$(CONFIG_TDMB_TSIF) += fc8080_demux.o
 obj-y += fc8080_tun.o
 obj-y += fci_hal.o
 obj-y += fci_hpi.o

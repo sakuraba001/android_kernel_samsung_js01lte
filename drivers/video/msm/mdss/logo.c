@@ -35,6 +35,10 @@
 #define fb_height(fb)	((fb)->var.yres)
 #define fb_size(fb)	((fb)->var.xres * (fb)->var.yres * 2)
 
+#if  defined(CONFIG_FB_MSM_EDP_SAMSUNG) || defined(CONFIG_FB_MSM_MIPI_TFT_VIDEO_FULL_HD_PT_PANEL)
+#define ENABLE_BOOTLOGO
+#endif
+
 #ifdef CONFIG_SAMSUNG_LPM_MODE
 extern int poweroff_charging;
 #endif
@@ -43,8 +47,6 @@ extern int poweroff_charging;
 static struct workqueue_struct  *wq_bootlogo;
 static struct delayed_work w_bootlogo;
 #endif
-
-int get_lcd_attached(void);
 
 static void memset16(void *_ptr, unsigned short val, unsigned count)
 {
@@ -168,7 +170,6 @@ err_logo_close_file:
 }
 EXPORT_SYMBOL(load_565rle_image);
 
-#if 0
 static int samsung_copy_bootloader_screen(void *virt)
 {
 
@@ -225,7 +226,6 @@ static int samsung_copy_bootloader_screen(void *virt)
 
 	return 0;
 }
-#endif
 
 static int  samsung_mdss_allocate_framebuffer(struct fb_info *info){
 
@@ -235,7 +235,11 @@ static int  samsung_mdss_allocate_framebuffer(struct fb_info *info){
 	static struct ion_handle *ihdl;
 	struct ion_client *iclient = mdss_get_ionclient();
 	static ion_phys_addr_t phys;
-
+#if defined(CONFIG_FB_MSM_MIPI_TFT_VIDEO_FULL_HD_PT_PANEL)
+	int ret = 1;
+#else
+	int ret = 0;
+#endif
 	ihdl = ion_alloc(iclient, 0x1000000, SZ_1M,
 			ION_HEAP(ION_QSECOM_HEAP_ID), 0);
 	if (IS_ERR_OR_NULL(ihdl)) {
@@ -252,13 +256,11 @@ static int  samsung_mdss_allocate_framebuffer(struct fb_info *info){
 	msm_iommu_map_contig_buffer(phys, mfd->mdp.fb_mem_get_iommu_domain(), 0, size, SZ_4K, 0,
 					    &mfd->iova);
 
-#if 0
 	//Copy  screen
 	if(contsplash_lkstat == 1)
 		ret =  samsung_copy_bootloader_screen(virt);
-#endif
 
-	return 1;
+	return ret;
 }
 
 int load_samsung_boot_logo(void)
@@ -279,13 +281,6 @@ int load_samsung_boot_logo(void)
 	if(poweroff_charging)
 		return 0;
 #endif
-
-	if (get_lcd_attached() == 0)
-	{
-		pr_err("%s: get_lcd_attached(0)!\n",__func__);
-		return -ENODEV;
-	}
-
 	pr_info("%s:+\n",__func__);
 	ret = samsung_mdss_allocate_framebuffer(info);
 	
@@ -311,13 +306,10 @@ int load_samsung_boot_logo(void)
 			}
 			val <<= 8;
 		}
-	} else
-		pr_info("%s : load_565rle_image loading fail\n", __func__);
-	
+	}
 	fb_pan_display(info, &info->var);
-	pdata->set_backlight(pdata, 114);
+	pdata->set_backlight(pdata, 255);
 	
-	pr_info("%s:-\n",__func__);
 	return 0;
 }
 EXPORT_SYMBOL(load_samsung_boot_logo);
@@ -327,12 +319,6 @@ static void bootlogo_work(struct work_struct *work)
 {
 	struct msm_fb_data_type *mfd = NULL ;
 	static int bootlogo_displayed = 0;
-
-	if (get_lcd_attached() == 0)
-	{
-		pr_err("%s: get_lcd_attached(0)!\n",__func__);
-		return ;
-	}
 
 	if(!registered_fb[0]) {
 			queue_delayed_work(wq_bootlogo, &w_bootlogo, msecs_to_jiffies(200));
@@ -364,13 +350,6 @@ static int __init boot_logo_init(void) {
 	if(poweroff_charging)
 		return 0;
 #endif
-
-	if (get_lcd_attached() == 0)
-	{
-		pr_err("%s: get_lcd_attached(0)!\n",__func__);
-		return -ENODEV;
-	}
-
 	pr_info("%s:+\n",__func__);
 	wq_bootlogo =	create_singlethread_workqueue("bootlogo");
 	INIT_DELAYED_WORK(&w_bootlogo, bootlogo_work);

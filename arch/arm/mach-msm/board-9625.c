@@ -22,7 +22,6 @@
 #include <linux/of_irq.h>
 #include <linux/memory.h>
 #include <linux/msm_tsens.h>
-#include <linux/msm_thermal.h>
 #include <asm/mach/map.h>
 #include <asm/hardware/gic.h>
 #include <asm/mach/arch.h>
@@ -39,9 +38,9 @@
 #include <mach/rpm-regulator-smd.h>
 #include "board-dt.h"
 #include <mach/msm_bus_board.h>
-#include <mach/msm_smem.h>
 #include "clock.h"
 #include "modem_notifier.h"
+#include "lpm_resources.h"
 #include "spm.h"
 
 #define MSM_KERNEL_EBI_SIZE	0x51000
@@ -116,10 +115,6 @@ static struct of_dev_auxdata msm9625_auxdata_lookup[] __initdata = {
 			"usb_bam", NULL),
 	OF_DEV_AUXDATA("qcom,hsic-host", 0xF9A15000, \
 			"msm_hsic_host", NULL),
-	OF_DEV_AUXDATA("qcom,sdhci-msm", 0xF98A4900, \
-		       "msm_sdcc.2", NULL),
-	OF_DEV_AUXDATA("qcom,sdhci-msm", 0xF9864900, \
-		       "msm_sdcc.3", NULL),
 	{}
 };
 
@@ -235,16 +230,15 @@ static void __init msm9625_init_buses(void)
  */
 void __init msm9625_add_drivers(void)
 {
-	msm_smem_init();
 	msm_init_modem_notifier_list();
 	msm_smd_init();
 	msm_rpm_driver_init();
+	msm_lpmrs_module_init();
 	rpm_regulator_smd_driver_init();
 	msm_spm_device_init();
 	msm_clock_init(&msm9625_clock_init_data);
 	msm9625_init_buses();
 	tsens_tm_init_driver();
-	msm_thermal_device_init();
 }
 
 void __init msm9625_init(void)

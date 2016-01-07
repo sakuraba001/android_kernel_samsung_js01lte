@@ -59,6 +59,12 @@ struct msm_bus_fab_list {
 LIST_HEAD(fabdata_list);
 LIST_HEAD(cl_list);
 
+struct thresh {
+	int id;
+	u64 th;
+	bool trigger;
+};
+
 /**
  * The following structures and funtions are used for
  * the test-client which can be created at run-time.
@@ -67,6 +73,7 @@ LIST_HEAD(cl_list);
 static struct msm_bus_vectors init_vectors[1];
 static struct msm_bus_vectors current_vectors[1];
 static struct msm_bus_vectors requested_vectors[1];
+static struct thresh threshold;
 
 static struct msm_bus_paths shell_client_usecases[] = {
 	{
@@ -219,6 +226,24 @@ static int msm_bus_dbg_ab_set(void  *data, u64 val)
 }
 DEFINE_SIMPLE_ATTRIBUTE(shell_client_ab_fops, msm_bus_dbg_ab_get,
 	msm_bus_dbg_ab_set, "%llu\n");
+
+static int msm_bus_dbg_th_get(void  *data, u64 *val)
+{
+	*val = msm_bus_get_thresh(1);
+	MSM_BUS_DBG("Get th: %llu\n", *val);
+	return 0;
+}
+
+static int msm_bus_dbg_th_set(void  *data, u64 val)
+{
+	threshold.th = val;
+	MSM_BUS_DBG("Set th: %llu\n", val);
+	msm_bus_set_thresh(1, threshold.th);
+	msm_bus_set_thresh(2, threshold.th);
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(shell_client_th_fops, msm_bus_dbg_th_get,
+	msm_bus_dbg_th_set, "%llu\n");
 
 static int msm_bus_dbg_ib_get(void  *data, u64 *val)
 {
@@ -651,6 +676,9 @@ static int __init msm_bus_debugfs_init(void)
 	if (debugfs_create_file("ib", S_IRUGO | S_IWUSR, shell_client, &val,
 		&shell_client_ib_fops) == NULL)
 		goto err;
+	if (debugfs_create_file("threshold", S_IRUGO | S_IWUSR, shell_client, &val,
+		&shell_client_th_fops) == NULL)
+		goto err;
 	if (debugfs_create_file("ab", S_IRUGO | S_IWUSR, shell_client, &val,
 		&shell_client_ab_fops) == NULL)
 		goto err;
@@ -679,7 +707,6 @@ static int __init msm_bus_debugfs_init(void)
 			commit, (void *)fablist->name, &fabric_data_fops);
 		if (fablist->file == NULL) {
 			MSM_BUS_DBG("Cannot create files for commit data\n");
-			mutex_unlock(&msm_bus_dbg_fablist_lock);
 			goto err;
 		}
 	}

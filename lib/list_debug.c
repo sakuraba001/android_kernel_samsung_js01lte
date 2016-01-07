@@ -12,12 +12,10 @@
 #include <linux/kernel.h>
 #include <linux/bug.h>
 
-#if 0
 #ifdef CONFIG_SEC_DEBUG_LIST_PANIC
 static int list_debug = 0x00000100UL;
 #else
 static int list_debug;
-#endif
 #endif
 
 /*
@@ -31,23 +29,24 @@ void __list_add(struct list_head *new,
 			      struct list_head *prev,
 			      struct list_head *next)
 {
+        if (list_debug)
+                BUG_ON(next->prev != prev);
+        else
 	WARN(next->prev != prev,
 		"list_add corruption. next->prev should be "
 		"prev (%p), but was %p. (next=%p).\n",
 		prev, next->prev, next);
+        if (list_debug)
+                BUG_ON(prev->next != next);
+        else
 	WARN(prev->next != next,
 		"list_add corruption. prev->next should be "
 		"next (%p), but was %p. (prev=%p).\n",
 		next, prev->next, prev);
 
-#if 0
 	BUG_ON(((prev->next != next) || (next->prev != prev)) &&
 		PANIC_CORRUPTION);
-#endif
-	if ((prev->next != next) || (next->prev != prev))
-	{
-		panic("list corruption during add");
-	}
+
 	next->prev = new;
 	new->next = next;
 	new->prev = prev;
@@ -74,10 +73,8 @@ void __list_del_entry(struct list_head *entry)
 	    WARN(next->prev != entry,
 		"list_del corruption. next->prev should be %p, "
 		"but was %p\n", entry, next->prev)) {
-#if 0
-		BUG_ON(PANIC_CORRUPTION);
-#endif
-		panic("list corruption during del");
+                if (list_debug)
+                        BUG_ON(PANIC_CORRUPTION);
 		return;
 	}
 

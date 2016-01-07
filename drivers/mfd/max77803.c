@@ -134,16 +134,8 @@ EXPORT_SYMBOL_GPL(max77803_update_reg);
 static int of_max77803_dt(struct device *dev, struct max77803_platform_data *pdata)
 {
 	struct device_node *np = dev->of_node;
-#ifdef CONFIG_VIBETONZ
-	struct max77803_haptic_platform_data *haptic_data;
-#endif
 	int retval = 0;
 	
-#ifdef CONFIG_VIBETONZ
-	haptic_data = kzalloc(sizeof(struct max77803_haptic_platform_data), GFP_KERNEL);
-	if (haptic_data == NULL)
-		return -ENOMEM;
-#endif
 	if(!np)
 		return -EINVAL;
 
@@ -160,17 +152,7 @@ static int of_max77803_dt(struct device *dev, struct max77803_platform_data *pda
 	pr_info("%s: irq-gpio: %u \n", __func__, pdata->irq_gpio);
 	pr_info("%s: irq-base: %u \n", __func__, pdata->irq_base);
 	pr_info("%s: wc-irq-gpio: %u \n", __func__, pdata->wc_irq_gpio);
-#ifdef CONFIG_VIBETONZ
-	of_property_read_u32(np, "haptic,max_timeout", &haptic_data->max_timeout);
-	of_property_read_u32(np, "haptic,duty", &haptic_data->duty);
-	of_property_read_u32(np, "haptic,period", &haptic_data->period);
-	of_property_read_u32(np, "haptic,pwm_id", &haptic_data->pwm_id);
-	pr_info("%s: timeout: %u \n", __func__, haptic_data->max_timeout);
-	pr_info("%s: duty: %u \n", __func__, haptic_data->duty);
-	pr_info("%s: period: %u \n", __func__, haptic_data->period);
-	pr_info("%s: pwm_id: %u \n", __func__, haptic_data->pwm_id);
-	pdata->haptic_data = haptic_data;
-#endif
+
 	return 0;
 }
 
@@ -203,14 +185,16 @@ static int max77803_i2c_probe(struct i2c_client *i2c,
 			return ret;
 		}
 		/*Filling the platform data*/
-		pdata->muic_data = &max77803_muic;
-#ifdef CONFIG_REGULATOR_MAX77803
 		pdata->num_regulators = MAX77803_REG_MAX;
-		pdata->regulators = max77803_regulators;
+		pdata->muic_data = &max77803_muic;
+		pdata->charger_data = &sec_battery_pdata;
+		pdata->regulators = max77803_regulators,
+#ifdef CONFIG_VIBETONZ
+		pdata->haptic_data = &max77803_haptic_pdata;
 #endif
-#ifdef CONFIG_LEDS_MAX77803
 		pdata->led_data = &max77803_led_pdata;
-#endif
+		/* set irq_base at sec_battery_pdata */
+		sec_battery_pdata.bat_irq = pdata->irq_base + MAX77803_CHG_IRQ_BATP_I;
 		/*pdata update to other modules*/
 		i2c->dev.platform_data = pdata;
 	} else

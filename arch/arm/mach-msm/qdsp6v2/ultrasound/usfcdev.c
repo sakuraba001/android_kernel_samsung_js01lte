@@ -369,12 +369,14 @@ bool usfcdev_set_filter(uint16_t event_type_ind, bool filter)
 
 	return rc;
 }
-
+/* Remove initcall by SE team */
+/*
 static int __init usfcdev_init(void)
 {
 	return 0;
 }
 
 device_initcall(usfcdev_init);
+*/
 
 MODULE_DESCRIPTION("Handle of events from devices, conflicting with USF");

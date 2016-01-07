@@ -24,8 +24,8 @@ struct slot_switch_wq {
 	struct list_head entry;
 };
 
-#define GPIO_SIM_SEL 123
-#define GPIO_GG_SEL 0
+#define GPIO_SIM_SEL 142
+#define GPIO_GG_SEL 115
 
 static ssize_t get_slot_switch(struct device *dev, struct device_attribute *attr, char *buf)
 {
@@ -165,7 +165,6 @@ static int __init slot_switch_manager_init(void)
 		printk("%s end \n",__func__);
 	}
 
-#if 0
 	gpio = GPIO_GG_SEL;
 	err = gpio_request(gpio, "GG_SEL");
 	if (err) {
@@ -178,7 +177,6 @@ static int __init slot_switch_manager_init(void)
 		gpio_set_value(GPIO_GG_SEL, 1);  // fixed to '1' from '0' by jw01.yoo
 		printk("%s end \n",__func__);
 	}
-#endif
 
 	//initailize slot switch device
 	slot_switch_dev = device_create(sec_class,

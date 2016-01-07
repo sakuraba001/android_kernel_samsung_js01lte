@@ -246,8 +246,9 @@ static int __init dsp_init(void)
 	init_waitqueue_head(&dsp_wait);
 	rc = platform_driver_register(&dspcrashd_driver);
 	if (IS_ERR_VALUE(rc)) {
-		pr_err("%s: platform_driver_register for dspcrashd failed\n",
-			__func__);
+		pr_err("%s: platform_driver_register for dspcrashd failed %d\n",
+			__func__, rc);
+		return rc;
 	}
 	return misc_register(&dsp_misc);
 }

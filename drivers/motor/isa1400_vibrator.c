@@ -152,8 +152,6 @@ static void isa1400_vibrator_off(struct isa1400_vibrator_drvdata *data)
 #endif
 	if(vib_ioctl_lock)
 		return;
-
-	isa1400_reg_write(data, ISA1400_REG_STOP);
 	data->pdata->clk_en(false);
 	data->pdata->gpio_en(false);
 }
@@ -587,13 +585,13 @@ static int __devinit isa1400_vibrator_i2c_probe(struct i2c_client *client,
 	if (g_nmajor < 0) {
 		DbgOut((KERN_ERR "tspdrv: can't get major number.\n"));
 		ret = g_nmajor;
-		goto err_platform_data;
+		return ret;
 	}
 #else
 	ret = misc_register(&miscdev);
 	if (ret) {
 		DbgOut((KERN_ERR "tspdrv: misc_register failed.\n"));
-		goto err_platform_data;
+		return ret;
 	}
 #endif
 	ddata->dev.name = "vibrator";

@@ -1,4 +1,5 @@
 CFLAGS_scm.o :=$(call as-instr,.arch_extension sec,-DREQUIRES_SEC=1)
+EXTRA_CFLAGS += -I$(PWD)/arch/arm/mach-msm
 
 obj-y += io.o dma.o memory.o
 ifndef CONFIG_ARM_ARCH_TIMER
@@ -23,9 +24,8 @@ endif
 endif
 
 obj-y += acpuclock.o
-obj-$(CONFIG_MSM_CORTEX_A7) += clock-a7.o
 obj-$(CONFIG_HW_PERF_EVENTS) += perf_trace_counters.o
-obj-$(CONFIG_ARCH_MSM_KRAIT) += acpuclock-krait.o clock-krait.o
+obj-$(CONFIG_ARCH_MSM_KRAIT) += acpuclock-krait.o
 ifdef CONFIG_ARCH_MSM_KRAIT
 obj-$(CONFIG_DEBUG_FS) += acpuclock-krait-debug.o
 endif
@@ -76,7 +76,7 @@ target += smd_rpc_sym.c
 $(obj)/smd_rpc_sym.c: $(src)/smd_rpc_sym $(src)/mkrpcsym.pl
 	$(call if_changed,mkrpcsym)
 
-obj-$(CONFIG_MSM_SMD) += smd.o smd_debug.o remote_spinlock.o smd_private.o smem.o smd_init_dt.o smd_init_plat.o
+obj-$(CONFIG_MSM_SMD) += smd.o smd_debug.o remote_spinlock.o smd_private.o smem.o
 obj-$(CONFIG_MSM_SMP2P) += smp2p.o smp2p_debug.o smp2p_gpio.o
 obj-$(CONFIG_MSM_SMP2P_TEST) += smp2p_loopback.o smp2p_test.o smp2p_gpio_test.o smp2p_spinlock_test.o
 obj-$(CONFIG_MSM_SCM) += scm.o scm-boot.o
@@ -88,7 +88,7 @@ obj-$(CONFIG_MSM_PIL_QDSP6V3) += pil-q6v3.o
 obj-$(CONFIG_MSM_PIL_LPASS_QDSP6V4) += pil-q6v4.o pil-q6v4-lpass.o
 obj-$(CONFIG_MSM_PIL_MODEM_QDSP6V4) += pil-q6v4.o pil-q6v4-mss.o
 obj-$(CONFIG_MSM_PIL_LPASS_QDSP6V5) += pil-q6v5.o pil-q6v5-lpass.o
-obj-$(CONFIG_MSM_PIL_MSS_QDSP6V5) += pil-q6v5.o pil-msa.o pil-q6v5-mss.o
+obj-$(CONFIG_MSM_PIL_MSS_QDSP6V5) += pil-q6v5.o pil-q6v5-mss.o
 obj-$(CONFIG_MSM_PIL_RIVA) += pil-riva.o
 obj-$(CONFIG_MSM_PIL_TZAPPS) += pil-tzapps.o
 obj-$(CONFIG_MSM_PIL_VIDC) += pil-vidc.o
@@ -131,7 +131,6 @@ obj-$(CONFIG_MSM_SDIO_CTL) += sdio_ctl.o
 obj-$(CONFIG_MSM_SMD_NMEA) += smd_nmea.o
 obj-$(CONFIG_MSM_RESET_MODEM) += reset_modem.o
 obj-$(CONFIG_MSM_IPC_ROUTER_SMD_XPRT) += ipc_router_smd_xprt.o
-obj-$(CONFIG_MSM_IPC_ROUTER_HSIC_XPRT) += ipc_router_hsic_xprt.o
 obj-$(CONFIG_MSM_ONCRPCROUTER) += smd_rpcrouter.o
 obj-$(CONFIG_MSM_ONCRPCROUTER) += smd_rpcrouter_device.o
 obj-$(CONFIG_MSM_IPC_ROUTER) += ipc_router.o
@@ -156,12 +155,16 @@ obj-$(CONFIG_MSM_DALRPC) += dal.o
 obj-$(CONFIG_MSM_DALRPC_TEST) += dal_remotetest.o
 obj-$(CONFIG_ARCH_MSM7X30) += dal_axi.o
 obj-$(CONFIG_ARCH_MSM7X27A) += dal_axi.o
+obj-$(CONFIG_MSM_ADSP) += qdsp5/
+obj-$(CONFIG_MSM7KV2_AUDIO) += qdsp5v2/
 obj-$(CONFIG_MSM_RPCSERVER_HANDSET) += rpc_server_handset.o
+obj-$(CONFIG_MSM_QDSP6) += qdsp6/
 obj-$(CONFIG_MSM8X60_AUDIO) += qdsp6v2/
 obj-$(CONFIG_MSM_AUDIO_QDSP6) += qdsp6v2/
 obj-$(CONFIG_MSM_AUDIO_QDSP6V2) += qdsp6v2/
 obj-$(CONFIG_MSM_HW3D) += hw3d.o
 obj-$(CONFIG_PM) += pm-boot.o
+obj-$(CONFIG_MSM_PM8X60) += pm-8x60.o pm-data.o
 obj-$(CONFIG_MSM_IDLE_STATS) += pm-stats.o
 obj-$(CONFIG_MSM_PM2) += pm2.o
 obj-$(CONFIG_MSM_NOPM) += no-pm.o
@@ -207,7 +210,7 @@ ifdef CONFIG_MSM_SUBSYSTEM_RESTART
 endif
 obj-$(CONFIG_MSM_SYSMON_COMM) += sysmon.o
 
-#obj-$(CONFIG_CPU_IDLE) += cpuidle.o
+obj-$(CONFIG_CPU_IDLE) += cpuidle.o
 
 ifdef CONFIG_MSM_CAMERA_V4L2
 	obj-$(CONFIG_ARCH_MSM8X60) += board-msm8x60-camera.o
@@ -275,7 +278,8 @@ obj-$(CONFIG_MACH_MSM8930_MTP) += board-8930-all.o board-8930-regulator-pm8038.o
 obj-$(CONFIG_MACH_MSM8930_FLUID) += board-8930-all.o board-8930-regulator-pm8038.o board-8930-regulator-pm8917.o
 obj-$(CONFIG_PM8921_BMS) += bms-batterydata.o bms-batterydata-desay.o batterydata-lib.o
 obj-$(CONFIG_QPNP_BMS) += bms-batterydata.o bms-batterydata-desay.o batterydata-lib.o
-obj-$(CONFIG_QPNP_BMS) += bms-batterydata-samsung-4450mah.o bms-batterydata-oem.o bms-batterydata-qrd-4v35-2000mah.o bms-batterydata-qrd-4v2-1300mah.o
+obj-$(CONFIG_QPNP_BMS) += bms-batterydata-oem.o bms-batterydata-qrd-4v35-2000mah.o bms-batterydata-qrd-4v2-1300mah.o
+obj-$(CONFIG_BATTERY_SAMSUNG) += Samsung_EB595675LU_3100mAh_Final.o
 obj-$(CONFIG_MACH_APQ8064_CDP) += board-8064-all.o board-8064-regulator.o
 obj-$(CONFIG_MACH_APQ8064_MTP) += board-8064-all.o board-8064-regulator.o
 obj-$(CONFIG_MACH_APQ8064_LIQUID) += board-8064-all.o board-8064-regulator.o
@@ -285,27 +289,35 @@ obj-$(CONFIG_ARCH_MSM9615) += board-9615.o devices-9615.o board-9615-regulator.o
 obj-$(CONFIG_ARCH_MSM9615) += clock-local.o clock-9615.o acpuclock-9615.o clock-rpm.o clock-pll.o
 obj-$(CONFIG_ARCH_APQ8084) += board-8084.o board-8084-gpiomux.o
 obj-$(CONFIG_ARCH_APQ8084) += clock-8084.o
-obj-$(CONFIG_ARCH_MSM8974) += acpuclock-8974.o clock-krait-8974.o board-8974.o clock-local2.o clock-pll.o clock-8974.o clock-rpm.o clock-voter.o clock-mdss-8974.o
-obj-$(CONFIG_SEC_MONDRIAN_PROJECT) += board-8974-sec-mondrian-gpiomux.o
-obj-$(CONFIG_SEC_VIENNA_PROJECT) += board-8974-sec-vienna-gpiomux.o
-obj-$(CONFIG_SEC_K_PROJECT) += board-8974-sec-k-gpiomux.o
-obj-$(CONFIG_SEC_LT03_PROJECT) += board-8974-sec-lt03-gpiomux.o
-obj-$(CONFIG_SEC_N2_PROJECT) += board-8974-sec-n2-gpiomux.o
+#obj-$(CONFIG_ARCH_MSM8974) += board-8974.o board-8974-gpiomux.o
+obj-$(CONFIG_ARCH_MSM8974) += board-8974-sec.o
+obj-$(CONFIG_SEC_J_PROJECT) += board-8974-sec-j-gpiomux.o
+obj-$(CONFIG_SEC_JACTIVE_PROJECT) += board-8974-sec-jactive-gpiomux.o
 obj-$(CONFIG_SEC_H_PROJECT) += board-8974-sec-h-gpiomux.o
+obj-$(CONFIG_SEC_JVE_PROJECT) += board-8974-sec-jve-gpiomux.o
 obj-$(CONFIG_SEC_JS_PROJECT) += board-8974-sec-h-gpiomux.o
 obj-$(CONFIG_SEC_F_PROJECT) += board-8974-sec-f-gpiomux.o
-obj-$(CONFIG_SEC_KS01_PROJECT) += board-8974-sec-ks01-gpiomux.o
+obj-$(CONFIG_SEC_MONTBLANC_PROJECT) += board-8974-sec-montblanc-gpiomux.o
+obj-$(CONFIG_SEC_VIENNA_PROJECT) += board-8974-sec-vienna-gpiomux.o
 obj-$(CONFIG_SEC_LT03_PROJECT) += board-8974-sec-lt03-gpiomux.o
-obj-$(CONFIG_SEC_PICASSO_PROJECT) += board-8974-sec-picasso-gpiomux.o
-obj-$(CONFIG_SEC_V2_PROJECT) += board-8974-sec-v2-gpiomux.o
-obj-$(CONFIG_SEC_KACTIVE_PROJECT) += board-8974-sec-kactive-gpiomux.o
+obj-$(CONFIG_SEC_MELIUSCA_PROJECT) += board-8974-sec-meliusca-gpiomux.o
+ifdef CONFIG_SEC_VIENNA_PROJECT
+obj-$(CONFIG_BATTERY_SAMSUNG) += board-vienna-battery.o
+else ifdef CONFIG_SEC_LT03_PROJECT
+obj-$(CONFIG_BATTERY_SAMSUNG) += board-lt03-battery.o
+else ifdef CONFIG_SEC_JVE_PROJECT
+obj-$(CONFIG_BATTERY_SAMSUNG) += board-jvelte-battery.o
+else
+obj-$(CONFIG_BATTERY_SAMSUNG) += board-8974-battery.o
+endif
+obj-$(CONFIG_ARCH_MSM8974) += acpuclock-8974.o
+obj-$(CONFIG_ARCH_MSM8974) += clock-local2.o clock-pll.o clock-8974.o clock-rpm.o clock-voter.o clock-mdss-8974.o
 obj-$(CONFIG_ARCH_MSM8974) += gdsc.o
 obj-$(CONFIG_ARCH_MSM9625) += gdsc.o
 obj-$(CONFIG_ARCH_MSM8226) += gdsc.o
 obj-$(CONFIG_ARCH_MSM8610) += gdsc.o
 obj-$(CONFIG_ARCH_MPQ8092) += gdsc.o
-obj-$(CONFIG_ARCH_APQ8084) += gdsc.o
-obj-$(CONFIG_KRAIT_REGULATOR) += krait-regulator.o  krait-regulator-pmic.o
+obj-$(CONFIG_ARCH_MSM8974) += krait-regulator.o
 obj-$(CONFIG_ARCH_MSMKRYPTON) += board-krypton.o board-krypton-gpiomux.o
 obj-$(CONFIG_ARCH_MSMSAMARIUM) += board-samarium.o board-samarium-gpiomux.o
 obj-$(CONFIG_ARCH_MSM9625) += board-9625.o board-9625-gpiomux.o
@@ -318,11 +330,7 @@ obj-$(CONFIG_ARCH_MSM8226) += clock-local2.o clock-pll.o clock-8226.o clock-rpm.
 obj-$(CONFIG_ARCH_MSM8226) += acpuclock-8226.o acpuclock-cortex.o
 obj-$(CONFIG_ARCH_MSM8610) += board-8610.o board-8610-gpiomux.o
 obj-$(CONFIG_ARCH_MSM8610) += clock-local2.o clock-pll.o clock-8610.o clock-rpm.o clock-voter.o
-obj-$(CONFIG_ARCH_MSM8610) += acpuclock-8226.o acpuclock-cortex.o
 obj-$(CONFIG_ARCH_MSM8610) += clock-dsi-8610.o
-obj-$(CONFIG_ARCH_MSMKRYPTON) += clock-local2.o clock-pll.o clock-krypton.o clock-rpm.o clock-voter.o
-
-obj-$(CONFIG_MSM_PM) += msm-pm.o pm-data.o
 
 obj-$(CONFIG_MACH_SAPPHIRE) += board-sapphire.o board-sapphire-gpio.o
 obj-$(CONFIG_MACH_SAPPHIRE) += board-sapphire-keypad.o board-sapphire-panel.o
@@ -334,10 +342,6 @@ obj-$(CONFIG_ARCH_MSM8974) += board-8974-wifi.o board-8974-bt.o
 endif
 
 ifdef CONFIG_BCM4339
-obj-$(CONFIG_ARCH_MSM8974) += board-8974-wifi.o board-8974-bt.o
-endif
-
-ifdef CONFIG_BCM4354
 obj-$(CONFIG_ARCH_MSM8974) += board-8974-wifi.o board-8974-bt.o
 endif
 
@@ -354,7 +358,7 @@ obj-$(CONFIG_MSM_RMT_STORAGE_CLIENT) += rmt_storage_client.o
 obj-$(CONFIG_MSM_SDIO_SMEM) += sdio_smem.o
 obj-$(CONFIG_MSM_RPM) += rpm.o rpm_resources.o
 obj-$(CONFIG_MSM_LPM_TEST) += test-lpm.o
-obj-$(CONFIG_MSM_RPM_SMD) += rpm-smd.o lpm_levels.o
+obj-$(CONFIG_MSM_RPM_SMD) += rpm-smd.o lpm_levels.o lpm_resources.o
 obj-$(CONFIG_MSM_MPM_OF) += mpm-of.o
 obj-$(CONFIG_MSM_MPM) += mpm.o
 obj-$(CONFIG_MSM_RPM_STATS_LOG) += rpm_stats.o rpm_master_stat.o
@@ -365,25 +369,6 @@ obj-$(CONFIG_MSM_TZ_LOG) += tz_log.o
 obj-$(CONFIG_MSM_XO) += msm_xo.o
 obj-$(CONFIG_MSM_BUS_SCALING) += msm_bus/
 obj-$(CONFIG_MSM_BUSPM_DEV) += msm-buspm-dev.o
-ifdef CONFIG_ARCH_MSM8610
-obj-$(CONFIG_USB_SWITCH_RT8973) += sec-switch.o
-endif
-obj-$(CONFIG_REGULATOR_MAX77888) += sec-regulator-max77888.o
-obj-$(CONFIG_REGULATOR_MAX77803) += sec-regulator-max77803.o
-obj-$(CONFIG_REGULATOR_MAX77804K) += sec-regulator-max77804k.o
-obj-$(CONFIG_REGULATOR_MAX77823) += sec-regulator-max77823.c
-obj-$(CONFIG_USB_SWITCH_TSU6721) += sec-switch.o
-obj-$(CONFIG_SM5502_MUIC) += sec-switch.o
-
-ifdef CONFIG_EXTCON
-obj-$(CONFIG_EXTCON) += board-extcon-connector.o
-else
-obj-$(CONFIG_USB_SWITCH_FSA9485) += sec-switch.o
-obj-$(CONFIG_MFD_MAX77888) += sec-switch.o
-obj-$(CONFIG_MFD_MAX77804K) += sec-switch.o
-obj-$(CONFIG_MFD_MAX77803) += sec-switch.o
-obj-$(CONFIG_MFD_MAX77828) += sec-switch-77828.o
-endif
 
 obj-$(CONFIG_MSM_IOMMU)		+= iommu_domains.o
 ifdef CONFIG_IOMMU_SUPPORT
@@ -438,7 +423,6 @@ endif
 
 obj-$(CONFIG_SEC_DEBUG) += sec_debug.o sec_gaf.o sec_getlog.o
 obj-$(CONFIG_SEC_DEBUG_DOUBLE_FREE) += sec_debug-dfd.o
-
 obj-$(CONFIG_ARCH_MSM8960) += mdm2.o mdm_common.o
 obj-$(CONFIG_MSM_RTB) += msm_rtb.o
 obj-$(CONFIG_MSM_CACHE_ERP) += cache_erp.o
@@ -449,6 +433,10 @@ obj-$(CONFIG_MSM_HSIC_SYSMON) += hsic_sysmon.o
 obj-$(CONFIG_MSM_HSIC_SYSMON_TEST) += hsic_sysmon_test.o
 
 obj-$(CONFIG_MSM_RPM_SMD) += rpm-smd.o
+obj-$(CONFIG_USB_SWITCH_TSU6721) += sec-switch.o
+obj-$(CONFIG_MFD_MAX77803) += sec-switch.o
+obj-$(CONFIG_USB_SWITCH_FSA9485) += sec-switch.o
+obj-$(CONFIG_REGULATOR_MAX77803) += sec-regulator-max77803.o
 obj-$(CONFIG_MSM_CPR) += msm_cpr.o
 obj-$(CONFIG_MSM_VP_REGULATOR) += msm_vp.o
 obj-$(CONFIG_MSM_RPC_PMIC) += pmic.o
@@ -476,17 +464,16 @@ obj-$(CONFIG_CPU_FREQ_MSM) += cpufreq.o
 
 obj-$(CONFIG_WALL_CLK) += wallclk.o
 obj-$(CONFIG_WALL_CLK_SYSFS) += wallclk_sysfs.o
-
 obj-$(CONFIG_BT_BCM4335) += board-bluetooth-bcm4335.o
 obj-$(CONFIG_BT_BCM4339) += board-bluetooth-bcm4339.o
-obj-$(CONFIG_BT_BCM4354) += board-bluetooth-bcm4354.o
 
-obj-$(CONFIG_ARCH_RANDOM) += early_random.o
-obj-$(CONFIG_PERFMAP) += perfmap.o
-obj-$(CONFIG_ARCH_MSM8974) += cpubw-krait.o
-
-obj-$(CONFIG_SEC_VIENNA_PROJECT) += board-vienna-motor.o
-obj-$(CONFIG_SEC_V2_PROJECT) += board-vienna-motor.o
-
+ifdef CONFIG_SEC_THERMISTOR
 obj-$(CONFIG_SEC_THERMISTOR) += sec_thermistor.o msm8974-thermistor.o
+endif
+
+ifdef CONFIG_SEC_PM
+obj-$(CONFIG_SEC_PM_DEBUG) += sec_pm_debug.o
+endif
+
 obj-$(CONFIG_GSM_MODEM_SPRD6500) += board-sprd6500-spi.o board-sprd6500-modems.o
+obj-$(CONFIG_MACH_VIENNAEUR) +=	board-vienna-motor.o

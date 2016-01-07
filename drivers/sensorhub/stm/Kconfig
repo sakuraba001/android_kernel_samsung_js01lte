@@ -13,7 +13,7 @@ config SENSORS_SYSFS
 config SENSORS_SSP
 	tristate "Sensors ssp"
 	default n
-	depends on SPI
+	depends on I2C
 	help
 	  ssp driver for sensor hub.
           If you say yes here you get ssp support for
@@ -24,7 +24,7 @@ config SENSORS_SSP
 config SENSORS_SSP_AK8963C
 	tristate "Sensors ssp ak8963c"
 	default n
-	depends on SPI
+	depends on I2C
 	help
 	  ak8963c file for factory test in ssp driver.
           If you say yes here you get ak8963c support for
@@ -32,21 +32,10 @@ config SENSORS_SSP_AK8963C
 	  To compile this driver as a module, choose M here: the
 	  module will be called ssp.
 
-config SENSORS_SSP_AK09911
-	tristate "Sensors ssp ak09911"
-	default n
-	depends on SPI
-	help
-	  ak09911 file for factory test and doeplus in ssp driver.
-          If you say yes here you get ak09911 support for
-	  factory test.
-	  To compile this driver as a module, choose M here: the
-	  module will be called ssp.
-
 config SENSORS_SSP_YAS532
 	tristate "Sensors ssp yas532"
 	default n
-	depends on SPI
+	depends on I2C
 	help
 	  yas532 file for factory test in ssp driver.
           If you say yes here you get yas532 support for
@@ -102,7 +91,7 @@ config SENSORS_SSP_MAGNETOMETER_POSITION
 config SENSORS_SSP_SENSORHUB
 	tristate "Sensors ssp sensorhub"
 	default n
-	depends on SPI
+	depends on I2C
 	help
 	  ssp sensor hub driver for sensor hub.
           If you say yes here you get ssp support for
@@ -141,16 +130,6 @@ config SENSORS_AD7146
 	  multi proximity sensor.
 	  This driver can also be built as a module.  If so, the module
 	  will be called ad7146.
-
-config SENSORS_MAX86900
-	tristate "MAXIM MAX86900 HRM Sensor"
-	default n
-	depends on I2C && SYSFS
-	help
-	  If you say yes here you get support for the MAX86900
-	  HRM sensor.
-	  This driver can also be built as a module.  If so, the module
-	  will be called max86900.
 
 config SENSORS_SSP_BOUNCE_FIRMWARE
 	tristate "Sensors ssp BOUNCE_FIRMWARE"

@@ -390,9 +390,6 @@ static int bcm2079x_parse_dt(struct device *dev,
 	pdata->wake_gpio = of_get_named_gpio_flags(np, "bcm2079x-i2c,wake-gpio",
 		0, &pdata->wake_gpio_flags);
 
-	if (pdata->wake_gpio < 0)
-		of_property_read_u32(np, "bcm2079x-i2c,wake-expander-gpio",
-			&pdata->wake_gpio);
 	return 0;
 }
 #else

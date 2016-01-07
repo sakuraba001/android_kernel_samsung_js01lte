@@ -3,7 +3,7 @@
 
 #define TCON_AUTO_BR_MAX	2
 #define TCON_LEVEL_MAX	3
-#define TCON_MODE_MAX	14
+#define TCON_MODE_MAX	11
 
 #define TCON_REG_MAX 30
 
@@ -58,7 +58,7 @@ struct tcon_reg_info TCON_VIDEO = {
 		},
 	.data = {
 		0xB1, 0xFF, 0xF0, 0x08, 0x85,
-		0x5E, 0x92, 0x4A, 0x59, 0xBF,
+		0x4C, 0xBF, 0x3F, 0x19, 0xBF,
 		0xC1, 0x04, 0x24, 0x26, 0x41,
 		0x3F, 0x59, 0xF4,
 
@@ -91,60 +91,9 @@ struct tcon_reg_info TCON_OUTDOOR = {
 		0x0E3A, 0x0E3B, 0x0DC5,
 		},
 	.data = {
-		0xB0, 0x78, 0x10, 0x1F, 0xBF, 
+		0xB0, 0x7F, 0xEC, 0xDF, 0xBF, 
 		0xC1, 0x04, 0x24, 0x26, 0x41, 
 		0x3F, 0x59, 0xF4,
-		},
-};
-
-struct tcon_reg_info TCON_SNOTE1 = {
-	.reg_cnt = 20,
-
-	.addr = {
-		0x0DB1, 0x0DB2, 0x0DB3, 0x0DB4, 0x0DB5,
-		0x0DB6, 0x0DB7, 0x0DB8, 0x0DB9, 0x0DBA,
-		0x0DBB, 0x0DBC, 0x0DBD, 0x0DBE, 0x0DBF,
-		0x0DC0, 0x0E39, 0x0E3A, 0x0E3B, 0x0DC5,
-		},
-	.data = {
-		0xB1, 0xFF, 0xF0, 0x1F, 0xF5,
-		0xFE, 0x82, 0x42, 0x5A, 0xBF,
-		0xC1, 0x04, 0x24, 0x26, 0x01,
-		0x0F, 0x41, 0x3F, 0x59, 0xF4,
-		},
-};
-
-struct tcon_reg_info TCON_SNOTE2 = {
-	.reg_cnt = 20,
-
-	.addr = {
-		0x0DB1, 0x0DB2, 0x0DB3, 0x0DB4, 0x0DB5,
-		0x0DB6, 0x0DB7, 0x0DB8, 0x0DB9, 0x0DBA,
-		0x0DBB, 0x0DBC, 0x0DBD, 0x0DBE, 0x0DBF,
-		0x0DC0, 0x0E39, 0x0E3A, 0x0E3B, 0x0DC5,
-		},
-	.data = {
-		0xB1, 0xFF, 0xF0, 0x1F, 0xF5,
-		0xFE, 0x82, 0x42, 0x7F, 0xFF,
-		0xC1, 0x04, 0x24, 0x26, 0x01,
-		0x0F, 0x41, 0x3F, 0x59, 0xF4,
-		},
-};
-
-struct tcon_reg_info TCON_CALL = {
-	.reg_cnt = 20,
-
-	.addr = {
-		0x0DB1, 0x0DB2, 0x0DB3, 0x0DB4, 0x0DB5,
-		0x0DB6, 0x0DB7, 0x0DB8, 0x0DB9, 0x0DBA,
-		0x0DBB, 0x0DBC, 0x0DBD, 0x0DBE, 0x0DBF,
-		0x0DC0, 0x0E39, 0x0E3A, 0x0E3B, 0x0DC5,
-		},
-	.data = {
-		0xB1, 0xFF, 0xF0, 0x1F, 0xF5,
-		0xFE, 0x82, 0x46, 0x7F, 0xFF,
-		0xC1, 0x04, 0x24, 0x26, 0x01,
-		0x0F, 0x41, 0x3F, 0x59, 0xF4,
 		},
 };
 
@@ -158,7 +107,7 @@ struct tcon_reg_info TCON_BLACK_IMAGE_BLU_ENABLE = {
 		},
 };
 
-struct tcon_reg_info *power_save_tune_value[TCON_AUTO_BR_MAX][TCON_LEVEL_MAX][TCON_MODE_MAX] = {
+struct tcon_reg_info *v1_tune_value[TCON_AUTO_BR_MAX][TCON_LEVEL_MAX][TCON_MODE_MAX] = {
 		/*
 			UI_APP = 0,
 			VIDEO_APP,
@@ -188,9 +137,6 @@ struct tcon_reg_info *power_save_tune_value[TCON_AUTO_BR_MAX][TCON_LEVEL_MAX][TC
 			&TCON_BROWSER,
 			NULL,
 			NULL,
-			&TCON_SNOTE1,
-			&TCON_SNOTE2,
-			&TCON_CALL,
 		},
 		/* Illumiatation Level 2 */
 		{
@@ -205,9 +151,6 @@ struct tcon_reg_info *power_save_tune_value[TCON_AUTO_BR_MAX][TCON_LEVEL_MAX][TC
 			&TCON_BROWSER,
 			NULL,
 			NULL,
-			&TCON_SNOTE1,
-			&TCON_SNOTE2,
-			&TCON_CALL,
 		},
 		/* Illumiatation Level 3 */
 		{
@@ -222,9 +165,6 @@ struct tcon_reg_info *power_save_tune_value[TCON_AUTO_BR_MAX][TCON_LEVEL_MAX][TC
 			&TCON_BROWSER,
 			NULL,
 			NULL,
-			&TCON_SNOTE1,
-			&TCON_SNOTE2,
-			&TCON_CALL,
 		},
 	},
 	/* auto brightness on */
@@ -242,9 +182,6 @@ struct tcon_reg_info *power_save_tune_value[TCON_AUTO_BR_MAX][TCON_LEVEL_MAX][TC
 			&TCON_BROWSER,
 			NULL,
 			NULL,
-			&TCON_SNOTE1,
-			&TCON_SNOTE2,
-			&TCON_CALL,
 		},
 		/* Illumiatation Level 2 */
 		{
@@ -259,15 +196,9 @@ struct tcon_reg_info *power_save_tune_value[TCON_AUTO_BR_MAX][TCON_LEVEL_MAX][TC
 			&TCON_BROWSER,
 			NULL,    
 			NULL,
-			&TCON_SNOTE1,
-			&TCON_SNOTE2,
-			&TCON_CALL,
 		},
 		/* Illumiatation Level 3 */
 		{
-			&TCON_OUTDOOR,
-			&TCON_OUTDOOR,
-			&TCON_OUTDOOR,
 			&TCON_OUTDOOR,
 			&TCON_OUTDOOR,
 			&TCON_OUTDOOR,

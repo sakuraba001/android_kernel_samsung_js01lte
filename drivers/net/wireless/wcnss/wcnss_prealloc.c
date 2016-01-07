@@ -13,9 +13,8 @@
 #include <linux/slab.h>
 #include <linux/err.h>
 #include <linux/wcnss_wlan.h>
-#include <linux/spinlock.h>
 
-static DEFINE_SPINLOCK(alloc_lock);
+static DEFINE_MUTEX(alloc_lock);
 
 struct wcnss_prealloc {
 	int occupied;
@@ -58,18 +57,15 @@ void wcnss_prealloc_deinit(void)
 {
 	int i = 0;
 
-	for (i = 0; i < ARRAY_SIZE(wcnss_allocs); i++) {
+	for (i = 0; i < ARRAY_SIZE(wcnss_allocs); i++)
 		kfree(wcnss_allocs[i].ptr);
-		wcnss_allocs[i].ptr = NULL;
-	}
 }
 
 void *wcnss_prealloc_get(unsigned int size)
 {
 	int i = 0;
-	unsigned long flags;
 
-	spin_lock_irqsave(&alloc_lock, flags);
+	mutex_lock(&alloc_lock);
 	for (i = 0; i < ARRAY_SIZE(wcnss_allocs); i++) {
 		if (wcnss_allocs[i].occupied)
 			continue;
@@ -77,13 +73,12 @@ void *wcnss_prealloc_get(unsigned int size)
 		if (wcnss_allocs[i].size > size) {
 			/* we found the slot */
 			wcnss_allocs[i].occupied = 1;
-			spin_unlock_irqrestore(&alloc_lock, flags);
+			mutex_unlock(&alloc_lock);
 			return wcnss_allocs[i].ptr;
 		}
 	}
-	spin_unlock_irqrestore(&alloc_lock, flags);
-	pr_err("wcnss: %s: prealloc not available for size: %d\n",
-			__func__, size);
+	pr_err("wcnss: %s: prealloc not available\n", __func__);
+	mutex_unlock(&alloc_lock);
 
 	return NULL;
 }
@@ -92,17 +87,16 @@ EXPORT_SYMBOL(wcnss_prealloc_get);
 int wcnss_prealloc_put(void *ptr)
 {
 	int i = 0;
-	unsigned long flags;
 
-	spin_lock_irqsave(&alloc_lock, flags);
+	mutex_lock(&alloc_lock);
 	for (i = 0; i < ARRAY_SIZE(wcnss_allocs); i++) {
 		if (wcnss_allocs[i].ptr == ptr) {
 			wcnss_allocs[i].occupied = 0;
-			spin_unlock_irqrestore(&alloc_lock, flags);
+			mutex_unlock(&alloc_lock);
 			return 1;
 		}
 	}
-	spin_unlock_irqrestore(&alloc_lock, flags);
+	mutex_unlock(&alloc_lock);
 
 	return 0;
 }

@@ -76,7 +76,7 @@ void sync_sensor_state(struct ssp_data *data)
 
 	udelay(10);
 
-	for (uSensorCnt = 0; uSensorCnt < SENSOR_MAX; uSensorCnt++) {
+	for (uSensorCnt = 0; uSensorCnt < (SENSOR_MAX - 1); uSensorCnt++) {
 		if (atomic_read(&data->aSensorEnable) & (1 << uSensorCnt)) {
 			uBuf[1] = (u8)get_msdelay(data->adDelayBuf[uSensorCnt]);
 			uBuf[0] = (u8)get_delay_cmd(uBuf[1]);
@@ -98,55 +98,41 @@ static void print_sensordata(struct ssp_data *data, unsigned int uSensor)
 	case ACCELEROMETER_SENSOR:
 	case GYROSCOPE_SENSOR:
 	case GEOMAGNETIC_SENSOR:
-		ssp_dbg("[SSP] %u : %d, %d, %d (%ums)\n", uSensor,
+		ssp_dbg(" %u : %d, %d, %d (%ums)\n", uSensor,
 			data->buf[uSensor].x, data->buf[uSensor].y,
 			data->buf[uSensor].z,
 			get_msdelay(data->adDelayBuf[uSensor]));
 		break;
 	case PRESSURE_SENSOR:
-		ssp_dbg("[SSP] %u : %d, %d (%ums)\n", uSensor,
+		ssp_dbg(" %u : %d, %d (%ums)\n", uSensor,
 			data->buf[uSensor].pressure[0],
 			data->buf[uSensor].pressure[1],
 			get_msdelay(data->adDelayBuf[uSensor]));
 		break;
 	case GESTURE_SENSOR:
-		ssp_dbg("[SSP] %u : %d %d %d %d (%ums)\n", uSensor,
+		ssp_dbg(" %u : %d %d %d %d (%ums)\n", uSensor,
 			data->buf[uSensor].data[0], data->buf[uSensor].data[1],
 			data->buf[uSensor].data[2], data->buf[uSensor].data[3],
 			get_msdelay(data->adDelayBuf[uSensor]));
 		break;
 	case TEMPERATURE_HUMIDITY_SENSOR:
-		ssp_dbg("[SSP] %u : %d %d %d(%ums)\n", uSensor,
+		ssp_dbg(" %u : %d %d %d(%ums)\n", uSensor,
 			data->buf[uSensor].data[0], data->buf[uSensor].data[1],
 			data->buf[uSensor].data[2], get_msdelay(data->adDelayBuf[uSensor]));
 		break;
 	case LIGHT_SENSOR:
-		ssp_dbg("[SSP] %u : %u, %u, %u, %u (%ums)\n", uSensor,
+		ssp_dbg(" %u : %u, %u, %u, %u (%ums)\n", uSensor,
 			data->buf[uSensor].r, data->buf[uSensor].g,
 			data->buf[uSensor].b, data->buf[uSensor].w,
 			get_msdelay(data->adDelayBuf[uSensor]));
 		break;
 	case PROXIMITY_SENSOR:
-		ssp_dbg("[SSP] %u : %d %d(%ums)\n", uSensor,
+		ssp_dbg(" %u : %d %d(%ums)\n", uSensor,
 			data->buf[uSensor].prox[0], data->buf[uSensor].prox[1],
 			get_msdelay(data->adDelayBuf[uSensor]));
 		break;
-	case SIG_MOTION_SENSOR:
-		ssp_dbg("[SSP] %u : %u(%ums)\n", uSensor,
-			data->buf[uSensor].sig_motion,
-			get_msdelay(data->adDelayBuf[uSensor]));
-		break;
-	case STEP_DETECTOR:
-		ssp_dbg("[SSP] %u : %u(%ums)\n", uSensor,
-			data->buf[uSensor].step_det,
-			get_msdelay(data->adDelayBuf[uSensor]));
-		break;
-	case STEP_COUNTER:
-		ssp_dbg("[SSP] %u : %u(%ums)\n", uSensor,
-			data->buf[uSensor].step_diff,
-			get_msdelay(data->adDelayBuf[uSensor]));
 	default:
-		ssp_dbg("[SSP] Wrong sensorCnt: %u\n", uSensor);
+		ssp_dbg("Wrong sensorCnt: %u\n", uSensor);
 		break;
 	}
 }
@@ -171,7 +157,7 @@ static void debug_work_func(struct work_struct *work)
 		return;
 	}
 
-	for (uSensorCnt = 0; uSensorCnt < SENSOR_MAX; uSensorCnt++)
+	for (uSensorCnt = 0; uSensorCnt < (SENSOR_MAX - 1); uSensorCnt++)
 		if (atomic_read(&data->aSensorEnable) & (1 << uSensorCnt))
 			print_sensordata(data, uSensorCnt);
 

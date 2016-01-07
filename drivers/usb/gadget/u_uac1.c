@@ -264,8 +264,6 @@ static int capture_prepare_params(struct gaudio_snd_dev *snd)
 
 	runtime->frame_bits = snd_pcm_format_physical_width(runtime->format);
 
-	kfree(params);
-
 	swparams = kzalloc(sizeof(*swparams), GFP_KERNEL);
 	if (!swparams) {
 		pr_err("Failed to allocate sw params");
@@ -274,6 +272,9 @@ static int capture_prepare_params(struct gaudio_snd_dev *snd)
 
 	buffer_size = pcm_buffer_size(params);
 	period_size = pcm_period_size(params);
+
+	kfree(params);
+
 	swparams->avail_min = period_size/2;
 	swparams->xfer_align = period_size/2;
 

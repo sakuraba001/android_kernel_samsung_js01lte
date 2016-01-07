@@ -602,7 +602,7 @@ int main(int ac, char **av)
 			printf(_("***\n"
 				"***  You must specify VARIANT_DEFCONFIG !\n"
 				"***\n"));
-		exit(1);
+			exit(1);
 		}
 		name = getenv("KCONFIG_DEBUG");
 		printf("KCONFIG_DEBUG(%s)\n", name);

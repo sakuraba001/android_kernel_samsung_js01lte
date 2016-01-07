@@ -308,7 +308,7 @@ UINT rtvTDMB_GetAntennaLevel(U32 dwCER)
 	UINT nPrevLevel = g_nTdmbPrevAntennaLevel;
 	const UINT aAntLvlTbl[TDMB_MAX_NUM_ANTENNA_LEVEL] = {
 		/*       0    1    2    3   4    5    6 */
-			900, 800, 700, 600, 500, 400, 0};
+			900, 600, 300, 100, 30, 10, 0};
 
 	if (dwCER == TDMB_MAX_CER_VALUE)
 		return 0;
@@ -1056,8 +1056,6 @@ INT rtvTDMB_ScanFrequency(U32 dwChFreqKHz)
 	}
 
 TDMB_SCAN_EXIT:
-	tdmb_DisableFastScanMode();
-
 	if (sucess_flag != RTV_SUCCESS) {
 		rtv_CloseFIC(0); /* rtvTDMB_CloseFIC() was called when lock_s */
 		g_eTdmbState = TDMB_STATE_INIT;
@@ -1106,7 +1104,6 @@ static INLINE INT tdmb_ReadFIC_SPI(U8 *pbBuf)
 
 		lock_s = tdmb_GetLockStatus();
 		if (!(lock_s & RTV_TDMB_OFDM_LOCK_MASK)) {
-			RTV_DELAY_MS(30);
 			RTV_DBGMSG2("[tdmb_ReadFIC_SPI] ##lock_s(0x%02X)[%u]\n",
 					lock_s, elapsed_cnt);
 			ret_size = -55;
@@ -1435,13 +1432,10 @@ static void tdmb_InitDemod(void)
 	rtvOEM_ConfigureInterrupt();
 }
 
-INT rtvTDMB_Initialize(unsigned long interface)
+INT rtvTDMB_Initialize(void)
 {
 	INT nRet;
 
-#if defined(RTV_IF_SPI)
-	mtv319_set_port_if(interface);
-#endif
 	g_nOpenedSubChNum = 0;
 	g_nRegSubChArrayIdxBits = 0x0;
 

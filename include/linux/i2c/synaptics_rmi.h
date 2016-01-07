@@ -20,8 +20,20 @@
 #ifndef _SYNAPTICS_RMI4_GENERIC_H_
 #define _SYNAPTICS_RMI4_GENERIC_H_
 
-#undef SYNAPTICS_RMI_INFORM_CHARGER 
 
+#define SYNAPTICS_HW_RESET_TIME_B0	100
+
+#define OCTA_PANEL_REVISION_51	0x08
+#define OCTA_PANEL_REVISION_43	0x02
+#define OCTA_PANEL_REVISION_40	0x01
+#define OCTA_PANEL_REVISION_34	0x00
+
+struct synaptics_rmi_f1a_button_map {
+	unsigned char nbuttons;
+	u32 map[4];
+};
+
+#define SYNAPTICS_RMI_INFORM_CHARGER 
 
 #ifdef SYNAPTICS_RMI_INFORM_CHARGER
 struct synaptics_rmi_callbacks {
@@ -64,6 +76,10 @@ struct synaptics_rmi4_platform_data {
 	int num_of_rx;
 	int num_of_tx;
 
+	int vdd_io_1p8;
+	int tsp_int;
+	int tkey_led_vdd_on;
+
 /* use H project, S5050 driver */
 	bool swap_axes;
 	int reset_gpio;
@@ -72,9 +88,18 @@ struct synaptics_rmi4_platform_data {
 	unsigned int panel_y;
 	unsigned int reset_delay_ms;
 	unsigned char model_name[32];
-
+	const char *project_name;
 #ifdef SYNAPTICS_RMI_INFORM_CHARGER	
 	void (*register_cb)(struct synaptics_rmi_callbacks *);
 #endif
+#if defined(CONFIG_TOUCHSCREEN_SYNAPTICS_PREVENT_HSYNC_LEAKAGE)
+	void (*hsync_onoff)(bool onoff);
+#endif
+	struct synaptics_rmi_f1a_button_map *f1a_button_map;
 };
+
+#if defined(CONFIG_TOUCHSCREEN_SYNAPTICS_PREVENT_HSYNC_LEAKAGE)
+extern void mdss_dsi_panel_hsync_onoff(bool onoff);
+#endif
+
 #endif

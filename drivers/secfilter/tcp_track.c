@@ -153,6 +153,7 @@ void    clean_tcp_TrackInfos(tcp_Info_Manager *manager)
         {
             node = manager->head;
             manager->head = manager->head->next;
+            manager->count--;
             if (node->q_entry != NULL)
             {
                 nf_reinject((struct nf_queue_entry *)node->q_entry, NF_DROP);
@@ -161,7 +162,6 @@ void    clean_tcp_TrackInfos(tcp_Info_Manager *manager)
             free_tcp_TrackInfo(node);
         }
         manager->tail = NULL;
-        manager->count  = 0;
         SEC_spin_unlock_irqrestore(&manager->tcp_info_lock, flags);
     }
 }
@@ -277,7 +277,7 @@ tcp_TrackInfo * find_tcp_TrackInfo(tcp_Info_Manager *manager, struct sk_buff *sk
     return curNode;
 }
 
-tcp_TrackInfo * find_tcp_TrackInfo_withID(tcp_Info_Manager	*manager, int id)
+tcp_TrackInfo * find_tcp_TrackInfo_withID(tcp_Info_Manager	*manager, int id, int option)
 {
     tcp_TrackInfo   *curNode    = NULL;
     tcp_TrackInfo   *preNode    = NULL;

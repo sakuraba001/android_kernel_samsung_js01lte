@@ -16,7 +16,7 @@
 #include "msm_camera_i2c_mux.h"
 #include "msm_cci.h"
 
-#if defined(CONFIG_MACH_MONTBLANC) || defined(CONFIG_MACH_VIKALCU)
+#if defined(CONFIG_MACH_MONTBLANC)
 #include <linux/regulator/lp8720.h> //kk0704.park
 static struct regulator *sub_ldo3, *sub_ldo4;
 #endif
@@ -400,7 +400,7 @@ int msm_camera_get_dt_power_setting_data(struct device_node *of_node,
 			ps[i].seq_type = SENSOR_I2C_MUX;
 			CDBG("%s:%d seq_type[%d] %d\n", __func__, __LINE__,
 				i, ps[i].seq_type);
-#if defined(CONFIG_MACH_MONTBLANC) || defined(CONFIG_MACH_VIKALCU)
+#if defined(CONFIG_MACH_MONTBLANC)
 		}
 		else if (!strcmp(seq_name, "sensor_additional_ldo")) {
 			ps[i].seq_type = SENSOR_ADDITIONAL_LDO;
@@ -436,7 +436,7 @@ int msm_camera_get_dt_power_setting_data(struct device_node *of_node,
 			else
 				rc = -EILSEQ;
 			break;
-#if defined(CONFIG_MACH_MONTBLANC) || defined(CONFIG_MACH_VIKALCU)
+#if defined(CONFIG_MACH_MONTBLANC)
 		case SENSOR_ADDITIONAL_LDO:
 #endif
 		case SENSOR_GPIO:
@@ -448,8 +448,6 @@ int msm_camera_get_dt_power_setting_data(struct device_node *of_node,
 				ps[i].seq_val = SENSOR_GPIO_EXT_VANA_POWER;
 			else if (!strcmp(seq_name, "sensor_gpio_ext_vio_power"))
 				ps[i].seq_val = SENSOR_GPIO_EXT_VIO_POWER;
-			else if (!strcmp(seq_name, "sensor_gpio_ext_vcore_power"))
-				ps[i].seq_val = SENSOR_GPIO_EXT_VCORE_POWER;
 			else
 				rc = -EILSEQ;
 			break;
@@ -579,7 +577,7 @@ int msm_camera_get_dt_power_off_setting_data(struct device_node *of_node,
 			ps[i].seq_type = SENSOR_I2C_MUX;
 			CDBG("%s:%d seq_type[%d] %d\n", __func__, __LINE__,
 				i, ps[i].seq_type);
-#if defined(CONFIG_MACH_MONTBLANC) || defined(CONFIG_MACH_VIKALCU)
+#if defined(CONFIG_MACH_MONTBLANC)
 		} else if (!strcmp(seq_name, "sensor_additional_ldo")) {
 			ps[i].seq_type = SENSOR_ADDITIONAL_LDO;
 			CDBG("%s:%d seq_type[%d] %d\n", __func__, __LINE__,
@@ -626,8 +624,6 @@ int msm_camera_get_dt_power_off_setting_data(struct device_node *of_node,
 				ps[i].seq_val = SENSOR_GPIO_EXT_VANA_POWER;
 			else if (!strcmp(seq_name, "sensor_gpio_ext_vio_power"))
 				ps[i].seq_val = SENSOR_GPIO_EXT_VIO_POWER;
-			else if (!strcmp(seq_name, "sensor_gpio_ext_vcore_power"))
-				ps[i].seq_val = SENSOR_GPIO_EXT_VCORE_POWER;
 			else
 				rc = -EILSEQ;
 			break;
@@ -942,22 +938,6 @@ int msm_camera_init_gpio_pin_tbl(struct device_node *of_node,
 			CDBG("%s qcom,gpio-ext-vio-power %d\n", __func__,
 					gconf->gpio_num_info->gpio_num[SENSOR_GPIO_EXT_VIO_POWER]);
 	}
-	if (of_property_read_bool(of_node, "qcom,gpio-ext-vcore-power") == true) {
-			rc = of_property_read_u32(of_node, "qcom,gpio-ext-vcore-power", &val);
-			if (rc < 0) {
-					pr_err("%s:%d read qcom,gpio-ext-vcore-power failed rc %d\n",
-							__func__, __LINE__, rc);
-					goto ERROR;
-			} else if (val >= gpio_array_size) {
-					pr_err("%s:%d qcom,gpio-ext-vcore-power invalid %d\n",
-							__func__, __LINE__, val);
-					goto ERROR;
-			}
-			gconf->gpio_num_info->gpio_num[SENSOR_GPIO_EXT_VCORE_POWER] =
-					gpio_array[val];
-			CDBG("%s qcom,gpio-ext-vcore-power %d\n", __func__,
-					gconf->gpio_num_info->gpio_num[SENSOR_GPIO_EXT_VCORE_POWER]);
-	}
 	if (of_property_read_bool(of_node, "qcom,gpio-ext-torch-en") == true) {
 			rc = of_property_read_u32(of_node, "qcom,gpio-ext-torch-en", &val);
 			if (rc < 0) {
@@ -1119,8 +1099,40 @@ int msm_camera_power_up(struct msm_camera_power_ctrl_t *ctrl,
 	struct msm_sensor_power_setting *power_setting = NULL;
 	struct msm_sensor_power_setting *power_off_setting = NULL;
 	int32_t off_index = 0;
-#if defined(CONFIG_MACH_MONTBLANC) || defined(CONFIG_MACH_VIKALCU)
+#if defined(CONFIG_MACH_MONTBLANC)
 		int ret;	//kk0704.park
+		sub_ldo3 = regulator_get(NULL, "lp8720_ldo3");
+		if (IS_ERR(sub_ldo3)) {
+			pr_err("lp8720 : could not get sub_ldo3, rc = %ld\n", PTR_ERR(sub_ldo3));
+			sub_ldo3 = NULL;
+		}
+		if(sub_ldo3 != NULL)
+		{
+			ret = regulator_set_voltage(sub_ldo3, 2800000, 2800000);
+			if (ret) 
+				pr_err("set_voltage sub_ldo3 failed, rc=%d\n", ret);
+			else {
+				ret = regulator_enable(sub_ldo3); /*2.8V*/
+				if (ret) 
+					pr_err("enable sub_ldo3 failed, rc=%d\n", ret);
+			}
+		}
+		sub_ldo4 = regulator_get(NULL, "lp8720_ldo4");
+		if (IS_ERR(sub_ldo4)) {
+			pr_err("lp8720 : could not get sub_ldo4, rc = %ld\n", PTR_ERR(sub_ldo4));
+			sub_ldo4 = NULL;
+		}
+		if(sub_ldo4 != NULL)
+		{
+			ret = regulator_set_voltage(sub_ldo4, 1800000, 1800000);
+			if (ret) 
+				pr_err("set_voltage sub_ldo4 failed, rc=%d\n", ret);
+			else {
+				ret = regulator_enable(sub_ldo4); /*1.8V*/
+				if (ret) 
+					pr_err("enable sub_ldo4 failed, rc=%d\n", ret);
+			}
+		}
 	
 #endif
 
@@ -1257,7 +1269,7 @@ int msm_camera_power_up(struct msm_camera_power_ctrl_t *ctrl,
 			if (ctrl->i2c_conf && ctrl->i2c_conf->use_i2c_mux)
 				msm_camera_enable_i2c_mux(ctrl->i2c_conf);
 			break;
-#if defined(CONFIG_MACH_MONTBLANC) || defined(CONFIG_MACH_VIKALCU)
+#if defined(CONFIG_MACH_MONTBLANC)
 		case SENSOR_ADDITIONAL_LDO:
 			switch(power_setting->seq_val) {
 				case SENSOR_GPIO_EXT_VANA_POWER:
@@ -1365,7 +1377,7 @@ power_up_failed:
 			if (ctrl->i2c_conf && ctrl->i2c_conf->use_i2c_mux)
 				msm_camera_disable_i2c_mux(ctrl->i2c_conf);
 			break;
-#if defined(CONFIG_MACH_MONTBLANC) || defined(CONFIG_MACH_VIKALCU)
+#if defined(CONFIG_MACH_MONTBLANC)
 		case SENSOR_ADDITIONAL_LDO:
 			switch(power_setting->seq_val) {
 				case SENSOR_GPIO_EXT_VANA_POWER:
@@ -1411,8 +1423,18 @@ int msm_camera_power_down(struct msm_camera_power_ctrl_t *ctrl,
 	struct msm_sensor_power_setting *power_setting = NULL;
 	struct msm_sensor_power_setting *t_save_for_power_off = NULL;
 	int32_t l_save_for_power_off = 0;
-#if defined(CONFIG_MACH_MONTBLANC) || defined(CONFIG_MACH_VIKALCU)
+#if defined(CONFIG_MACH_MONTBLANC)
 		int ret;	//kk0704.park
+	if(sub_ldo3 != NULL) {
+		ret = regulator_disable(sub_ldo3); /*2.8V*/
+		if (ret) 
+			pr_err("enable sub_ldo3 failed, rc=%d\n", ret);
+	}
+	if(sub_ldo4 != NULL) {
+		ret = regulator_disable(sub_ldo4); /*1.8V*/
+		if (ret) 
+			pr_err("enable sub_ldo4 failed, rc=%d\n", ret);
+	}
 #endif
 
 	CDBG("%s:%d\n", __func__, __LINE__);
@@ -1481,7 +1503,7 @@ int msm_camera_power_down(struct msm_camera_power_ctrl_t *ctrl,
 			if (ctrl->i2c_conf && ctrl->i2c_conf->use_i2c_mux)
 				msm_camera_disable_i2c_mux(ctrl->i2c_conf);
 			break;
-#if defined(CONFIG_MACH_MONTBLANC) || defined(CONFIG_MACH_VIKALCU)
+#if defined(CONFIG_MACH_MONTBLANC)
 		case SENSOR_ADDITIONAL_LDO:
 			switch(power_setting->seq_val) {
 				case SENSOR_GPIO_EXT_VANA_POWER:

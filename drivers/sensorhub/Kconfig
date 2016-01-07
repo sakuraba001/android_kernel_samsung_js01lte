@@ -24,7 +24,7 @@ config SENSORS_SSP_STM
 	  To compile this driver as a module, choose M here: the
 	  module will be called ssp.
 
-config SENSORS_SSP_STM_32F
+config SENSORS_SSP_STM_MONTBLANC
 	tristate "Sensors ssp STM"
 	default n
 	depends on SPI
@@ -37,5 +37,5 @@ config SENSORS_SSP_STM_32F
 
 source "drivers/sensorhub/atmel/Kconfig"
 source "drivers/sensorhub/stm/Kconfig"
-source "drivers/sensorhub/stm32f/Kconfig"
+source "drivers/sensorhub/stm_montblanc/Kconfig"
 

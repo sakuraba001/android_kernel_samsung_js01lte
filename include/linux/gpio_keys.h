@@ -4,8 +4,8 @@
 #define KEY_BOOSTER
 #ifdef KEY_BOOSTER
 #include <linux/cpufreq.h>
-#define KEY_BOOSTER_OFF_TIME	500
-#define KEY_BOOSTER_CHG_TIME	130
+#define KEY_BOOSTER_OFF_TIME	500 /* Changed from 3000 to 500 for optimization  */ 
+#define KEY_BOOSTER_CHG_TIME	130 /* Changed from 300 to 130 for optimization */ 
 #endif
 extern struct class *sec_class;
 
@@ -34,11 +34,8 @@ struct gpio_keys_platform_data {
 	int (*enable)(struct device *dev);
 	void (*disable)(struct device *dev);
 	const char *name;		/* input device name */
-#ifdef CONFIG_SENSORS_HALL_DEBOUNCE
-	bool debounce_set;
-#endif
 #ifdef CONFIG_SENSORS_HALL
-	int gpio_flip_cover;
+    int gpio_flip_cover;
 #endif
 };
 

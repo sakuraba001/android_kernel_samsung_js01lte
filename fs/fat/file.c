@@ -18,7 +18,6 @@
 #include <linux/fsnotify.h>
 #include <linux/security.h>
 #include "fat.h"
-
 #if defined(CONFIG_VMWARE_MVP)
 #include <linux/namei.h>
 #endif

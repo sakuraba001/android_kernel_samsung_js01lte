@@ -57,7 +57,8 @@
 #define SPI_CMD_BURST_READ                      0x7
 #endif
 
-u32 fc8050_spi;
+struct spi_device *fc8050_spi;
+
 static u8 tx_data[32] __cacheline_aligned;
 
 static DEFINE_MUTEX(lock);
@@ -123,8 +124,9 @@ static int spi_bulkread(HANDLE hDevice, u8 addr, u8 *data, u16 length)
 	tx_data[0] = SPI_CMD_BURST_READ;
 	tx_data[1] = addr;
 
+	fc8050_spi = tdmb_get_spi_handle();
 	ret = fc8050_spi_write_then_read(
-		(struct spi_device *)fc8050_spi, &tx_data[0], 2, &data[0], length);
+		fc8050_spi, &tx_data[0], 2, &data[0], length);
 
 	if (ret) {
 		print_log(0, "fc8050_spi_bulkread fail : %d\n", ret);
@@ -145,8 +147,9 @@ static int spi_bulkwrite(HANDLE hDevice, u8 addr, u8 *data, u16 length)
 	for (i = 0; i < length; i++)
 		tx_data[2+i] = data[i];
 
+	fc8050_spi = tdmb_get_spi_handle();
 	ret = fc8050_spi_write_then_read(
-		(struct spi_device *)fc8050_spi, &tx_data[0], length+2, NULL, 0);
+		fc8050_spi, &tx_data[0], length+2, NULL, 0);
 
 	if (ret) {
 		print_log(0, "fc8050_spi_bulkwrite fail : %d\n", ret);
@@ -163,8 +166,10 @@ static int spi_dataread(HANDLE hDevice, u8 addr, u8 *data, u16 length)
 	tx_data[0] = SPI_CMD_BURST_READ;
 	tx_data[1] = addr;
 
+	fc8050_spi = tdmb_get_spi_handle();
+
 	ret = fc8050_spi_write_then_burstread(
-		(struct spi_device *)fc8050_spi, &tx_data[0], 2, &data[0], length);
+		fc8050_spi, &tx_data[0], 2, &data[0], length);
 
 	if (ret) {
 		print_log(0, "fc8050_spi_dataread fail : %d\n", ret);
@@ -176,11 +181,6 @@ static int spi_dataread(HANDLE hDevice, u8 addr, u8 *data, u16 length)
 
 int fc8050_spi_init(HANDLE hDevice, u16 param1, u16 param2)
 {
-	fc8050_spi = param2;
-	fc8050_spi <<= 16;
-	fc8050_spi |= param1;
-
-	DPRINTK("%s : 0x%p\n", __func__, (struct spi_device *)fc8050_spi);
 
 	return BBM_OK;
 }

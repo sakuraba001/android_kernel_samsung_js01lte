@@ -16,8 +16,6 @@
 #define _SII8240_H_
 
 #ifdef __KERNEL__
-#include <linux/mdss_hdmi_mhl.h>
-
 /* Different MHL Dongle/bridge which are used; may be
  * these enums are Samsung-Specific,but they do represent various
  * versions of dongles.
@@ -74,10 +72,8 @@ struct sii8240_platform_data {
 	int gpio;
 	void (*hw_reset)(void);
 	void (*gpio_cfg)(enum mhl_sleep_state sleep_status);
-	void (*charger_mhl_cb)(bool on, int mhl_charger);
-	bool (*vbus_present)(void);
+	void (*vbus_present)(bool on, int mhl_charger);
 	int (*muic_otg_set)(int on);
-	int charging_type;
 	/* void (*vbus_present)(bool on); */
 #ifdef CONFIG_SAMSUNG_MHL_UNPOWERED
 	int (*get_vbus_status)(void);
@@ -97,8 +93,6 @@ struct sii8240_platform_data {
 	struct regulator *vcc_1p2v;
 	struct regulator *vcc_1p8v;
 	struct regulator *vcc_3p3v;
-	struct platform_device *hdmi_pdev;
-	struct msm_hdmi_mhl_ops *hdmi_mhl_ops;
 #endif
 };
 extern int system_rev;

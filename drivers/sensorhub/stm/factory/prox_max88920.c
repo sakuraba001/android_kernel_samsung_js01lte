@@ -14,13 +14,8 @@
  */
 #include "../ssp.h"
 
-#ifdef CONFIG_SENSORS_SSP_TMG399X
-#define	VENDOR		"AMS"
-#define	CHIP_ID		"TMG399X"
-#else
 #define	VENDOR		"MAXIM"
 #define	CHIP_ID		"MAX88920"
-#endif
 
 #define CANCELATION_FILE_PATH	"/efs/prox_cal"
 #define LCD_LDI_FILE_PATH	"/sys/class/lcd/panel/window_type"
@@ -32,12 +27,31 @@
 #define LDI_GRAY	'1'
 #define LDI_WHITE	'2'
 
-#define DEFUALT_HIGH_THRESHOLD	60
-#define DEFUALT_LOW_THRESHOLD	45
-#define TBD_HIGH_THRESHOLD	60
-#define TBD_LOW_THRESHOLD	45
-#define WHITE_HIGH_THRESHOLD	60
-#define WHITE_LOW_THRESHOLD	45
+#if defined (CONFIG_SEC_MONTBLANC_PROJECT)
+#define HIGH_THRESHOLD_88921	130
+#define LOW_THRESHOLD_88921	115
+#else
+#define HIGH_THRESHOLD_88921	60
+#define LOW_THRESHOLD_88921	45
+#endif
+
+#if defined (CONFIG_MACH_JS01LTEDCM)
+#define DEFUALT_HIGH_THRESHOLD	90
+#define DEFUALT_LOW_THRESHOLD	65
+#define TBD_HIGH_THRESHOLD		90
+#define TBD_LOW_THRESHOLD		65
+#define WHITE_HIGH_THRESHOLD	90
+#define WHITE_LOW_THRESHOLD		65
+#else
+
+#define DEFUALT_HIGH_THRESHOLD	120
+#define DEFUALT_LOW_THRESHOLD	80
+#define TBD_HIGH_THRESHOLD		120
+#define TBD_LOW_THRESHOLD		80
+#define WHITE_HIGH_THRESHOLD		120
+#define WHITE_LOW_THRESHOLD		80
+
+#endif
 
 /*************************************************************************/
 /* factory Sysfs                                                         */
@@ -69,24 +83,21 @@ static ssize_t proximity_avg_show(struct device *dev,
 static ssize_t proximity_avg_store(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t size)
 {
-	char chTempbuf[4] = { 0 };
+	char chTempbuf[2] = { 1, 20};
 	int iRet;
 	int64_t dEnable;
 	struct ssp_data *data = dev_get_drvdata(dev);
-
-	s32 dMsDelay = 20;
-	memcpy(&chTempbuf[0], &dMsDelay, 4);
 
 	iRet = kstrtoll(buf, 10, &dEnable);
 	if (iRet < 0)
 		return iRet;
 
 	if (dEnable) {
-		send_instruction(data, ADD_SENSOR, PROXIMITY_RAW, chTempbuf, 4);
+		send_instruction(data, ADD_SENSOR, PROXIMITY_RAW, chTempbuf, 2);
 		data->bProximityRawEnabled = true;
 	} else {
 		send_instruction(data, REMOVE_SENSOR, PROXIMITY_RAW,
-			chTempbuf, 4);
+			chTempbuf, 2);
 		data->bProximityRawEnabled = false;
 	}
 
@@ -96,17 +107,14 @@ static ssize_t proximity_avg_store(struct device *dev,
 static u16 get_proximity_rawdata(struct ssp_data *data)
 {
 	u16 uRowdata = 0;
-	char chTempbuf[4] = { 0 };
-
-	s32 dMsDelay = 20;
-	memcpy(&chTempbuf[0], &dMsDelay, 4);
+	char chTempbuf[2] = { 1, 20};
 
 	if (data->bProximityRawEnabled == false) {
-		send_instruction(data, ADD_SENSOR, PROXIMITY_RAW, chTempbuf, 4);
+		send_instruction(data, ADD_SENSOR, PROXIMITY_RAW, chTempbuf, 2);
 		msleep(200);
 		uRowdata = data->buf[PROXIMITY_RAW].prox[0];
 		send_instruction(data, REMOVE_SENSOR, PROXIMITY_RAW,
-			chTempbuf, 4);
+			chTempbuf, 2);
 	} else {
 		uRowdata = data->buf[PROXIMITY_RAW].prox[0];
 	}
@@ -163,7 +171,17 @@ static void change_proximity_default_threshold(struct ssp_data *data)
 		data->uProxLoThresh_default = DEFUALT_LOW_THRESHOLD;
 		break;
 	}
-
+#if defined (CONFIG_SEC_MONTBLANC_PROJECT)
+	if (data->ap_rev < 2) {
+		data->uProxHiThresh_default = HIGH_THRESHOLD_88921;
+		data->uProxLoThresh_default = LOW_THRESHOLD_88921;
+	}
+#else
+	if (data->ap_rev < 4) {
+		data->uProxHiThresh_default = HIGH_THRESHOLD_88921;
+		data->uProxLoThresh_default = LOW_THRESHOLD_88921;
+	}
+#endif
 	data->uProxHiThresh = data->uProxHiThresh_default;
 	data->uProxLoThresh = data->uProxLoThresh_default;
 }
@@ -357,7 +375,7 @@ static ssize_t proximity_thresh_high_store(struct device *dev,
 	iRet = kstrtou16(buf, 10, &uNewThresh);
 	if (iRet < 0)
 		pr_err("[SSP]: %s - kstrtoint failed.(%d)\n", __func__, iRet);
-	else {
+	else {	
 		if(uNewThresh & 0xfc00)
 			pr_err("[SSP]: %s - allow 10bits.(%d)\n", __func__, uNewThresh);
 		else {

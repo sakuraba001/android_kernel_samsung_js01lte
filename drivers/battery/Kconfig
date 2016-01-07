@@ -7,12 +7,6 @@ config BATTERY_SAMSUNG
 	 To see battery-related functions,
 	 refer to sec_charging_common.h
 
-config CHARGING_VZWCONCEPT
-	tristate "VZW concept about the charging"
-	default n
-	depends on BATTERY_SAMSUNG
-	help
-	 Say Y to include support for the VZW concepts.
 
 # Fuel Gauge
 
@@ -96,35 +90,6 @@ config FUELGAUGE_MAX17050_COULOMB_COUNTING
 	 This mode is for target that consumes high current
 	 like tablet.
 
-config FUELGAUGE_MAX77823
-	tristate "MAX77823 fuel gauge driver"
-	default n
-	depends on BATTERY_SAMSUNG
-	help
-	 Say Y to include support
-	 for MAXIM MAX17047 or MAX17050 fuel gauge driver.
-	 This fuel-gauge can be used in voltage-tracking mode
-	 or coulomb-counting mode.
-
-config FUELGAUGE_MAX77823_VOLTAGE_TRACKING
-	tristate "use MAX77823 fuel gauge only as voltage tracking"
-	default n
-	depends on FUELGAUGE_MAX77823
-	help
-	 Say Y to use MAX17050 fuel gauge
-	 only as voltage tracking.
-	 This mode is for target that consumes low current
-	 like smart-phone.
-
-config FUELGAUGE_MAX77823_COULOMB_COUNTING
-	tristate "use MAX77823 fuel gauge as coulomb counting (including voltage tracking)"
-	default n
-	depends on FUELGAUGE_MAX77823
-	help
-	 Say Y to use MAX77823 fuel gauge
-	 as coulomb counting (including voltage tracking).
-	 This mode is for target that consumes high current
-	 like tablet.
 
 # Charger
 
@@ -167,16 +132,6 @@ config CHARGER_SMB347
 	 for Summit SMB347 charger driver.
 	 This driver source code implemented
 	 all functions for SMB347 charger.
-
-config CHARGER_SMB358
-	tristate "SMB358 charger driver"
-	default n
-	depends on BATTERY_SAMSUNG
-	help
-	 Say Y to include support
-	 for Summit SMB358 charger driver.
-	 This driver source code implemented
-	 all functions for SMB358 charger.
 
 config CHARGER_BQ24157
 	tristate "BQ24157 charger driver"
@@ -227,12 +182,6 @@ config CHARGER_MAX77693
 	  flash driver.
 	  You have to define MFD_MAX77693
 
-config CHARGER_MAX77823
-	tristate "MAX77823 battery charger support"
-	depends on BATTERY_SAMSUNG
-	help
-	 Say Y here to enable support for the MAX77823 charger
-
 config CHARGER_MAX77803
 	tristate "MAX77803 battery charger support"
 	depends on MFD_MAX77803 && I2C
@@ -241,24 +190,6 @@ config CHARGER_MAX77803
 	  MAX77803 incluse muic, pmic, haptic, led,
 	  flash driver.
 	  You have to define MFD_MAX77803
-
-config CHARGER_MAX77804K
-	tristate "MAX77804K battery charger support"
-	depends on MFD_MAX77804K && I2C
-	help
-	  Say Y here to enable support for the MAX77804K charger
-	  MAX77804K incluse muic, pmic, haptic, led,
-	  flash driver.
-	  You have to define MFD_MAX77804K
-
-config CHARGER_MAX77888
-        tristate "MAX77888 battery charger support"
-        depends on MFD_MAX77888 && I2C
-        help
-          Say Y here to enable support for the MAX77888 charger
-          MAX77888 incluse muic, pmic, haptic, led,
-          flash driver.
-          You have to define MFD_MAX77888
 
 config SAMSUNG_LPM_MODE
 	bool "Off charging mode support in sec battery driver"
@@ -287,6 +218,7 @@ config SAMSUNG_BATTERY_FACTORY
 	  this featuren must disabled user binary
 	  stability test etc..
 
+
 config SAMSUNG_BATTERY_DISALLOW_DEEP_SLEEP
 	bool "Disallow deep sleep during charging"
 	default n
@@ -294,3 +226,4 @@ config SAMSUNG_BATTERY_DISALLOW_DEEP_SLEEP
 	help
 	  Say Y to include support
 	  Disallow deep sleep during charging for stablity.
+

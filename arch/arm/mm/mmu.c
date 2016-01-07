@@ -58,6 +58,10 @@ pmd_t *top_pmd;
 #define RX_AREA_START           _text
 #define RX_AREA_END             __start_rodata
 
+#ifdef CONFIG_TIMA_TEST_INFRA_MODULE
+#define SEC_TO_PGT_MEM_ADDR     0x07b00000
+#endif/*CONFIG_TIMA_TEST_INFRA_MODULE*/
+
 static unsigned int cachepolicy __initdata = CPOLICY_WRITEBACK;
 static unsigned int ecc_mask __initdata = 0;
 pgprot_t pgprot_user;
@@ -364,13 +368,9 @@ PTE_SET_FN(x, pte_mkexec)
 PTE_SET_FN(nx, pte_mknexec)
 
 SET_MEMORY_FN(ro, pte_set_ro)
-EXPORT_SYMBOL(set_memory_ro);
 SET_MEMORY_FN(rw, pte_set_rw)
-EXPORT_SYMBOL(set_memory_rw);
 SET_MEMORY_FN(x, pte_set_x)
-EXPORT_SYMBOL(set_memory_x);
 SET_MEMORY_FN(nx, pte_set_nx)
-EXPORT_SYMBOL(set_memory_nx);
 
 /*
  * Adjust the PMD section entries according to the CPU in use.
@@ -875,7 +875,6 @@ void __init iotable_init(struct map_desc *io_desc, int nr)
 {
 	struct map_desc *md;
 	struct vm_struct *vm;
-	int rc = 0;
 
 	if (!nr)
 		return;
@@ -886,13 +885,11 @@ void __init iotable_init(struct map_desc *io_desc, int nr)
 		create_mapping(md);
 		vm->addr = (void *)(md->virtual & PAGE_MASK);
 		vm->size = PAGE_ALIGN(md->length + (md->virtual & ~PAGE_MASK));
-		vm->phys_addr = __pfn_to_phys(md->pfn);
-		vm->flags = VM_IOREMAP | VM_ARM_STATIC_MAPPING;
+		vm->phys_addr = __pfn_to_phys(md->pfn); 
+		vm->flags = VM_IOREMAP | VM_ARM_STATIC_MAPPING; 
 		vm->flags |= VM_ARM_MTYPE(md->type);
 		vm->caller = iotable_init;
-		rc = vm_area_check_early(vm);
-		if (!rc)
-			vm_area_add_early(vm++);
+		vm_area_add_early(vm++);
 	}
 }
 
@@ -1006,18 +1003,6 @@ void __init sanity_check_meminfo(void)
 {
 	int i, j, highmem = 0;
 
-#ifdef CONFIG_ENABLE_VMALLOC_SAVING
-	unsigned long hole_start;
-	for (i = 0; i < (meminfo.nr_banks - 1); i++) {
-		hole_start = meminfo.bank[i].start + meminfo.bank[i].size;
-		if (hole_start != meminfo.bank[i+1].start) {
-			if (hole_start <= MAX_HOLE_ADDRESS) {
-				vmalloc_min = (void *) (vmalloc_min +
-				(meminfo.bank[i+1].start - hole_start));
-			}
-		}
-	}
-#endif
 #ifdef CONFIG_DONT_MAP_HOLE_AFTER_MEMBANK0
 	find_memory_hole();
 #endif
@@ -1207,7 +1192,7 @@ static void __init devicemaps_init(struct machine_desc *mdesc)
 	/*
 	 * Allocate the vector page early.
 	 */
-	vectors = early_alloc(PAGE_SIZE * 2);
+	vectors = early_alloc(PAGE_SIZE);
 
 	early_trap_init(vectors);
 
@@ -1252,26 +1237,14 @@ static void __init devicemaps_init(struct machine_desc *mdesc)
 	map.pfn = __phys_to_pfn(virt_to_phys(vectors));
 	map.virtual = 0xffff0000;
 	map.length = PAGE_SIZE;
-#ifdef CONFIG_KUSER_HELPERS
 	map.type = MT_HIGH_VECTORS;
-#else
-	map.type = MT_LOW_VECTORS;
-#endif
 	create_mapping(&map);
 
 	if (!vectors_high()) {
 		map.virtual = 0;
-		map.length = PAGE_SIZE * 2;
 		map.type = MT_LOW_VECTORS;
 		create_mapping(&map);
 	}
-
-	/* Now create a kernel read-only mapping */
-	map.pfn += 1;
-	map.virtual = 0xffff0000 + PAGE_SIZE;
-	map.length = PAGE_SIZE;
-	map.type = MT_LOW_VECTORS;
-	create_mapping(&map);
 
 	/*
 	 * Ask the machine support to map in the statically mapped devices.
@@ -1410,24 +1383,17 @@ void mem_text_write_kernel_word(unsigned long *addr, unsigned long word)
 }
 EXPORT_SYMBOL(mem_text_write_kernel_word);
 
+extern char __init_data[];
+
 static void __init map_lowmem(void)
 {
 	struct memblock_region *reg;
-	struct vm_struct *vm;
-	phys_addr_t start;
-	phys_addr_t end;
-	unsigned long vaddr;
-	unsigned long pfn;
-	unsigned long length;
-	unsigned int type;
-	int nr = 0;
 
 	/* Map all the lowmem memory banks. */
 	for_each_memblock(memory, reg) {
+		phys_addr_t start = reg->base;
+		phys_addr_t end = start + reg->size;
 		struct map_desc map;
-		nr++;
-		start = reg->base;
-		end = start + reg->size;
 
 		if (end > arm_lowmem_limit)
 			end = arm_lowmem_limit;
@@ -1439,7 +1405,7 @@ static void __init map_lowmem(void)
 #ifdef CONFIG_STRICT_MEMORY_RWX
 		if (start <= __pa(_text) && __pa(_text) < end) {
 			map.length = SECTION_SIZE;
-			map.type = MT_MEMORY_RW;
+			map.type = MT_MEMORY;
 
 			create_mapping(&map);
 
@@ -1459,15 +1425,14 @@ static void __init map_lowmem(void)
 
 			map.pfn = __phys_to_pfn(__pa(__init_begin));
 			map.virtual = (unsigned long)__init_begin;
-			map.length = (char *)__arch_info_begin - __init_begin;
-			map.type = MT_MEMORY_RX;
+			map.length = __init_data - __init_begin;
+			map.type = MT_MEMORY;
 
 			create_mapping(&map);
 
-			map.pfn = __phys_to_pfn(__pa(__arch_info_begin));
-			map.virtual = (unsigned long)__arch_info_begin;
-			map.length = __phys_to_virt(end) -
-				(unsigned long)__arch_info_begin;
+			map.pfn = __phys_to_pfn(__pa(__init_data));
+			map.virtual = (unsigned long)__init_data;
+			map.length = __phys_to_virt(end) - (unsigned int)__init_data;
 			map.type = MT_MEMORY_RW;
 		} else {
 			map.length = end - start;
@@ -1480,34 +1445,17 @@ static void __init map_lowmem(void)
 
 		create_mapping(&map);
 	}
-
-	vm = early_alloc_aligned(sizeof(*vm) * nr, __alignof__(*vm));
-
-	for_each_memblock(memory, reg) {
-
-		start = reg->base;
-		end = start + reg->size;
-
-		if (end > arm_lowmem_limit)
-			end = arm_lowmem_limit;
-		if (start >= end)
-			break;
-
-		pfn = __phys_to_pfn(start);
-		vaddr = __phys_to_virt(start);
-		length = end - start;
-		type = MT_MEMORY;
-
-		vm->addr = (void *)(vaddr & PAGE_MASK);
-		vm->size = PAGE_ALIGN(length + (vaddr & ~PAGE_MASK));
-		vm->phys_addr = __pfn_to_phys(pfn);
-		vm->flags = VM_LOWMEM | VM_ARM_STATIC_MAPPING;
-		vm->flags |= VM_ARM_MTYPE(type);
-		vm->caller = map_lowmem;
-		vm_area_add_early(vm++);
-	}
 }
-
+#ifdef CONFIG_TIMA_TEST_INFRA_MODULE
+unsigned long *l2_mmap_ptr = NULL;
+EXPORT_SYMBOL(l2_mmap_ptr);
+void tts_debug_func_mod(void)
+{
+	/*function is never called*/
+	return;
+}
+EXPORT_SYMBOL(tts_debug_func_mod);
+#endif/*CONFIG_TIMA_TEST_INFRA_MODULE*/
 /*
  * paging_init() sets up the page tables, initialises the zone memory
  * maps, and sets up the zero page, bad page and bad page tables.
@@ -1515,6 +1463,18 @@ static void __init map_lowmem(void)
 void __init paging_init(struct machine_desc *mdesc)
 {
 	void *zero_page;
+#ifdef CONFIG_TIMA_TEST_INFRA_MODULE
+	unsigned long* l2_mmap_pmd;
+#endif/*CONFIG_TIMA_TEST_INFRA_MODULE*/
+
+#ifdef CONFIG_TIMA_RKP
+#if 0
+	#ifdef CONFIG_TIMA_RKP_DEBUG
+
+		unsigned long* l2_mmap_pmd;
+	#endif
+#endif
+#endif
 
 	memblock_set_current_limit(arm_lowmem_limit);
 
@@ -1529,7 +1489,30 @@ void __init paging_init(struct machine_desc *mdesc)
 
 	/* allocate the zero page. */
 	zero_page = early_alloc(PAGE_SIZE);
+#ifdef CONFIG_TIMA_TEST_INFRA_MODULE
+        /* Allocate 2MB as this is a section
+                 */
+    l2_mmap_ptr = early_alloc(0x200000);
+    l2_mmap_pmd = (unsigned long*) pmd_off_k((unsigned long)l2_mmap_ptr);
+                /* Point pmd to (sect_to_pgt_start + flags)
+                 */
+    l2_mmap_pmd[0] = (unsigned long)(SEC_TO_PGT_MEM_ADDR + 0x0001940e);
+	
+#endif/*CONFIG_TIMA_TEST_INFRA_MODULE*/
 
+#ifdef CONFIG_TIMA_RKP
+#if 0
+	#ifdef CONFIG_TIMA_RKP_DEBUG
+		/* Allocate 2MB as this is a section
+		 */ 
+		l2_mmap_ptr = early_alloc(0x200000);
+		l2_mmap_pmd = (unsigned long*) pmd_off_k((unsigned long)l2_mmap_ptr);
+		/* Point pmd to (sect_to_pgt_start + flags)
+		 */
+		l2_mmap_pmd[0] = (unsigned long)(SEC_TO_PGT_MEM_ADDR + 0x0001940e);
+	#endif 
+#endif
+#endif
 	bootmem_init();
 
 	empty_zero_page = virt_to_page(zero_page);

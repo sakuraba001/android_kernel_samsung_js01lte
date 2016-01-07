@@ -416,34 +416,6 @@ config SEC_DEBUG_DOUBLE_FREE
 	 when it was first freed. If it matches, the whole
 	 circular buffer is searched. Panic is be called when
 	 the match is found.
-
-config SEC_LOG_LAST_KMSG
-	bool "Enable /proc/last_kmsg support: if EMBEDDED"
-	default n
-	help
-	  This option enables /proc/last_kmsg support.
-config SEC_DEBUG_NOCACHE_LOG_IN_LEVEL_LOW
-	bool "Enable nocache logging in debug level LOW"
-	default n
-	help
-	  Enable nocache logging in debug level LOW.
-
-comment "PowerManagement Feature"
-menuconfig SEC_PM
-	bool "Samsung TN PowerManagement Feature"
-	default y
-	help
-	  Samsung TN PowerManagement Feature.
-
-if SEC_PM
-config SEC_PM_DEBUG
-	bool "Samsung TN PowerManagement Debug Feature"
-	default n
-	help
-	  Samsung TN PowerManagement Debug Feature.
-
-endif
-
 config PID_IN_CONTEXTIDR
 	bool "Write the current PID to the CONTEXTIDR register"
 	depends on CPU_COPY_V6
@@ -463,6 +435,64 @@ config DEBUG_SET_MODULE_RONX
 	  patching and dynamic kernel tracing - and they might also protect
 	  against certain classes of kernel exploits.
 	  If in doubt, say "N".
+
+config SEC_DEBUG_LMK_MEMINFO
+	bool "Show Meminfo when lmk invoked"
+	default n
+	help
+	  Show memory information when lmk kills process
+
+config SEC_DEBUG_LMK_MEMINFO_VERBOSE
+	bool "Show detailed memory information"
+	depends on SEC_DEBUG_LMK_MEMINFO
+	default n
+	help
+	  Show memory information of running processes when lmk kills process
+
+config SEC_DEBUG_ZERO_FD_CLOSE
+	bool "panic when try to close fd=0 in mediaserver"
+	default n
+	help
+	  Temporary debugging code for closing fd=0 in mediaserver issue.
+
+config SEC_DEBUG_SPINLOCK_PANIC
+	bool "panic when spinlock bug"
+	default n
+	help
+	  Sometimes it is more helpful to call panic immediately
+	  when spinlock bug detected.
+
+config SEC_DEBUG_LIST_PANIC
+
+	bool "Panic when list corruption detected"
+	default n
+	help
+	  Panic when list structure corruption detected.
+	  Sometimes list corruptions are reported.
+	  But it reports only with WARN level.
+	  This will immediately stop the system.
+
+comment "PowerManagement Feature"
+menuconfig SEC_PM
+	bool "Samsung TN PowerManagement Feature"
+	default y
+	help
+	  Samsung TN PowerManagement Feature.
+
+if SEC_PM
+config SEC_PM_DEBUG
+	bool "Samsung TN PowerManagement Debug Feature"
+	default n
+	help
+	  Samsung TN PowerManagement Debug Feature.
+
+endif
+
+config SEC_FACTORY
+	bool "Samsung TN Factory Test Debug Feature"
+	default n
+	help
+	  Samsung TN Factory Test Debug Feature.
 
 comment "Samsung Rooting Restriction Feature"
 config SEC_RESTRICT_ROOTING
@@ -496,5 +526,4 @@ config SEC_RESTRICT_ROOTING_LOG
 	help
 	   Say Y here if you want to see result of restricting SETUID or FORK. It will
 	   be displayed by kernel error log. Saying N will not be displayed anything.
-
 endmenu

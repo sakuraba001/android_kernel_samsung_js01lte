@@ -50,11 +50,11 @@
 #endif
 #define WACOM_FW_NAME_W9010_B934		"epen/W9010_0076.bin"
 
-#ifdef CONFIG_SEC_LT03_PROJECT 
-#define WACOM_FW_NAME_W9007_BL92		"epen/W9007A_0260.bin"
-#define WACOM_FW_NAME_W9007_BL91		"epen/W9007A_0260.bin"
+#if defined(CONFIG_MACH_LT03EUR) || defined(CONFIG_MACH_LT03SKT) || defined(CONFIG_MACH_LT03KTT) || defined(CONFIG_MACH_LT03LGT)
+#define WACOM_FW_NAME_W9007_BL92		"epen/W9007A_013C.bin"
+#define WACOM_FW_NAME_W9007_BL91		"epen/W9007A_013C.bin"
 #else
-#define WACOM_FW_NAME_W9007_BL92		"epen/W9007A_020A.bin"
+#define WACOM_FW_NAME_W9007_BL92		"epen/W9007A_0200.bin"
 #define WACOM_FW_NAME_W9007_BL91		"epen/W9007_0200.bin"
 #endif
 
@@ -68,7 +68,7 @@
 extern unsigned int system_rev;
 
 /*Wacom Command*/
-#define COM_COORD_NUM	8
+#define COM_COORD_NUM	7
 #define COM_COORD_NUM_W9010		12
 #define COM_QUERY_NUM	9
 
@@ -221,9 +221,6 @@ struct wacom_i2c {
 	struct early_suspend early_suspend;
 #endif
 	struct mutex lock;
-#if defined(CONFIG_SEC_LT03_PROJECT) || defined(CONFIG_SEC_VIENNA_PROJECT)
-	struct mutex irq_lock;
-#endif
 #ifdef WACOM_BOOSTER
 	struct delayed_work	work_dvfs_off;
 	struct delayed_work	work_dvfs_chg;

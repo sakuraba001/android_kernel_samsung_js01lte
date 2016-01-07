@@ -205,7 +205,6 @@ extern unsigned int system_rev;
 //void __init msm8974_bt_init(struct device *dev)
 void __init msm8974_bt_init(void)
 {
-    int err = 0;
 #ifdef CONFIG_MACH_MONTBLANC
     int rc = 0;
     pr_err("[BT] msm8974_bt_init(%d)\n", system_rev);
@@ -223,11 +222,7 @@ void __init msm8974_bt_init(void)
 #endif
 #ifdef BT_LPM_ENABLE
     gpio_rev_init();
-    err = platform_device_register(&msm_bluesleep_device);
-	if (err) {
-	    pr_err("[BT] failed to register Bluesleep device.\n");
-		return;
-	}
+    platform_device_register(&msm_bluesleep_device);
 #endif
 
     platform_add_devices(jf_bt_devs, ARRAY_SIZE(jf_bt_devs));

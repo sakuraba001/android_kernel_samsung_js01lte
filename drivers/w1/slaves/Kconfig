@@ -106,5 +106,5 @@ config W1_SLAVE_DS28EL15
 	depends on W1
 	help
 	  If you enable this you will have the DS28EL15 secure chip support.
-
+  
 endmenu

@@ -26,6 +26,9 @@
 #include "enc-subdev.h"
 #include "wfd-util.h"
 
+//19.04.2013 to fix prevent error
+#define CONFIG_SEC_MIRACAST
+
 #define BUF_TYPE_OUTPUT V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE
 #define BUF_TYPE_INPUT V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE
 
@@ -873,6 +876,10 @@ static long venc_set_output_buffer(struct v4l2_subdev *sd, void *arg)
 
 	if (!mregion || !planes) {
 		WFD_MSG_ERR("Failed to allocate memory\n");
+#ifdef CONFIG_SEC_MIRACAST
+                if(mregion != NULL) kfree(mregion);
+                if(planes != NULL) kfree(planes);
+#endif
 		goto venc_set_output_buffer_fail;
 	}
 

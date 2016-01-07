@@ -347,69 +347,6 @@ static void max17048_rcomp_update(struct i2c_client *client, int temp)
 	}
 }
 
-#ifdef CONFIG_OF
-#if 0
-static int max17048_parse_dt(struct device *dev,
-			     struct sec_fuelgauge_info *fuelgauge)
-{
-	struct device_node *np = dev->of_node;
-	int ret;
-	int value;
-
-	if (np == NULL) {
-		pr_err("%s np NULL\n", __func__);
-	} else {
-		ret = of_property_read_u32(np, "fuelgauge,rcomp0",
-					   &value);
-		pr_err("%s value %d\n",
-		       __func__, value);
-		get_battery_data(fuelgauge).RCOMP0 = (u8)value;
-		if (ret < 0)
-			pr_err("%s error reading rcomp0 %d\n",
-			       __func__, ret);
-		ret = of_property_read_u32(np, "fuelgauge,rcomp_charging",
-					   &value);
-		pr_err("%s value %d\n",
-		       __func__, value);
-		get_battery_data(fuelgauge).RCOMP_charging = (u8)value;
-		if (ret < 0)
-			pr_err("%s error reading rcomp_charging %d\n",
-			       __func__, ret);
-		ret = of_property_read_u32(np, "fuelgauge,temp_cohot",
-				   &get_battery_data(fuelgauge).temp_cohot);
-		if (ret < 0)
-			pr_err("%s error reading temp_cohot %d\n",
-			       __func__, ret);
-		ret = of_property_read_u32(np, "fuelgauge,temp_cocold",
-				   &get_battery_data(fuelgauge).temp_cocold);
-		if (ret < 0)
-			pr_err("%s error reading temp_cocold %d\n",
-			       __func__, ret);
-		get_battery_data(fuelgauge).is_using_model_data = of_property_read_bool(np,
-				"fuelgauge,is_using_model_data");
-		ret = of_property_read_string(np, "fuelgauge,type_str",
-				(const char **)&get_battery_data(fuelgauge).type_str);
-		if (ret < 0)
-			pr_err("%s error reading temp_cocold %d\n",
-			       __func__, ret);
-
-		pr_info("%s RCOMP0: 0x%x, RCOMP_charging: 0x%x, temp_cohot: %d,"
-			"temp_cocold: %d, is_using_model_data: %d, "
-			"type_str: %s,\n", __func__,
-			get_battery_data(fuelgauge).RCOMP0,
-			get_battery_data(fuelgauge).RCOMP_charging,
-			get_battery_data(fuelgauge).temp_cohot,
-			get_battery_data(fuelgauge).temp_cocold,
-			get_battery_data(fuelgauge).is_using_model_data,
-			get_battery_data(fuelgauge).type_str
-			);
-	}
-
-	return 0;
-}
-#endif
-#endif
-
 static void fg_read_regs(struct i2c_client *client, char *str)
 {
 	int data = 0;
@@ -548,26 +485,6 @@ static void fg_read_address(struct i2c_client *client)
 
 bool sec_hal_fg_init(struct i2c_client *client)
 {
-#ifdef CONFIG_OF
-#if 1
-	struct sec_fuelgauge_info *fuelgauge =
-		i2c_get_clientdata(client);
-
-	board_fuelgauge_init(fuelgauge);
-#else
-	struct sec_fuelgauge_info *fuelgauge =
-		i2c_get_clientdata(client);
-	int error;
-
-	error = max17048_parse_dt(&client->dev, fuelgauge);
-
-	if (error) {
-		dev_err(&client->dev,
-			"%s : Failed to get max17048 fuel_init\n", __func__);
-		return false;
-	}
-#endif
-#endif
 	max17048_get_version(client);
 
 	return true;

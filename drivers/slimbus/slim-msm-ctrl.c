@@ -30,6 +30,12 @@
 #define MSM_SLIM_NAME	"msm_slim_ctrl"
 #define SLIM_ROOT_FREQ 24576000
 
+#define QC_MFGID_LSB	0x2
+#define QC_MFGID_MSB	0x17
+#define QC_CHIPID_SL	0x10
+#define QC_DEVID_SAT1	0x3
+#define QC_DEVID_SAT2	0x4
+#define QC_DEVID_PGD	0x5
 #define QC_MSM_DEVS	5
 
 /* Manager registers */
@@ -319,7 +325,35 @@ static irqreturn_t msm_slim_interrupt(int irq, void *d)
 	}
 	pstat = readl_relaxed(PGD_THIS_EE(PGD_PORT_INT_ST_EEn, dev->ver));
 	if (pstat != 0) {
-		return msm_slim_port_irq_handler(dev, pstat);
+		int i = 0;
+		for (i = dev->pipe_b; i < MSM_SLIM_NPORTS; i++) {
+			if (pstat & 1 << i) {
+				u32 val = readl_relaxed(PGD_PORT(PGD_PORT_STATn,
+							i, dev->ver));
+				if (val & (1 << 19)) {
+					dev->ctrl.ports[i].err =
+						SLIM_P_DISCONNECT;
+					dev->pipes[i-dev->pipe_b].connected =
+							false;
+					/*
+					 * SPS will call completion since
+					 * ERROR flags are registered
+					 */
+				} else if (val & (1 << 2))
+					dev->ctrl.ports[i].err =
+							SLIM_P_OVERFLOW;
+				else if (val & (1 << 3))
+					dev->ctrl.ports[i].err =
+						SLIM_P_UNDERFLOW;
+			}
+			writel_relaxed(1, PGD_THIS_EE(PGD_PORT_INT_CL_EEn,
+							dev->ver));
+		}
+		/*
+		 * Guarantee that port interrupt bit(s) clearing writes go
+		 * through before exiting ISR
+		 */
+		mb();
 	}
 
 	return IRQ_HANDLED;
@@ -412,13 +446,16 @@ static int msm_xfer_msg(struct slim_controller *ctrl, struct slim_msg_txn *txn)
 		if (mc != SLIM_MSG_MC_DISCONNECT_PORT)
 			dev->err = msm_slim_connect_pipe_port(dev, *puc);
 		else {
+			struct msm_slim_endp *endpoint = &dev->pipes[*puc];
+			struct sps_register_event sps_event;
+			memset(&sps_event, 0, sizeof(sps_event));
+			sps_register_event(endpoint->sps, &sps_event);
+			sps_disconnect(endpoint->sps);
 			/*
 			 * Remove channel disconnects master-side ports from
 			 * channel. No need to send that again on the bus
-			 * Only disable port
 			 */
-			writel_relaxed(0, PGD_PORT(PGD_PORT_CFGn,
-					(*puc + dev->port_b), dev->ver));
+			dev->pipes[*puc].connected = false;
 			mutex_unlock(&dev->tx_lock);
 			if (msgv >= 0)
 				msm_slim_put_ctrl(dev);
@@ -431,7 +468,7 @@ static int msm_xfer_msg(struct slim_controller *ctrl, struct slim_msg_txn *txn)
 				msm_slim_put_ctrl(dev);
 			return dev->err;
 		}
-		*(puc) = *(puc) + dev->port_b;
+		*(puc) = *(puc) + dev->pipe_b;
 	}
 	if (txn->mt == SLIM_MSG_MT_CORE &&
 		mc == SLIM_MSG_MC_BEGIN_RECONFIGURATION)
@@ -468,6 +505,10 @@ static int msm_xfer_msg(struct slim_controller *ctrl, struct slim_msg_txn *txn)
 				msm_slim_put_ctrl(dev);
 			}
 		}
+	}
+	if (mc == SLIM_USR_MC_GENERIC_ACK) {
+		u32 mgrstat = readl_relaxed(dev->base + MGR_STATUS);
+		pr_err("generic ack:0x %x, mgrstat:0x%x", pbuf[0], mgrstat);
 	}
 	mutex_unlock(&dev->tx_lock);
 	if (msgv >= 0)
@@ -573,6 +614,9 @@ static int msm_sat_define_ch(struct msm_slim_sat *sat, u8 *buf, u8 len, u8 mc)
 		/* part of grp. activating/removing 1 will take care of rest */
 		ret = slim_control_ch(&sat->satcl, sat->satch[i].chanh, oper,
 					false);
+					
+		pr_err("SAT oper:%d grp start:%d, ret:%d", oper,
+				sat->satch[i].chan, ret);
 		if (!ret) {
 			for (i = 5; i < len; i++) {
 				int j;
@@ -778,6 +822,8 @@ static void slim_sat_rxprocess(struct work_struct *work)
 			 * when this is detected
 			 */
 			if (sat->sent_capability) {
+				pr_err("Received report present from SAT:0x%x",
+						sat->satcl.laddr);
 				for (i = 0; i < sat->nsatch; i++) {
 					if (sat->satch[i].reconf) {
 						pr_err("SSR, sat:%d, rm ch:%d",
@@ -887,6 +933,7 @@ send_capability:
 		case SLIM_USR_MC_RECONFIG_NOW:
 			tid = buf[3];
 			gen_ack = true;
+			pr_err("SAT:LA:%x reconf req", sat->satcl.laddr);
 			ret = slim_reconfigure_now(&sat->satcl);
 			for (i = 0; i < sat->nsatch; i++) {
 				struct msm_sat_chan *sch = &sat->satch[i];
@@ -934,6 +981,8 @@ send_capability:
 			txn.len = 2;
 			txn.wbuf = wbuf;
 			gen_ack = true;
+			pr_err("SAT connect MC:0x%x,LA:0x%x", txn.mc,
+					sat->satcl.laddr);
 			ret = msm_xfer_msg(&dev->ctrl, &txn);
 			break;
 		case SLIM_USR_MC_DISCONNECT_PORT:
@@ -946,6 +995,7 @@ send_capability:
 			txn.mt = SLIM_MSG_MT_CORE;
 			txn.wbuf = wbuf;
 			gen_ack = true;
+			pr_err("SAT disconnect LA:0x%x", sat->satcl.laddr);
 			ret = msm_xfer_msg(&dev->ctrl, &txn);
 			break;
 		case SLIM_MSG_MC_REPORT_ABSENT:
@@ -963,15 +1013,23 @@ send_capability:
 		wbuf[0] = tid;
 		if (!ret)
 			wbuf[1] = MSM_SAT_SUCCSS;
-		else
+		else {
+			pr_err("sat cmd:0x%x no ack:%d", mc, ret);
 			wbuf[1] = 0;
+		}
 		txn.mc = SLIM_USR_MC_GENERIC_ACK;
 		txn.la = sat->satcl.laddr;
 		txn.rl = 6;
 		txn.len = 2;
 		txn.wbuf = wbuf;
 		txn.mt = SLIM_MSG_MT_SRC_REFERRED_USER;
-		msm_xfer_msg(&dev->ctrl, &txn);
+		ret = msm_xfer_msg(&dev->ctrl, &txn);
+		if (ret) {
+			pr_err("sending ACK failed:%d", ret);
+			pr_err("clk gear:%d, subfrm mode:0x%x",
+				dev->ctrl.clkgear, dev->ctrl.sched.subfrmcode);
+			ret = 0;
+		}
 		if (satv >= 0)
 			msm_slim_put_ctrl(dev);
 	}
@@ -1221,8 +1279,7 @@ static int __devinit msm_slim_probe(struct platform_device *pdev)
 	dev->ctrl.set_laddr = msm_set_laddr;
 	dev->ctrl.xfer_msg = msm_xfer_msg;
 	dev->ctrl.wakeup =  msm_clk_pause_wakeup;
-	dev->ctrl.alloc_port = msm_alloc_port;
-	dev->ctrl.dealloc_port = msm_dealloc_port;
+	dev->ctrl.config_port = msm_config_port;
 	dev->ctrl.port_xfer = msm_slim_port_xfer;
 	dev->ctrl.port_xfer_status = msm_slim_port_xfer_status;
 	/* Reserve some messaging BW for satellite-apps driver communication */
@@ -1237,6 +1294,7 @@ static int __devinit msm_slim_probe(struct platform_device *pdev)
 	else
 		dev->use_rx_msgqs = MSM_MSGQ_RESET;
 
+	dev->use_tx_msgqs = MSM_MSGQ_DISABLED;
 	dev->irq = irq->start;
 	dev->bam.irq = bam_irq->start;
 

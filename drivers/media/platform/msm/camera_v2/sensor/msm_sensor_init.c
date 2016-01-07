@@ -123,13 +123,8 @@ static ssize_t back_camera_firmware_show(struct device *dev,
 {
 #if defined(CONFIG_MACH_KS01SKT) || defined(CONFIG_MACH_KS01KTT)\
 	|| defined(CONFIG_MACH_KS01LGT)
-#if defined(CONFIG_MACH_KS01EUR)
 	char cam_fw[] = "O13Q0SAGC01 O13Q0SAGC01\n";/*Camsys_module,13mega_pixel,Qualcomm_isp,Sony_sensor*/
 	return snprintf(buf, sizeof(cam_fw), "%s", cam_fw);
-#else
-	CDBG("[FW_DBG] cam_fw_ver : %s\n", cam_fw_ver);
-	return snprintf(buf, sizeof(cam_fw_ver), "%s", cam_fw_ver);
-#endif
 #else // multi module case
 	CDBG("[FW_DBG] cam_fw_ver : %s\n", cam_fw_ver);
 	return snprintf(buf, sizeof(cam_fw_ver), "%s", cam_fw_ver);

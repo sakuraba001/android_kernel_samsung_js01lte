@@ -298,6 +298,14 @@ void driver_config_during_boot_up(void)
 
 	printk("driver_config_during_boot_up()!\n");	
 */
+#if defined(CONFIG_MACH_JS01LTEDCM)
+//IORA change for not-controlled NC
+	gpio_tlmm_config(GPIO_CFG(80, GPIOMUX_FUNC_GPIO,
+		GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
+		GPIO_CFG_ENABLE);
+
+	gpio_set_value(80, 0);
+#endif
 }
 
 

@@ -10,6 +10,20 @@ config TDMB
 	  This module is designed for SPI or EBI2.
 	  Select chipset and interface
 
+choice
+	depends on TDMB
+	depends on TDMB_VENDOR_FCI || TDMB_VENDOR_RAONTECH \
+		|| TDMB_VENDOR_INC || TDMB_VENDOR_TELECHIPS
+	prompt "interface"
+	default TDMB_SPI
+	config TDMB_SPI
+		bool "SPI"
+	config TDMB_EBI
+		bool "EBI"
+	config TDMB_TSIF
+		bool "TSIF"
+endchoice
+
 	config TDMB_VENDOR_FCI
 	depends on TDMB
 		bool "FCI"
@@ -68,38 +82,9 @@ choice
 		bool "TCC3170"
 endchoice
 
-choice
-	depends on TDMB
-	prompt "AP vendor"
-	default TDMB_QUALCOMM
-	config TDMB_QUALCOMM
-		bool "Qualcomm"
-	config TDMB_SLSI
-		bool "S.LSI"
-endchoice
-
-config TDMB_SPI
-	depends on TDMB
-	bool "SPI"
-
-config TDMB_EBI
-	depends on TDMB
-	bool "EBI"
-config TDMB_TSIF
-	depends on TDMB
-	bool "TSIF"
-
-config TDMB_I2C
-	depends on TDMB
-	bool "I2C"
-
 config TDMB_SIMUL
 	depends on TDMB
 	bool "Simulation"
-
-config TDMB_DEBUG
-	depends on TDMB
-	bool "tdmb debugfs"
 
 config TDMB_ANT_DET
 	depends on TDMB

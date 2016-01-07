@@ -10,7 +10,7 @@
  */
 #include <linux/kernel.h>
 #include <asm/unaligned.h>
-//#include <mach/cpufreq.h>
+#include <mach/cpufreq.h>
 #include <linux/input/mt.h>
 #include <linux/of_gpio.h>
 #include <linux/regulator/consumer.h>
@@ -51,7 +51,9 @@ struct edp_backlight_info {
 	struct edp_backlight_platform_data	*pdata;
 };
 
-static struct edp_backlight_info *pinfo;
+extern int get_epd_tcon_vendor(void);
+
+struct edp_backlight_info *pinfo;
 
 #if 0
 static int backlight_i2c_read(struct i2c_client *client,
@@ -102,17 +104,12 @@ static void backlight_request_gpio(struct edp_backlight_platform_data *pdata)
 				__func__, pdata->gpio_sda);
 		return;
 	}
-#if 0 //splash booting enable
 	gpio_tlmm_config(GPIO_CFG(pdata->gpio_backlight_en, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA), 1);
 	gpio_tlmm_config(GPIO_CFG(pdata->gpio_scl, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA), 1);
 	gpio_tlmm_config(GPIO_CFG(pdata->gpio_sda, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA), 1);
 
 	gpio_set_value(pdata->gpio_backlight_en,0);
 	pr_info("%s %d", __func__, gpio_get_value(pdata->gpio_backlight_en));
-#else
-	gpio_tlmm_config(GPIO_CFG(pdata->gpio_scl, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA), 1);
-	gpio_tlmm_config(GPIO_CFG(pdata->gpio_sda, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA), 1);
-#endif
 }
 
 static int edp_backlight_parse_dt(struct device *dev,
@@ -132,12 +129,33 @@ static int edp_backlight_parse_dt(struct device *dev,
 	return 0;
 }
 
+static u8 parade_setting[][2] ={
+	{0x01, 0x80},
+	{0xA0, 0x82},
+	{0xA1, 0x6E},
+	{0x98, 0xA1},
+	{0x9E, 0x21},
+	{0xA2, 0x28},
+	{0xA3, 0x5E},
+	{0xA4, 0x72},
+	{0xA5, 0x14},
+	{0xA6, 0x40},
+	{0xA7, 0xFB},
+	{0xA8, 0x00},
+	{0xA9, 0xA0},
+	{0xAA, 0x0F},
+	{0xAB, 0x00},
+	{0xAC, 0x00},
+	{0xAD, 0x00},
+	{0xAE, 0x0E},
+	{0xAF, 0x01},
+};
+
 static u8 ndra_setting[][2] ={
 	{0x01, 0x80},
-#if defined(CONFIG_MACH_VIENNA_LTE) || defined(CONFIG_MACH_LT03EUR)\
+#if defined(CONFIG_MACH_VIENNAEUR) || defined(CONFIG_MACH_LT03EUR)\
 	|| defined(CONFIG_MACH_LT03SKT)	|| defined(CONFIG_MACH_LT03KTT)\
-	|| defined(CONFIG_MACH_LT03LGT) || defined(CONFIG_MACH_V2LTEEUR)\
-	|| defined(CONFIG_MACH_PICASSO)
+	|| defined(CONFIG_MACH_LT03LGT)
 	{0xA0, 0xFF},
 	{0xA1, 0x5F},
 #else
@@ -163,48 +181,40 @@ static u8 ndra_setting[][2] ={
 };
 
 extern void restore_set_tcon(void);
-void edp_backlight_power_enable(void)
-{
-	int i;
-	struct edp_backlight_info *info = pinfo;
-
-	if (!info) {
-		pr_info("%s error pinfo", __func__);
-		return ;
-	}
-
-	gpio_set_value(info->pdata->gpio_backlight_en,1);
-
-	for (i = 0; i < ARRAY_SIZE(ndra_setting) ;i++) {
-		backlight_i2c_write(info->client, ndra_setting[i][0], ndra_setting[i][1], 1);
-	}
-
-	pr_info("%s LSI_NDRA ", __func__);
-}
-
 void edp_backlight_enable(void)
 {
 	int i;
-	struct edp_backlight_info *info = pinfo;
+	struct edp_backlight_info *info = pinfo; 
 
 	if (!info) {
 		pr_info("%s error pinfo", __func__);
 		return ;
 	}
+
+	if (gpio_get_value(info->pdata->gpio_backlight_en))
+		return ;
 
 	gpio_set_value(info->pdata->gpio_backlight_en,1);
 
 	restore_set_tcon();
 
-	for (i = 0; i < ARRAY_SIZE(ndra_setting) ;i++) {
-		backlight_i2c_write(info->client, ndra_setting[i][0], ndra_setting[i][1], 1);
-	}
+	if (get_epd_tcon_vendor()) {
+		for (i = 0; i < ARRAY_SIZE(ndra_setting) ;i++) {
+			backlight_i2c_write(info->client, ndra_setting[i][0], ndra_setting[i][1], 1);
+		}
 
-	pr_info("%s LSI_NDRA ", __func__);
+		pr_info("%s LSI_NDRA ", __func__);
+	} else {
+		for (i = 0; i < ARRAY_SIZE(parade_setting) ;i++) {
+			backlight_i2c_write(info->client, parade_setting[i][0], parade_setting[i][1], 1);
+		}
+
+		pr_info("%s PARADE", __func__);
+	}
 }
 
 void edp_backlight_disable(void)
-{
+{	
 	struct edp_backlight_info *info = pinfo;
 
 	if (!info) {

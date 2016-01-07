@@ -30,7 +30,7 @@
 #include "mdss_panel.h"
 #include "mdss_io_util.h"
 #include "mhl_msc.h"
-#include <linux/mdss_hdmi_mhl.h>
+#include "mdss_hdmi_mhl.h"
 
 #define MHL_DRIVER_NAME "sii8334"
 #define COMPATIBLE_NAME "qcom,mhl-sii8334"
@@ -357,20 +357,14 @@ static int mhl_sii_reset_pin(struct mhl_tx_ctrl *mhl_ctrl, int on)
 static int mhl_sii_wait_for_rgnd(struct mhl_tx_ctrl *mhl_ctrl)
 {
 	int timeout;
-
+	/* let isr handle RGND interrupt */
 	pr_debug("%s:%u\n", __func__, __LINE__);
 	INIT_COMPLETION(mhl_ctrl->rgnd_done);
-	/*
-	 * after toggling reset line and enabling disc
-	 * tx can take a while to generate intr
-	 */
 	timeout = wait_for_completion_interruptible_timeout
 		(&mhl_ctrl->rgnd_done, HZ * 3);
 	if (!timeout) {
-		/*
-		 * most likely nothing plugged in USB
-		 * USB HOST connected or already in USB mode
-		 */
+		/* most likely nothing plugged in USB */
+		/* USB HOST connected or already in USB mode */
 		pr_warn("%s:%u timedout\n", __func__, __LINE__);
 		return -ENODEV;
 	}
@@ -379,7 +373,7 @@ static int mhl_sii_wait_for_rgnd(struct mhl_tx_ctrl *mhl_ctrl)
 
 /*  USB_HANDSHAKING FUNCTIONS */
 static int mhl_sii_device_discovery(void *data, int id,
-			     void (*usb_notify_cb)(void *, int), void *ctx)
+			     void (*usb_notify_cb)(int online))
 {
 	int rc;
 	struct mhl_tx_ctrl *mhl_ctrl = data;
@@ -420,10 +414,8 @@ static int mhl_sii_device_discovery(void *data, int id,
 		return -EINVAL;
 	}
 
-	if (!mhl_ctrl->notify_usb_online) {
+	if (!mhl_ctrl->notify_usb_online)
 		mhl_ctrl->notify_usb_online = usb_notify_cb;
-		mhl_ctrl->notify_ctx = ctx;
-	}
 
 	if (!mhl_ctrl->disc_enabled) {
 		spin_lock_irqsave(&mhl_ctrl->lock, flags);
@@ -437,7 +429,6 @@ static int mhl_sii_device_discovery(void *data, int id,
 		 */
 		msleep(100);
 		mhl_init_reg_settings(mhl_ctrl, true);
-		/* allow tx to enable dev disc after D3 state */
 		msleep(100);
 		rc = mhl_sii_wait_for_rgnd(mhl_ctrl);
 	} else {
@@ -936,7 +927,7 @@ static int mhl_msm_read_rgnd_int(struct mhl_tx_ctrl *mhl_ctrl)
 		mhl_ctrl->mhl_mode = 1;
 		power_supply_changed(&mhl_ctrl->mhl_psy);
 		if (mhl_ctrl->notify_usb_online)
-			mhl_ctrl->notify_usb_online(mhl_ctrl->notify_ctx, 1);
+			mhl_ctrl->notify_usb_online(1);
 	} else {
 		pr_debug("%s: non-mhl sink\n", __func__);
 		mhl_ctrl->mhl_mode = 0;
@@ -1036,7 +1027,7 @@ static int dev_detect_isr(struct mhl_tx_ctrl *mhl_ctrl)
 		mhl_msm_disconnection(mhl_ctrl);
 		power_supply_changed(&mhl_ctrl->mhl_psy);
 		if (mhl_ctrl->notify_usb_online)
-			mhl_ctrl->notify_usb_online(mhl_ctrl->notify_ctx, 0);
+			mhl_ctrl->notify_usb_online(0);
 		return 0;
 	}
 
@@ -1051,7 +1042,7 @@ static int dev_detect_isr(struct mhl_tx_ctrl *mhl_ctrl)
 		mhl_msm_disconnection(mhl_ctrl);
 		power_supply_changed(&mhl_ctrl->mhl_psy);
 		if (mhl_ctrl->notify_usb_online)
-			mhl_ctrl->notify_usb_online(mhl_ctrl->notify_ctx, 0);
+			mhl_ctrl->notify_usb_online(0);
 		return 0;
 	}
 
@@ -1463,7 +1454,7 @@ static int mhl_sii_reg_config(struct i2c_client *client, bool enable)
 	static struct regulator *reg_8941_l02;
 	static struct regulator *reg_8941_smps3a;
 	static struct regulator *reg_8941_vdda;
-	int rc = -EINVAL;
+	int rc;
 
 	pr_debug("%s\n", __func__);
 	if (!reg_8941_l24) {
@@ -1916,21 +1907,15 @@ MODULE_DEVICE_TABLE(i2c, mhl_sii_i2c_id);
 #if defined(CONFIG_PM) || defined(CONFIG_PM_SLEEP)
 static int mhl_i2c_suspend_sub(struct i2c_client *client)
 {
-	struct mhl_tx_ctrl *mhl_ctrl = i2c_get_clientdata(client);
-
-	if (mhl_ctrl->irq_req_done) {
-		enable_irq_wake(client->irq);
-		disable_irq(client->irq);
-	}
+	enable_irq_wake(client->irq);
+	disable_irq(client->irq);
 	return 0;
 }
 
 static int mhl_i2c_resume_sub(struct i2c_client *client)
 {
-	struct mhl_tx_ctrl *mhl_ctrl = i2c_get_clientdata(client);
-
-	if (mhl_ctrl->irq_req_done)
-		disable_irq_wake(client->irq);
+	disable_irq_wake(client->irq);
+	enable_irq(client->irq);
 	return 0;
 }
 #endif /* defined(CONFIG_PM) || defined(CONFIG_PM_SLEEP) */

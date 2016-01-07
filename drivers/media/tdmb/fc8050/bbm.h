@@ -82,7 +82,7 @@ extern int bbm_com_audio_deselect(
 	HANDLE hDevice, u8 subchannel_id, u8 service_channel_id);
 extern int bbm_com_data_deselect(
 	HANDLE hDevice, u8 subchannel_id, u8 service_channel_id);
-extern int bbm_com_hostif_select(HANDLE hDevice, u8 hostif, u32 param);
+extern int bbm_com_hostif_select(HANDLE hDevice, u8 hostif);
 extern int bbm_com_hostif_deselect(HANDLE hDevice);
 extern int bbm_com_fic_callback_register(
 	u32 userdata
